@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, Check, Smartphone, Copy, Camera, Loader2, Hash, AlertCircle, RefreshCw, Lock, WifiOff, History, CreditCard, ArrowUpRight, ArrowDownLeft, User as UserIcon, BookOpen } from 'lucide-react';
+import { LogOut, Check, Smartphone, Copy, Camera, Loader2, Hash, AlertCircle, RefreshCw, Lock, WifiOff, History, CreditCard, ArrowUpRight, ArrowDownLeft, User as UserIcon, BookOpen, ShieldCheck } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Madrasah, Language, View, Transaction } from '../types';
 import { t } from '../translations';
@@ -62,6 +62,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   };
 
   const fetchTransactions = async () => {
+    if (isSuperAdmin) return;
     setLoadingTrans(true);
     try {
       const { data } = await supabase
@@ -128,156 +129,88 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       <div className="flex items-center justify-between px-1">
         <h1 className="text-2xl font-black text-white drop-shadow-sm font-noto">{t('account', lang)}</h1>
-        <div className="bg-white/15 px-3 py-1.5 rounded-2xl border border-white/20 backdrop-blur-md flex items-center gap-2">
-           <span className="text-[10px] font-black text-white/60 uppercase">{t('balance', lang)}</span>
-           <span className="text-sm font-black text-white">{madrasah?.balance || 0} ৳</span>
-        </div>
+        {!isSuperAdmin && (
+          <div className="bg-white/15 px-3 py-1.5 rounded-2xl border border-white/20 backdrop-blur-md flex items-center gap-2">
+             <span className="text-[10px] font-black text-white/60 uppercase">{t('balance', lang)}</span>
+             <span className="text-sm font-black text-white">{madrasah?.balance || 0} ৳</span>
+          </div>
+        )}
       </div>
 
       <div className="bg-white/20 backdrop-blur-xl rounded-[3rem] p-6 border border-white/30 shadow-2xl space-y-6">
-        {/* Logo/Avatar Section */}
         <div className="flex flex-col items-center gap-4">
-          <div className="relative cursor-pointer group" onClick={() => !uploading && fileInputRef.current?.click()}>
-            <div className="bg-white/20 w-24 h-24 rounded-full flex items-center justify-center ring-4 ring-white/10 overflow-hidden border-2 border-white/50 shadow-xl">
-              {uploading ? (
-                <Loader2 className="animate-spin text-white" size={24} />
-              ) : madrasah?.logo_url ? (
-                <img src={madrasah.logo_url} className="w-full h-full object-cover" alt="Logo" />
-              ) : (
-                <Camera size={32} className="text-white/60" />
-              )}
-            </div>
-            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={() => {}} />
+          <div className="bg-white/20 w-24 h-24 rounded-full flex items-center justify-center ring-4 ring-white/10 overflow-hidden border-2 border-white/50 shadow-xl relative">
+            {madrasah?.logo_url ? (
+              <img src={madrasah.logo_url} className="w-full h-full object-cover" alt="Logo" />
+            ) : isSuperAdmin ? (
+               <ShieldCheck size={48} className="text-white" />
+            ) : (
+              <UserIcon size={40} className="text-white/60" />
+            )}
+            {isSuperAdmin && (
+              <div className="absolute bottom-0 right-0 bg-yellow-400 p-1 rounded-full border border-white shadow-lg">
+                <ShieldCheck size={14} className="text-slate-800" />
+              </div>
+            )}
           </div>
           <div className="text-center">
             <h2 className="text-xl font-black text-white font-noto leading-tight">{madrasah?.name}</h2>
-            <p className="text-white/40 text-[9px] font-black uppercase tracking-widest mt-1">
-              {isSuperAdmin ? 'Super Admin' : 'Madrasah Admin'}
-            </p>
+            <div className={`inline-block px-3 py-1 rounded-full mt-2 text-[10px] font-black uppercase tracking-widest ${isSuperAdmin ? 'bg-yellow-400 text-slate-900' : 'bg-white/20 text-white'}`}>
+              {isSuperAdmin ? 'Super Admin Account' : 'Madrasah Admin Account'}
+            </div>
           </div>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-3">
-          <button className="bg-white/10 p-4 rounded-2xl border border-white/10 flex flex-col items-center gap-1 active:scale-95 transition-all text-white">
-            <CreditCard size={20} className="text-white/60" />
-            <span className="text-[10px] font-black uppercase tracking-wider">{t('recharge', lang)}</span>
-          </button>
-          <button className="bg-white/10 p-4 rounded-2xl border border-white/10 flex flex-col items-center gap-1 active:scale-95 transition-all text-white">
-            <History size={20} className="text-white/60" />
-            <span className="text-[10px] font-black uppercase tracking-wider">{t('history', lang)}</span>
-          </button>
-        </div>
-
-        {/* Editable Information Fields */}
         <div className="space-y-4 pt-2">
           <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] px-2">
-            {lang === 'bn' ? 'মাদরাসা তথ্য' : 'Madrasah Information'}
+            {lang === 'bn' ? 'অ্যাকাউন্ট তথ্য' : 'Account Details'}
           </h3>
           
           <div className="space-y-3">
-            {/* UUID (Read-only) */}
-            <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
+            <div className={`bg-white/5 p-4 rounded-2xl border flex items-center justify-between ${isSuperAdmin ? 'border-yellow-400/30 bg-yellow-400/5' : 'border-white/5'}`}>
               <div className="flex-1 min-w-0 pr-2">
-                <p className="text-[9px] font-black text-white/30 uppercase mb-1">{t('madrasah_id', lang)}</p>
+                <p className="text-[9px] font-black text-white/30 uppercase mb-1">{t('madrasah_id', lang)} (UUID)</p>
                 <p className="text-xs font-mono text-white/70 truncate">{madrasah?.id}</p>
+                <p className="text-[8px] text-yellow-400/60 mt-1 font-bold">Use this ID for database updates</p>
               </div>
-              <button 
-                onClick={() => copyToClipboard(madrasah?.id || '', 'uuid')}
-                className="p-2.5 bg-white/10 text-white rounded-xl active:scale-90 transition-all"
-              >
+              <button onClick={() => copyToClipboard(madrasah?.id || '', 'uuid')} className="p-2.5 bg-white/10 text-white rounded-xl active:scale-90 transition-all">
                 {copying === 'uuid' ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
               </button>
             </div>
 
-            {/* Name Input */}
             <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
               <p className="text-[9px] font-black text-white/30 uppercase mb-1">{t('madrasah_name', lang)}</p>
               <div className="flex items-center gap-3">
                 <BookOpen size={16} className="text-white/30" />
-                <input 
-                  type="text"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  className="bg-transparent border-none outline-none text-white font-bold w-full text-sm font-noto"
-                  placeholder={t('madrasah_name', lang)}
-                />
+                <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} className="bg-transparent border-none outline-none text-white font-bold w-full text-sm font-noto" />
               </div>
             </div>
 
-            {/* Phone Input */}
             <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-              <p className="text-[9px] font-black text-white/30 uppercase mb-1">{t('madrasah_phone', lang)}</p>
-              <div className="flex items-center gap-3">
-                <Smartphone size={16} className="text-white/30" />
-                <input 
-                  type="tel"
-                  value={newPhone}
-                  onChange={(e) => setNewPhone(e.target.value)}
-                  className="bg-transparent border-none outline-none text-white font-bold w-full text-sm tracking-wider"
-                  placeholder="017XXXXXXXX"
-                />
-              </div>
-            </div>
-
-            {/* Login Code Input */}
-            <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
-              <p className="text-[9px] font-black text-white/30 uppercase mb-1">{t('madrasah_code', lang)}</p>
+              <p className="text-[9px] font-black text-white/30 uppercase mb-1">{lang === 'bn' ? 'লগইন কোড' : 'Login Code'}</p>
               <div className="flex items-center gap-3">
                 <Lock size={16} className="text-white/30" />
-                <input 
-                  type="text"
-                  value={newLoginCode}
-                  onChange={(e) => setNewLoginCode(e.target.value)}
-                  className="bg-transparent border-none outline-none text-white font-bold w-full text-sm"
-                  placeholder="Login Code"
-                />
+                <input type="text" value={newLoginCode} onChange={(e) => setNewLoginCode(e.target.value)} className="bg-transparent border-none outline-none text-white font-bold w-full text-sm" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Update Button */}
-        <div className="pt-2">
-          <button 
-            onClick={handleUpdate} 
-            disabled={saving} 
-            className="w-full py-4 bg-white text-[#d35132] font-black rounded-2xl shadow-xl active:scale-95 transition-all text-sm flex items-center justify-center gap-2"
-          >
-            {saving ? <Loader2 className="animate-spin" size={20} /> : showSuccess ? <><Check size={20} /> {lang === 'bn' ? 'আপডেট হয়েছে' : 'Updated'}</> : t('update_info', lang)}
-          </button>
-        </div>
+        <button onClick={handleUpdate} disabled={saving} className="w-full py-4 bg-white text-[#d35132] font-black rounded-2xl shadow-xl active:scale-95 transition-all text-sm flex items-center justify-center gap-2">
+          {saving ? <Loader2 className="animate-spin" size={20} /> : showSuccess ? <><Check size={20} /> Updated</> : t('update_info', lang)}
+        </button>
 
-        {/* Recent Transactions Snippet */}
-        <div className="space-y-4 pt-2">
-           <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
-             <History size={12} /> {t('history', lang)}
-           </h3>
-           <div className="space-y-2">
-             {loadingTrans ? (
-               <div className="py-4 text-center"><Loader2 size={16} className="animate-spin text-white/20 mx-auto" /></div>
-             ) : transactions.length > 0 ? (
-               transactions.map(tr => (
-                 <div key={tr.id} className="bg-white/5 p-3 rounded-2xl border border-white/5 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                       <div className={`p-2 rounded-lg ${tr.type === 'credit' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
-                          {tr.type === 'credit' ? <ArrowUpRight size={14} /> : <ArrowDownLeft size={14} />}
-                       </div>
-                       <div className="min-w-0">
-                          <p className="text-xs font-bold text-white leading-none truncate w-32">{tr.description}</p>
-                          <p className="text-[8px] text-white/30 font-bold uppercase mt-1">{new Date(tr.created_at).toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US')}</p>
-                       </div>
-                    </div>
-                    <span className={`text-xs font-black shrink-0 ${tr.type === 'credit' ? 'text-green-400' : 'text-red-400'}`}>
-                       {tr.type === 'credit' ? '+' : '-'}{tr.amount}
-                    </span>
-                 </div>
-               ))
-             ) : (
-               <p className="text-center py-4 text-white/20 text-[10px] font-black uppercase tracking-widest">No recent transactions</p>
-             )}
+        {!isSuperAdmin && transactions.length > 0 && (
+           <div className="space-y-3">
+             <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] px-2">{t('history', lang)}</h3>
+             {transactions.map(tr => (
+               <div key={tr.id} className="bg-white/5 p-3 rounded-2xl border border-white/5 flex items-center justify-between text-white">
+                  <span className="text-xs font-bold truncate pr-2">{tr.description}</span>
+                  <span className={`text-xs font-black ${tr.type === 'credit' ? 'text-green-400' : 'text-red-400'}`}>{tr.type === 'credit' ? '+' : '-'}{tr.amount}</span>
+               </div>
+             ))}
            </div>
-        </div>
+        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">
@@ -286,8 +219,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       </div>
 
       <button onClick={() => supabase.auth.signOut()} className="w-full flex items-center justify-center gap-3 py-5 text-white font-black bg-red-500/20 backdrop-blur-md border border-red-500/30 rounded-2xl active:scale-95 transition-all">
-        <LogOut size={20} />
-        {t('logout', lang)}
+        <LogOut size={20} /> {t('logout', lang)}
       </button>
     </div>
   );
