@@ -67,6 +67,7 @@ const App: React.FC = () => {
       } else {
         setMadrasah(null);
         setLoading(false);
+        setError(null);
       }
     });
 
@@ -86,14 +87,21 @@ const App: React.FC = () => {
           .from('madrasahs')
           .select('*')
           .eq('id', userId)
-          .maybeSingle(); // Use maybeSingle to avoid 406 errors on missing rows
+          .maybeSingle();
         
+        if (fetchError) {
+          if (fetchError.message?.includes('infinite recursion')) {
+            throw new Error("Database Configuration Error: Infinite recursion detected in RLS policies. Please apply the latest SQL schema updates.");
+          }
+          throw fetchError;
+        }
+
         if (data) {
           setMadrasah(data);
           offlineApi.setCache('profile', data);
-          if (data.is_super_admin) setView('home');
+          // Auto-navigate to home (which shows AdminPanel if super admin)
+          setView('home');
         } else {
-          // Attempt to create a basic profile if missing
           console.warn("Profile missing. Attempting to create default...");
           const { data: newData, error: insertError } = await supabase
             .from('madrasahs')
@@ -105,15 +113,21 @@ const App: React.FC = () => {
           if (newData) {
             setMadrasah(newData);
             offlineApi.setCache('profile', newData);
+            setView('home');
           }
         }
       } else {
         const cached = offlineApi.getCache('profile');
-        if (cached && cached.id === userId) setMadrasah(cached);
+        if (cached && cached.id === userId) {
+          setMadrasah(cached);
+          setView('home');
+        } else {
+          setError(lang === 'bn' ? 'অফলাইনে প্রোফাইল পাওয়া যায়নি' : 'Profile not found offline');
+        }
       }
     } catch (e: any) {
       console.error("Profile fetch error:", e);
-      setError(e.message);
+      setError(e.message || "Unknown error occurred while fetching profile.");
     } finally {
       setLoading(false);
     }
@@ -140,10 +154,17 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#d35132] p-8 text-center">
         <AlertCircle size={60} className="text-white/40 mb-6" />
-        <h2 className="text-white text-xl font-black font-noto mb-2">প্রোফাইল লোড করা যায়নি</h2>
-        <p className="text-white/60 text-sm mb-6">{error}</p>
-        <button onClick={() => session && fetchMadrasahProfile(session.user.id)} className="bg-white text-[#d35132] px-8 py-4 rounded-full font-black flex items-center gap-2">
-          <RefreshCw size={18} /> পুনরায় চেষ্টা করুন
+        <h2 className="text-white text-xl font-black font-noto mb-2">
+          {error.includes('recursion') ? (lang === 'bn' ? 'ডাটাবেস কনফিগারেশন এরর' : 'Database Configuration Error') : (lang === 'bn' ? 'প্রোফাইল লোড করা যায়নি' : 'Profile Load Error')}
+        </h2>
+        <p className="text-white/60 text-sm mb-8 leading-relaxed max-w-sm mx-auto">
+          {error}
+        </p>
+        <button 
+          onClick={() => session && fetchMadrasahProfile(session.user.id)} 
+          className="bg-white text-[#d35132] px-8 py-4 rounded-full font-black flex items-center gap-2 mx-auto active:scale-95 transition-all shadow-xl"
+        >
+          <RefreshCw size={18} /> {lang === 'bn' ? 'পুনরায় চেষ্টা করুন' : 'Retry'}
         </button>
       </div>
     );

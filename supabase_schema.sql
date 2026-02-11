@@ -57,7 +57,7 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ৭. এসএমএস লগ টেবিল
+-- ७. এসএমএস লগ টেবিল
 CREATE TABLE IF NOT EXISTS public.sms_logs (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
@@ -77,22 +77,28 @@ ALTER TABLE public.sms_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sms_logs ENABLE ROW LEVEL SECURITY;
 
+-- Helper Function: Check Super Admin status securely to avoid recursion
+CREATE OR REPLACE FUNCTION public.check_is_super_admin()
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.madrasahs 
+    WHERE id = auth.uid() AND is_super_admin = true
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
 -- মাদরাসা পলিসি
 CREATE POLICY "Users can view own madrasah" ON public.madrasahs FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Super Admins can view all madrasahs" ON public.madrasahs FOR SELECT USING (
-  (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
-);
+CREATE POLICY "Super Admins can view all madrasahs" ON public.madrasahs FOR SELECT USING (public.check_is_super_admin());
 CREATE POLICY "Users can update own madrasah" ON public.madrasahs FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can insert own madrasah" ON public.madrasahs FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- ট্রানজ্যাকশন পলিসি
 CREATE POLICY "Users can view own transactions" ON public.transactions FOR SELECT USING (auth.uid() = madrasah_id);
-CREATE POLICY "Super Admins can view all transactions" ON public.transactions FOR SELECT USING (
-  (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
-);
+CREATE POLICY "Super Admins can view all transactions" ON public.transactions FOR SELECT USING (public.check_is_super_admin());
 CREATE POLICY "Users can insert transactions" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = madrasah_id);
-CREATE POLICY "Super Admins can update transactions" ON public.transactions FOR UPDATE USING (
-  (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
-);
+CREATE POLICY "Super Admins can update transactions" ON public.transactions FOR UPDATE USING (public.check_is_super_admin());
 
 -- অন্যান্য টেবিল পলিসি
 CREATE POLICY "Madrasah access own rows" ON public.classes FOR ALL USING (auth.uid() = madrasah_id);
@@ -107,6 +113,25 @@ BEGIN
   UPDATE public.madrasahs SET balance = balance + amount_change WHERE id = m_id;
   INSERT INTO public.transactions (madrasah_id, amount, type, description, status)
   VALUES (m_id, ABS(amount_change), CASE WHEN amount_change >= 0 THEN 'credit' ELSE 'debit' END, trx_desc, 'approved');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ১০. ফাংশন: এসএমএস বিলিং (RPC)
+CREATE OR REPLACE FUNCTION public.process_sms_billing(m_id UUID, total_cost NUMERIC, campaign_reason TEXT)
+RETURNS JSON AS $$
+DECLARE
+  current_bal NUMERIC;
+BEGIN
+  SELECT balance INTO current_bal FROM public.madrasahs WHERE id = m_id;
+  IF current_bal < total_cost THEN
+    RETURN json_build_object('success', false, 'error', 'Insufficient balance');
+  END IF;
+  
+  UPDATE public.madrasahs SET balance = balance - total_cost WHERE id = m_id;
+  INSERT INTO public.transactions (madrasah_id, amount, type, description, status)
+  VALUES (m_id, total_cost, 'debit', campaign_reason, 'approved');
+  
+  RETURN json_build_object('success', true);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
