@@ -232,10 +232,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
               <ChevronRight className="text-white/20 shrink-0" size={20} />
             </div>
           )) : (
-            <div className="text-center py-20 opacity-40 bg-white/5 rounded-[2.5rem] border border-dashed border-white/10">
-               <UserIcon size={48} className="mx-auto mb-4 text-white/20" />
+            <div className="text-center py-20 bg-white/5 rounded-[2.5rem] border border-dashed border-white/10">
+               <AlertTriangle size={48} className="mx-auto mb-4 text-white/20" />
                <p className="text-white text-sm font-bold font-noto">কোনো মাদরাসা পাওয়া যায়নি</p>
-               <p className="text-[10px] text-white/40 mt-2 uppercase">Check RLS Policies if database has rows</p>
+               <div className="mt-4 p-4 bg-black/20 rounded-2xl text-[10px] text-left text-white/60 space-y-1">
+                  <p className="font-black text-white/80 uppercase">Troubleshooting:</p>
+                  <p>১. সুপাবেস SQL এডিটর চেক করুন।</p>
+                  <p>২. RLS পলিসি সঠিকভাবে সেট করা আছে কি না নিশ্চিত করুন।</p>
+                  <p>৩. ডাটাবেসে 'madrasahs' টেবিলে কোনো রো (Row) আছে কি না দেখুন।</p>
+               </div>
+               <button onClick={initData} className="mt-6 flex items-center gap-2 px-6 py-3 bg-white/10 text-white rounded-full mx-auto font-black text-xs border border-white/20 active:scale-95">
+                  <RefreshCw size={14} /> Refresh List
+               </button>
             </div>
           )}
         </div>

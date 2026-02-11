@@ -89,8 +89,11 @@ const App: React.FC = () => {
           offlineApi.setCache('profile', data);
           // Force view to home if super admin to ensure AdminPanel is visible
           if (data.is_super_admin) setView('home');
-        } else if (error) {
-           console.error("Profile load error:", error);
+        } else {
+          // If profile missing in DB, fallback to cache or empty
+          const cached = offlineApi.getCache('profile');
+          if (cached && cached.id === userId) setMadrasah(cached);
+          console.warn("Profile not found in DB for user:", userId);
         }
       } else {
         const cached = offlineApi.getCache('profile');
@@ -104,6 +107,8 @@ const App: React.FC = () => {
   };
 
   const navigateTo = (newView: View) => {
+    // If switching to account, always re-fetch profile to check admin status
+    if (newView === 'account' && session) fetchMadrasahProfile(session.user.id);
     triggerRefresh();
     setView(newView);
   };
