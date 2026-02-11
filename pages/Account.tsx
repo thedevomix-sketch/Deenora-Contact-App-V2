@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, Check, Smartphone, Copy, Camera, Loader2, Hash, AlertCircle, RefreshCw, Lock, WifiOff, History, CreditCard, ArrowUpRight, ArrowDownLeft } from 'lucide-react';
+import { LogOut, Check, Smartphone, Copy, Camera, Loader2, Hash, AlertCircle, RefreshCw, Lock, WifiOff, History, CreditCard, ArrowUpRight, ArrowDownLeft, User as UserIcon, BookOpen } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Madrasah, Language, View, Transaction } from '../types';
 import { t } from '../translations';
@@ -14,7 +14,7 @@ interface AccountProps {
 }
 
 const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setView, isSuperAdmin }) => {
-  const [madrasah, setMadrasah] = useState<any | null>(null);
+  const [madrasah, setMadrasah] = useState<Madrasah | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -22,8 +22,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [newPhone, setNewPhone] = useState('');
   const [newLoginCode, setNewLoginCode] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
-  const [copying, setCopying] = useState(false);
-  const [error, setError] = useState('');
+  const [copying, setCopying] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loadingTrans, setLoadingTrans] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,40 +54,80 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
           offlineApi.setCache('profile', data);
         }
       }
-    } catch (err) { console.error(err); }
-    finally { setLoading(false); }
+    } catch (err) { 
+      console.error(err); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const fetchTransactions = async () => {
     setLoadingTrans(true);
     try {
-      const { data } = await supabase.from('transactions').select('*').order('created_at', { ascending: false }).limit(5);
+      const { data } = await supabase
+        .from('transactions')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(5);
       if (data) setTransactions(data);
-    } catch (err) { console.error(err); }
-    finally { setLoadingTrans(false); }
+    } catch (err) { 
+      console.error(err); 
+    } finally { 
+      setLoadingTrans(false); 
+    }
   };
 
   const handleUpdate = async () => {
     if (!madrasah) return;
     setSaving(true);
     try {
-      const updateData = { name: newName.trim(), phone: newPhone.trim(), login_code: newLoginCode.trim() };
-      if (navigator.onLine) await supabase.from('madrasahs').update(updateData).eq('id', madrasah.id);
-      else offlineApi.queueAction('madrasahs', 'UPDATE', { ...updateData, id: madrasah.id });
+      const updateData = { 
+        name: newName.trim(), 
+        phone: newPhone.trim(), 
+        login_code: newLoginCode.trim() 
+      };
+
+      if (navigator.onLine) {
+        const { error } = await supabase.from('madrasahs').update(updateData).eq('id', madrasah.id);
+        if (error) throw error;
+      } else {
+        offlineApi.queueAction('madrasahs', 'UPDATE', { ...updateData, id: madrasah.id });
+      }
+
       const updatedProfile = { ...madrasah, ...updateData };
       setMadrasah(updatedProfile);
       offlineApi.setCache('profile', updatedProfile);
+      
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
+      
       if (onProfileUpdate) onProfileUpdate();
-    } catch (err) { console.error(err); }
-    finally { setSaving(false); }
+    } catch (err) { 
+      console.error(err); 
+      alert(lang === 'bn' ? 'আপডেট করা সম্ভব হয়নি' : 'Update failed');
+    } finally { 
+      setSaving(false); 
+    }
   };
+
+  const copyToClipboard = (text: string, type: string) => {
+    navigator.clipboard.writeText(text);
+    setCopying(type);
+    setTimeout(() => setCopying(null), 2000);
+  };
+
+  if (loading && !madrasah) {
+    return (
+      <div className="py-20 flex flex-col items-center justify-center gap-4">
+        <Loader2 className="animate-spin text-white" size={40} />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-10">
       <div className="flex items-center justify-between px-1">
-        <h1 className="text-2xl font-black text-white drop-shadow-sm">{t('account', lang)}</h1>
+        <h1 className="text-2xl font-black text-white drop-shadow-sm font-noto">{t('account', lang)}</h1>
         <div className="bg-white/15 px-3 py-1.5 rounded-2xl border border-white/20 backdrop-blur-md flex items-center gap-2">
            <span className="text-[10px] font-black text-white/60 uppercase">{t('balance', lang)}</span>
            <span className="text-sm font-black text-white">{madrasah?.balance || 0} ৳</span>
@@ -96,31 +135,124 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       </div>
 
       <div className="bg-white/20 backdrop-blur-xl rounded-[3rem] p-6 border border-white/30 shadow-2xl space-y-6">
+        {/* Logo/Avatar Section */}
         <div className="flex flex-col items-center gap-4">
           <div className="relative cursor-pointer group" onClick={() => !uploading && fileInputRef.current?.click()}>
             <div className="bg-white/20 w-24 h-24 rounded-full flex items-center justify-center ring-4 ring-white/10 overflow-hidden border-2 border-white/50 shadow-xl">
-              {uploading ? <Loader2 className="animate-spin text-white" size={24} /> : madrasah?.logo_url ? <img src={madrasah.logo_url} className="w-full h-full object-cover" alt="Logo" /> : <Camera size={32} className="text-white/60" />}
+              {uploading ? (
+                <Loader2 className="animate-spin text-white" size={24} />
+              ) : madrasah?.logo_url ? (
+                <img src={madrasah.logo_url} className="w-full h-full object-cover" alt="Logo" />
+              ) : (
+                <Camera size={32} className="text-white/60" />
+              )}
             </div>
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={() => {}} />
           </div>
           <div className="text-center">
             <h2 className="text-xl font-black text-white font-noto leading-tight">{madrasah?.name}</h2>
+            <p className="text-white/40 text-[9px] font-black uppercase tracking-widest mt-1">
+              {isSuperAdmin ? 'Super Admin' : 'Madrasah Admin'}
+            </p>
           </div>
         </div>
 
+        {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-3">
-          <button className="bg-white/10 p-4 rounded-2xl border border-white/10 flex flex-col items-center gap-1 active:scale-95 transition-all">
+          <button className="bg-white/10 p-4 rounded-2xl border border-white/10 flex flex-col items-center gap-1 active:scale-95 transition-all text-white">
             <CreditCard size={20} className="text-white/60" />
-            <span className="text-[10px] font-black text-white uppercase tracking-wider">{t('recharge', lang)}</span>
+            <span className="text-[10px] font-black uppercase tracking-wider">{t('recharge', lang)}</span>
           </button>
-          <button className="bg-white/10 p-4 rounded-2xl border border-white/10 flex flex-col items-center gap-1 active:scale-95 transition-all">
+          <button className="bg-white/10 p-4 rounded-2xl border border-white/10 flex flex-col items-center gap-1 active:scale-95 transition-all text-white">
             <History size={20} className="text-white/60" />
-            <span className="text-[10px] font-black text-white uppercase tracking-wider">{t('history', lang)}</span>
+            <span className="text-[10px] font-black uppercase tracking-wider">{t('history', lang)}</span>
           </button>
         </div>
 
-        <div className="space-y-4">
-           <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] px-2">{t('recent_calls', lang)} / {t('history', lang)}</h3>
+        {/* Editable Information Fields */}
+        <div className="space-y-4 pt-2">
+          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] px-2">
+            {lang === 'bn' ? 'মাদরাসা তথ্য' : 'Madrasah Information'}
+          </h3>
+          
+          <div className="space-y-3">
+            {/* UUID (Read-only) */}
+            <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
+              <div className="flex-1 min-w-0 pr-2">
+                <p className="text-[9px] font-black text-white/30 uppercase mb-1">{t('madrasah_id', lang)}</p>
+                <p className="text-xs font-mono text-white/70 truncate">{madrasah?.id}</p>
+              </div>
+              <button 
+                onClick={() => copyToClipboard(madrasah?.id || '', 'uuid')}
+                className="p-2.5 bg-white/10 text-white rounded-xl active:scale-90 transition-all"
+              >
+                {copying === 'uuid' ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
+              </button>
+            </div>
+
+            {/* Name Input */}
+            <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+              <p className="text-[9px] font-black text-white/30 uppercase mb-1">{t('madrasah_name', lang)}</p>
+              <div className="flex items-center gap-3">
+                <BookOpen size={16} className="text-white/30" />
+                <input 
+                  type="text"
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  className="bg-transparent border-none outline-none text-white font-bold w-full text-sm font-noto"
+                  placeholder={t('madrasah_name', lang)}
+                />
+              </div>
+            </div>
+
+            {/* Phone Input */}
+            <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+              <p className="text-[9px] font-black text-white/30 uppercase mb-1">{t('madrasah_phone', lang)}</p>
+              <div className="flex items-center gap-3">
+                <Smartphone size={16} className="text-white/30" />
+                <input 
+                  type="tel"
+                  value={newPhone}
+                  onChange={(e) => setNewPhone(e.target.value)}
+                  className="bg-transparent border-none outline-none text-white font-bold w-full text-sm tracking-wider"
+                  placeholder="017XXXXXXXX"
+                />
+              </div>
+            </div>
+
+            {/* Login Code Input */}
+            <div className="bg-white/5 p-4 rounded-2xl border border-white/5">
+              <p className="text-[9px] font-black text-white/30 uppercase mb-1">{t('madrasah_code', lang)}</p>
+              <div className="flex items-center gap-3">
+                <Lock size={16} className="text-white/30" />
+                <input 
+                  type="text"
+                  value={newLoginCode}
+                  onChange={(e) => setNewLoginCode(e.target.value)}
+                  className="bg-transparent border-none outline-none text-white font-bold w-full text-sm"
+                  placeholder="Login Code"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Update Button */}
+        <div className="pt-2">
+          <button 
+            onClick={handleUpdate} 
+            disabled={saving} 
+            className="w-full py-4 bg-white text-[#d35132] font-black rounded-2xl shadow-xl active:scale-95 transition-all text-sm flex items-center justify-center gap-2"
+          >
+            {saving ? <Loader2 className="animate-spin" size={20} /> : showSuccess ? <><Check size={20} /> {lang === 'bn' ? 'আপডেট হয়েছে' : 'Updated'}</> : t('update_info', lang)}
+          </button>
+        </div>
+
+        {/* Recent Transactions Snippet */}
+        <div className="space-y-4 pt-2">
+           <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
+             <History size={12} /> {t('history', lang)}
+           </h3>
            <div className="space-y-2">
              {loadingTrans ? (
                <div className="py-4 text-center"><Loader2 size={16} className="animate-spin text-white/20 mx-auto" /></div>
@@ -131,12 +263,12 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                        <div className={`p-2 rounded-lg ${tr.type === 'credit' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                           {tr.type === 'credit' ? <ArrowUpRight size={14} /> : <ArrowDownLeft size={14} />}
                        </div>
-                       <div>
-                          <p className="text-xs font-bold text-white leading-none">{tr.description}</p>
-                          <p className="text-[8px] text-white/30 font-bold uppercase mt-1">{new Date(tr.created_at).toLocaleDateString()}</p>
+                       <div className="min-w-0">
+                          <p className="text-xs font-bold text-white leading-none truncate w-32">{tr.description}</p>
+                          <p className="text-[8px] text-white/30 font-bold uppercase mt-1">{new Date(tr.created_at).toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US')}</p>
                        </div>
                     </div>
-                    <span className={`text-xs font-black ${tr.type === 'credit' ? 'text-green-400' : 'text-red-400'}`}>
+                    <span className={`text-xs font-black shrink-0 ${tr.type === 'credit' ? 'text-green-400' : 'text-red-400'}`}>
                        {tr.type === 'credit' ? '+' : '-'}{tr.amount}
                     </span>
                  </div>
@@ -145,12 +277,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                <p className="text-center py-4 text-white/20 text-[10px] font-black uppercase tracking-widest">No recent transactions</p>
              )}
            </div>
-        </div>
-
-        <div className="pt-2">
-          <button onClick={handleUpdate} disabled={saving} className="w-full py-4 bg-white text-[#d35132] font-black rounded-2xl shadow-xl active:scale-95 transition-all text-sm flex items-center justify-center gap-2">
-            {saving ? <Loader2 className="animate-spin" size={20} /> : showSuccess ? <Check size={20} /> : t('update_info', lang)}
-          </button>
         </div>
       </div>
 

@@ -11,7 +11,7 @@ export interface Madrasah {
   created_at: string;
   email?: string;
   login_code?: string;
-  balance: number; // Added for SaaS wallet
+  balance: number;
 }
 
 export interface Class {
@@ -43,6 +43,14 @@ export interface Transaction {
   created_at: string;
 }
 
+export interface SMSTemplate {
+  id: string;
+  madrasah_id: string;
+  title: string;
+  body: string;
+  created_at: string;
+}
+
 export interface SMSLog {
   id: string;
   madrasah_id: string;
@@ -63,7 +71,7 @@ export interface RecentCall {
   students?: Student;
 }
 
-export type View = 'home' | 'classes' | 'account' | 'students' | 'student-details' | 'student-form' | 'class-form' | 'admin-panel' | 'transactions';
+export type View = 'home' | 'classes' | 'account' | 'students' | 'student-details' | 'student-form' | 'class-form' | 'admin-panel' | 'transactions' | 'wallet-sms';
 
 export interface AppState {
   currentView: View;

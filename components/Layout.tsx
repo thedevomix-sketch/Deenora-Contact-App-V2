@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, Users, User, BookOpen, Wallet } from 'lucide-react';
+import { Home, Users, User, BookOpen, Wallet, MessageSquare } from 'lucide-react';
 import { View, Language, Madrasah } from '../types';
 import { t } from '../translations';
 
@@ -16,6 +16,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
   const isTabActive = (tab: string) => {
     if (tab === 'home' && currentView === 'home') return true;
     if (tab === 'classes' && (currentView === 'classes' || currentView === 'students' || currentView === 'student-details' || currentView === 'student-form')) return true;
+    if (tab === 'wallet' && currentView === 'wallet-sms') return true;
     if (tab === 'account' && currentView === 'account') return true;
     return false;
   };
@@ -63,7 +64,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
       </main>
 
       {/* Bottom Navigation */}
-      <nav className={`flex-none bg-white/10 backdrop-blur-2xl border-t border-white/10 flex ${isSuperAdmin ? 'justify-around' : 'justify-around'} items-center py-2 px-4 pb-[calc(env(safe-area-inset-bottom,12px)+8px)] z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]`}>
+      <nav className={`flex-none bg-white/10 backdrop-blur-2xl border-t border-white/10 flex justify-around items-center py-2 px-4 pb-[calc(env(safe-area-inset-bottom,12px)+8px)] z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]`}>
         <button 
           onClick={() => setView('home')}
           className={`flex flex-col items-center gap-1 transition-all active:scale-90 p-1.5 ${isTabActive('home') ? 'text-white' : 'text-white/40'}`}
@@ -79,6 +80,16 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
           >
             <Users size={22} strokeWidth={isTabActive('classes') ? 2.5 : 2} />
             <span className={`text-[10px] font-black uppercase tracking-wider ${isTabActive('classes') ? 'opacity-100' : 'opacity-70'}`}>{t('classes', lang)}</span>
+          </button>
+        )}
+
+        {!isSuperAdmin && (
+          <button 
+            onClick={() => setView('wallet-sms')}
+            className={`flex flex-col items-center gap-1 transition-all active:scale-90 p-1.5 ${isTabActive('wallet') ? 'text-white' : 'text-white/40'}`}
+          >
+            <Wallet size={22} strokeWidth={isTabActive('wallet') ? 2.5 : 2} />
+            <span className={`text-[10px] font-black uppercase tracking-wider ${isTabActive('wallet') ? 'opacity-100' : 'opacity-70'}`}>{t('wallet', lang)}</span>
           </button>
         )}
         

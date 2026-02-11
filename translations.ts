@@ -6,6 +6,9 @@ export const translations = {
     home: 'হোম',
     classes: 'ক্লাস ও ছাত্র',
     account: 'অ্যাকাউন্ট',
+    wallet: 'ওয়ালেট ও এসএমএস',
+    templates: 'টেমপ্লেট',
+    recharge: 'রিচার্জ',
     welcome: 'আস-সালামু আলাইকুম',
     welcome_sub: 'মাদরাসা কন্টাক্ট অ্যাপে আপনাকে স্বাগত',
     search_placeholder: 'ছাত্রের নাম দিয়ে খুঁজুন...',
@@ -65,7 +68,6 @@ export const translations = {
     status_inactive: 'নিষ্ক্রিয়',
     search_madrasah: 'মাদরাসা খুঁজুন...',
     duplicate_roll: 'এই রোল নম্বরটি এই ক্লাসে ইতিমধ্যে ব্যবহৃত হয়েছে!',
-    // SaaS Strings
     balance: 'ব্যালেন্স',
     send_sms: 'এসএমএস পাঠান',
     bulk_sms: 'একসাথে সবাইকে এসএমএস',
@@ -73,13 +75,18 @@ export const translations = {
     sms_cost: 'খরচ',
     sms_success: 'এসএমএস সফলভাবে পাঠানো হয়েছে',
     history: 'লেনদেন ইতিহাস',
-    recharge: 'রিচার্জ করুন',
-    credits: 'ক্রেডিট'
+    credits: 'ক্রেডিট',
+    new_template: 'নতুন টেমপ্লেট',
+    template_title: 'টেমপ্লেট শিরোনাম',
+    template_body: 'মেসেজের মূল অংশ'
   },
   en: {
     home: 'Home',
     classes: 'Classes',
     account: 'Account',
+    wallet: 'Wallet & SMS',
+    templates: 'Templates',
+    recharge: 'Recharge',
     welcome: 'As-Salamu Alaikum',
     welcome_sub: 'Welcome to Madrasah Contact App',
     search_placeholder: 'Search by student name...',
@@ -139,7 +146,6 @@ export const translations = {
     status_inactive: 'Inactive',
     search_madrasah: 'Search Madrasah...',
     duplicate_roll: 'This roll number is already taken in this class!',
-    // SaaS Strings
     balance: 'Balance',
     send_sms: 'Send SMS',
     bulk_sms: 'Bulk SMS',
@@ -147,8 +153,10 @@ export const translations = {
     sms_cost: 'Cost',
     sms_success: 'SMS sent successfully',
     history: 'Transactions',
-    recharge: 'Recharge',
-    credits: 'Credits'
+    credits: 'Credits',
+    new_template: 'New Template',
+    template_title: 'Template Title',
+    template_body: 'Message Body'
   }
 };
 

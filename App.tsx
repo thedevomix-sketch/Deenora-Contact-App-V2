@@ -10,6 +10,7 @@ import StudentDetails from './pages/StudentDetails';
 import StudentForm from './pages/StudentForm';
 import Account from './pages/Account';
 import AdminPanel from './pages/AdminPanel';
+import WalletSMS from './pages/WalletSMS';
 import { View, Class, Student, Language, Madrasah } from './types';
 import { WifiOff, Loader2, CloudSync } from 'lucide-react';
 import { t } from './translations';
@@ -34,18 +35,17 @@ const App: React.FC = () => {
   };
 
   const registerDevice = async (userId: string) => {
+    if (!navigator.onLine) return;
     try {
       let deviceId = localStorage.getItem('app_device_id');
       if (!deviceId) {
         deviceId = Math.random().toString(36).substring(2) + Date.now().toString(36);
         localStorage.setItem('app_device_id', deviceId);
       }
-
       const userAgent = navigator.userAgent;
       let deviceInfo = 'PC/Browser';
       if (/android/i.test(userAgent)) deviceInfo = 'Android Device';
       else if (/iPhone|iPad|iPod/i.test(userAgent)) deviceInfo = 'iOS Device';
-      else if (/windows/i.test(userAgent)) deviceInfo = 'Windows PC';
 
       await supabase.from('device_sessions').upsert({
         madrasah_id: userId,
@@ -54,7 +54,7 @@ const App: React.FC = () => {
         last_active: new Date().toISOString()
       }, { onConflict: 'madrasah_id, device_id' });
     } catch (e) {
-      console.warn("Device registration skipped:", e);
+      console.warn("Device registration failed (check if table exists):", e);
     }
   };
 
@@ -68,12 +68,8 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    const handleOnline = () => {
-      setIsOnline(true);
-      handleSync();
-    };
+    const handleOnline = () => { setIsOnline(true); handleSync(); };
     const handleOffline = () => setIsOnline(false);
-
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
@@ -117,7 +113,19 @@ const App: React.FC = () => {
           .eq('id', userId)
           .single();
         
-        if (!error && data) {
+        if (error && (error.code === 'PGRST116' || error.message.includes('not found'))) {
+          // Profile not found, create it automatically
+          const { data: newProfile, error: createError } = await supabase
+            .from('madrasahs')
+            .insert({ id: userId, name: 'আমার মাদরাসা', balance: 0 })
+            .select()
+            .single();
+          
+          if (!createError && newProfile) {
+            setMadrasah(newProfile);
+            offlineApi.setCache('profile', newProfile);
+          }
+        } else if (data) {
           if (data.is_active === false && !data.is_super_admin) {
             alert(t('account_disabled', lang));
             await supabase.auth.signOut();
@@ -143,7 +151,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#d35132] text-white">
         <Loader2 className="animate-spin mb-4" size={40} />
-        <p className="font-bold text-[10px] uppercase tracking-widest opacity-60">System Synchronizing...</p>
+        <p className="font-bold text-[10px] uppercase tracking-widest opacity-60">System Initializing...</p>
       </div>
     );
   }
@@ -180,6 +188,14 @@ const App: React.FC = () => {
             onClassClick={(cls) => { setSelectedClass(cls); setView('students'); }} 
             lang={lang} 
             dataVersion={dataVersion} 
+            triggerRefresh={triggerRefresh} 
+          />
+        )}
+
+        {view === 'wallet-sms' && (
+          <WalletSMS 
+            lang={lang} 
+            madrasah={madrasah} 
             triggerRefresh={triggerRefresh} 
           />
         )}
