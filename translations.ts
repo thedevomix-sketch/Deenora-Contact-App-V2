@@ -92,7 +92,9 @@ export const translations = {
     select_students: 'ছাত্র নির্বাচন করুন',
     select_all: 'সবাইকে সিলেক্ট করুন',
     deselect_all: 'সবাইকে আনসিলেক্ট করুন',
-    selected: 'জন নির্বাচিত'
+    selected: 'জন নির্বাচিত',
+    dashboard: 'ড্যাশবোর্ড',
+    approvals: 'পেমেন্ট'
   },
   en: {
     home: 'Home',
@@ -184,7 +186,9 @@ export const translations = {
     select_students: 'Select Students',
     select_all: 'Select All',
     deselect_all: 'Deselect All',
-    selected: 'Selected'
+    selected: 'Selected',
+    dashboard: 'Dashboard',
+    approvals: 'Payments'
   }
 };
 

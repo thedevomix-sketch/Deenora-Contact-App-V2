@@ -83,7 +83,7 @@ export interface RecentCall {
   students?: Student;
 }
 
-export type View = 'home' | 'classes' | 'account' | 'students' | 'student-details' | 'student-form' | 'class-form' | 'admin-panel' | 'transactions' | 'wallet-sms';
+export type View = 'home' | 'classes' | 'account' | 'students' | 'student-details' | 'student-form' | 'class-form' | 'admin-panel' | 'transactions' | 'wallet-sms' | 'admin-dashboard' | 'admin-approvals';
 
 export interface AppState {
   currentView: View;

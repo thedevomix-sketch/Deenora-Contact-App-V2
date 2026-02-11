@@ -1,12 +1,13 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Search, Shield, ShieldOff, ChevronRight, User as UserIcon, Users, Wallet, CheckCircle, XCircle, PlusCircle, MinusCircle, RefreshCw, AlertTriangle, Bug, Check, Phone, Hash, MessageSquare, Database, Layers, BarChart3, TrendingUp, Activity, Mail, Lock, Copy, Power, History } from 'lucide-react';
+import { Loader2, Search, Shield, ShieldOff, ChevronRight, User as UserIcon, Users, Wallet, CheckCircle, XCircle, PlusCircle, MinusCircle, RefreshCw, AlertTriangle, Bug, Check, Phone, Hash, MessageSquare, Database, Layers, BarChart3, TrendingUp, Activity, Mail, Lock, Copy, Power, History, Clock } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Madrasah, Language, Transaction, AdminSMSStock } from '../types';
 import { t } from '../translations';
 
 interface AdminPanelProps {
   lang: Language;
+  currentView?: 'list' | 'dashboard' | 'approvals';
 }
 
 interface SystemStats {
@@ -17,7 +18,7 @@ interface SystemStats {
   totalSmsBalance: number;
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) => {
   const [madrasahs, setMadrasahs] = useState<Madrasah[]>([]);
   const [pendingTrans, setPendingTrans] = useState<Transaction[]>([]);
   const [adminStock, setAdminStock] = useState<AdminSMSStock | null>(null);
@@ -27,7 +28,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   
-  const [view, setView] = useState<'list' | 'details' | 'approvals' | 'stock' | 'dashboard'>('list');
+  const [view, setView] = useState<'list' | 'details' | 'approvals' | 'stock' | 'dashboard'>(currentView === 'dashboard' ? 'dashboard' : currentView === 'approvals' ? 'approvals' : 'list');
   const [selectedMadrasah, setSelectedMadrasah] = useState<Madrasah | null>(null);
   const [selectedMadrasahTrans, setSelectedMadrasahTrans] = useState<Transaction[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
@@ -41,6 +42,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
   useEffect(() => {
     initData();
   }, []);
+
+  // Sync internal view with currentView prop from App/Layout
+  useEffect(() => {
+    if (currentView === 'dashboard') {
+      setView('dashboard');
+    } else if (currentView === 'approvals') {
+      setView('approvals');
+    } else if (currentView === 'list') {
+      setView('list');
+    }
+  }, [currentView]);
 
   const initData = async () => {
     setLoading(true);
@@ -236,18 +248,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
   if (view === 'list') {
     return (
       <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-        {/* Urgent Actions at Top */}
-        <div className="grid grid-cols-2 gap-3">
-          <div onClick={() => setView('stock')} className="bg-white/10 p-5 rounded-[2.2rem] border border-white/10 backdrop-blur-md flex flex-col items-center text-center cursor-pointer active:scale-95 transition-all shadow-lg">
-             <Database size={24} className="text-yellow-400 mb-2" />
-             <span className="text-2xl font-black text-white leading-none">{adminStock?.remaining_sms || 0}</span>
-             <span className="text-[8px] font-black text-white/30 uppercase tracking-widest mt-1.5">Admin SMS Stock</span>
-          </div>
-
-          <div onClick={() => setView('approvals')} className={`p-5 rounded-[2.2rem] border backdrop-blur-md flex flex-col items-center text-center cursor-pointer active:scale-95 transition-all shadow-lg ${pendingTrans.length > 0 ? 'bg-yellow-500/20 border-yellow-500/30' : 'bg-white/10 border-white/10'}`}>
-             <Wallet size={24} className={`${pendingTrans.length > 0 ? 'text-yellow-400' : 'text-white/40'} mb-2`} />
-             <span className={`text-2xl font-black leading-none ${pendingTrans.length > 0 ? 'text-yellow-400' : 'text-white'}`}>{pendingTrans.length}</span>
-             <span className={`text-[8px] font-black uppercase tracking-widest mt-1.5 ${pendingTrans.length > 0 ? 'text-yellow-400/60' : 'text-white/30'}`}>Pending Payment</span>
+        {/* Managed Actions at Top */}
+        <div className="grid grid-cols-1 gap-3">
+          <div onClick={() => setView('stock')} className="bg-white/10 p-5 rounded-[2.2rem] border border-white/10 backdrop-blur-md flex items-center justify-between cursor-pointer active:scale-95 transition-all shadow-lg group">
+             <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-yellow-400 text-slate-900 rounded-2xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform">
+                  <Database size={24} />
+                </div>
+                <div className="text-left">
+                  <p className="text-[14px] font-black text-white leading-none">{adminStock?.remaining_sms || 0}</p>
+                  <p className="text-[8px] font-black text-white/30 uppercase tracking-widest mt-1">Global SMS Stock</p>
+                </div>
+             </div>
+             <ChevronRight size={18} className="text-white/20" />
           </div>
         </div>
 
@@ -290,22 +303,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
               <ChevronRight size={20} className="text-white/20 group-hover:text-white/50 transition-colors" />
             </div>
           ))}
-        </div>
-
-        {/* System Dashboard Link - AT THE BOTTOM */}
-        <div className="pt-6">
-          <div onClick={() => setView('dashboard')} className="bg-gradient-to-r from-indigo-500/20 to-purple-500/20 p-6 rounded-[2.5rem] border border-indigo-500/30 backdrop-blur-md flex items-center justify-between cursor-pointer active:scale-95 transition-all shadow-xl group">
-               <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-indigo-500 text-white rounded-2xl flex items-center justify-center shadow-lg group-hover:rotate-6 transition-transform">
-                    <BarChart3 size={28} />
-                  </div>
-                  <div className="text-left">
-                    <h3 className="text-lg font-black text-white leading-tight">System Dashboard</h3>
-                    <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mt-0.5">View Global Stats & Insights</p>
-                  </div>
-               </div>
-               <ChevronRight size={24} className="text-white/30" />
-          </div>
         </div>
       </div>
     );
@@ -421,9 +418,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
     return (
       <div className="space-y-6 animate-in slide-in-from-right-4 pb-20">
         <div className="flex items-center gap-4">
-          <button onClick={() => setView('list')} className="p-3 bg-white/10 rounded-xl text-white border border-white/20 active:scale-90 transition-all">
-            <ChevronRight className="rotate-180" size={20} />
-          </button>
           <h1 className="text-xl font-black text-white font-noto">System Dashboard</h1>
         </div>
 
@@ -597,9 +591,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
      return (
         <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-20">
            <div className="flex items-center gap-4">
-              <button onClick={() => setView('list')} className="p-3 bg-white/10 rounded-xl text-white border border-white/20 active:scale-90 transition-all">
-                <ChevronRight className="rotate-180" size={20} />
-              </button>
               <h1 className="text-xl font-black text-white font-noto">পেমেন্ট রিকোয়েস্ট</h1>
            </div>
            

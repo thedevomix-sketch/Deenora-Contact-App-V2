@@ -150,7 +150,7 @@ const App: React.FC = () => {
       
       <Layout currentView={view} setView={navigateTo} lang={lang} madrasah={madrasah}>
         {view === 'home' && (
-          isSuperAdmin ? <AdminPanel lang={lang} /> : 
+          isSuperAdmin ? <AdminPanel lang={lang} currentView="list" /> : 
           <Home 
             onStudentClick={(s) => { setSelectedStudent(s); setView('student-details'); }} 
             lang={lang} 
@@ -159,6 +159,14 @@ const App: React.FC = () => {
           />
         )}
         
+        {view === 'admin-dashboard' && isSuperAdmin && (
+          <AdminPanel lang={lang} currentView="dashboard" />
+        )}
+
+        {view === 'admin-approvals' && isSuperAdmin && (
+          <AdminPanel lang={lang} currentView="approvals" />
+        )}
+
         {view === 'classes' && !isSuperAdmin && (
           <Classes 
             onClassClick={(cls) => { setSelectedClass(cls); setView('students'); }} 

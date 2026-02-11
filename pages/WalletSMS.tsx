@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Wallet, MessageSquare, Plus, Trash2, CreditCard, History, Loader2, Check, AlertCircle, Phone, Send, Hash } from 'lucide-react';
+import { Wallet, MessageSquare, Plus, Trash2, CreditCard, History, Loader2, Check, AlertCircle, Phone, Send, Hash, X, Save, Edit3 } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { SMSTemplate, Language, Madrasah, Transaction } from '../types';
 import { t } from '../translations';
@@ -16,6 +16,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
   const [templates, setTemplates] = useState<SMSTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [editingTemplate, setEditingTemplate] = useState<SMSTemplate | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
   const [saving, setSaving] = useState(false);
@@ -61,6 +62,20 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
     } catch (err) { console.error(err); }
   };
 
+  const openAddModal = () => {
+    setEditingTemplate(null);
+    setNewTitle('');
+    setNewBody('');
+    setShowModal(true);
+  };
+
+  const openEditModal = (tmp: SMSTemplate) => {
+    setEditingTemplate(tmp);
+    setNewTitle(tmp.title);
+    setNewBody(tmp.body);
+    setShowModal(true);
+  };
+
   const handleSaveTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newBody.trim()) return;
@@ -69,23 +84,55 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(lang === 'bn' ? 'ইউজার লগইন নেই' : 'Auth user not found');
-      if (!madrasah) throw new Error(lang === 'bn' ? 'মাদরাসা প্রোফাইল লোড হয়নি' : 'Madrasah profile not loaded');
 
-      const payload = { madrasah_id: user.id, title: newTitle.trim(), body: newBody.trim() };
+      const payload = { 
+        madrasah_id: user.id, 
+        title: newTitle.trim(), 
+        body: newBody.trim() 
+      };
 
       if (navigator.onLine) {
-        await supabase.from('sms_templates').insert(payload);
+        if (editingTemplate) {
+          const { error } = await supabase
+            .from('sms_templates')
+            .update({ title: payload.title, body: payload.body })
+            .eq('id', editingTemplate.id);
+          if (error) throw error;
+        } else {
+          const { error } = await supabase.from('sms_templates').insert(payload);
+          if (error) throw error;
+        }
       } else {
-        offlineApi.queueAction('sms_templates', 'INSERT', payload);
+        if (editingTemplate) {
+          offlineApi.queueAction('sms_templates', 'UPDATE', { ...payload, id: editingTemplate.id });
+        } else {
+          offlineApi.queueAction('sms_templates', 'INSERT', payload);
+        }
       }
 
       setShowModal(false);
-      setNewTitle('');
-      setNewBody('');
       fetchTemplates();
     } catch (err: any) {
-      alert(err.message);
+      alert(lang === 'bn' ? `সেভ করা যায়নি: ${err.message}` : `Save failed: ${err.message}`);
     } finally { setSaving(false); }
+  };
+
+  const deleteTemplate = async (id: string) => {
+    if (!confirm(t('confirm_delete', lang))) return;
+    try {
+      if (navigator.onLine) {
+        const { error } = await supabase.from('sms_templates').delete().eq('id', id);
+        if (error) throw error;
+      } else {
+        offlineApi.queueAction('sms_templates', 'DELETE', { id });
+      }
+      setTemplates(prev => prev.filter(t => t.id !== id));
+      const cached = offlineApi.getCache('sms_templates');
+      if (cached) offlineApi.setCache('sms_templates', cached.filter((t: any) => t.id !== id));
+    } catch (err: any) { 
+      console.error(err); 
+      alert(lang === 'bn' ? 'ডিলিট করা যায়নি' : 'Delete failed');
+    }
   };
 
   const handleRechargeRequest = async (e: React.FormEvent) => {
@@ -116,18 +163,6 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
     } finally { setRecharging(false); }
   };
 
-  const deleteTemplate = async (id: string) => {
-    if (!confirm(t('confirm_delete', lang))) return;
-    try {
-      if (navigator.onLine) {
-        await supabase.from('sms_templates').delete().eq('id', id);
-      } else {
-        offlineApi.queueAction('sms_templates', 'DELETE', { id });
-      }
-      setTemplates(prev => prev.filter(t => t.id !== id));
-    } catch (err) { console.error(err); }
-  };
-
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
       <div className="flex bg-white/10 p-1.5 rounded-3xl border border-white/20 backdrop-blur-xl">
@@ -143,7 +178,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-xl font-black text-white font-noto tracking-tight">{lang === 'bn' ? 'সংরক্ষিত টেমপ্লেট' : 'Saved Templates'}</h2>
-            <button onClick={() => setShowModal(true)} className="bg-white text-[#d35132] p-2.5 rounded-xl shadow-xl active:scale-95 transition-all">
+            <button onClick={openAddModal} className="bg-white text-[#d35132] p-2.5 rounded-xl shadow-xl active:scale-95 transition-all">
               <Plus size={20} strokeWidth={3} />
             </button>
           </div>
@@ -155,10 +190,17 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
           ) : templates.length > 0 ? (
             <div className="space-y-3">
               {templates.map(tmp => (
-                <div key={tmp.id} className="bg-white/10 backdrop-blur-md p-5 rounded-[2rem] border border-white/15 animate-in slide-in-from-bottom-2">
+                <div key={tmp.id} className="bg-white/10 backdrop-blur-md p-5 rounded-[2rem] border border-white/15 animate-in slide-in-from-bottom-2 group">
                   <div className="flex justify-between items-start mb-2">
-                    <h4 className="font-black text-white text-base font-noto">{tmp.title}</h4>
-                    <button onClick={() => deleteTemplate(tmp.id)} className="text-white/30 hover:text-red-400 p-1 transition-colors"><Trash2 size={16} /></button>
+                    <h4 className="font-black text-white text-base font-noto truncate pr-2">{tmp.title}</h4>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button onClick={() => openEditModal(tmp)} className="p-2 bg-white/5 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-all">
+                        <Edit3 size={14} />
+                      </button>
+                      <button onClick={() => deleteTemplate(tmp.id)} className="p-2 bg-white/5 text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                   <p className="text-white/70 text-sm font-bold font-noto leading-relaxed">{tmp.body}</p>
                 </div>
@@ -246,8 +288,51 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
           </div>
         </div>
       )}
-      
-      {/* ... (Modal code remains same) ... */}
+
+      {/* Template Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="bg-[#e57d4a] w-full max-w-sm rounded-[3rem] shadow-2xl p-8 border border-white/30 animate-in zoom-in-95 relative">
+            <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 text-white/60 hover:text-white">
+              <X size={24} />
+            </button>
+            <h2 className="text-2xl font-black text-white mb-6 text-center font-noto">
+              {editingTemplate ? (lang === 'bn' ? 'টেমপ্লেট এডিট' : 'Edit Template') : t('new_template', lang)}
+            </h2>
+            <form onSubmit={handleSaveTemplate} className="space-y-6">
+              <div>
+                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1 mb-2 block">{t('template_title', lang)}</label>
+                <input 
+                  type="text" 
+                  required 
+                  className="w-full px-5 py-4 bg-white/10 border border-white/20 rounded-2xl outline-none text-white font-black text-sm focus:bg-white/20 transition-all" 
+                  placeholder={lang === 'bn' ? 'যেমন: অনুপস্থিতি' : 'e.g. Absence'} 
+                  value={newTitle} 
+                  onChange={(e) => setNewTitle(e.target.value)} 
+                />
+              </div>
+              <div>
+                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1 mb-2 block">{t('template_body', lang)}</label>
+                <textarea 
+                  required 
+                  className="w-full h-32 px-5 py-4 bg-white/10 border border-white/20 rounded-2xl outline-none text-white font-bold text-sm focus:bg-white/20 transition-all resize-none" 
+                  placeholder={lang === 'bn' ? 'মেসেজটি লিখুন...' : 'Write message body...'} 
+                  value={newBody} 
+                  onChange={(e) => setNewBody(e.target.value)} 
+                ></textarea>
+              </div>
+              <div className="flex gap-3">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-4 bg-white/10 text-white font-black rounded-xl border border-white/20">
+                  {t('cancel', lang)}
+                </button>
+                <button type="submit" disabled={saving} className="flex-1 py-4 bg-white text-[#d35132] font-black rounded-xl shadow-xl flex items-center justify-center gap-2">
+                  {saving ? <Loader2 className="animate-spin" size={20} /> : <><Save size={18} /> {t('save', lang)}</>}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

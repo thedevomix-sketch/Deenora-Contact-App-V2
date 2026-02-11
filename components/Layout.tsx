@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, User, BookOpen, Wallet, ShieldCheck } from 'lucide-react';
+import { Home, User, BookOpen, Wallet, ShieldCheck, BarChart3, Clock } from 'lucide-react';
 import { View, Language, Madrasah } from '../types';
 import { t } from '../translations';
 
@@ -18,6 +18,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
   const isTabActive = (tab: string) => {
     if (tab === 'home' && currentView === 'home') return true;
     if (tab === 'account' && currentView === 'account') return true;
+    if (tab === 'dashboard' && currentView === 'admin-dashboard') return true;
+    if (tab === 'approvals' && currentView === 'admin-approvals') return true;
     if (!isSuperAdmin) {
         if (tab === 'classes' && (currentView === 'classes' || currentView === 'students' || currentView === 'student-details' || currentView === 'student-form')) return true;
         if (tab === 'wallet' && currentView === 'wallet-sms') return true;
@@ -77,6 +79,25 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
           <span className={`text-[10px] font-black uppercase tracking-wider ${isTabActive('home') ? 'opacity-100' : 'opacity-70'}`}>{t('home', lang)}</span>
         </button>
         
+        {isSuperAdmin && (
+          <>
+            <button 
+              onClick={() => setView('admin-approvals')}
+              className={`flex flex-col items-center gap-1 transition-all active:scale-90 p-1.5 ${isTabActive('approvals') ? 'text-white' : 'text-white/40'}`}
+            >
+              <Clock size={22} strokeWidth={isTabActive('approvals') ? 2.5 : 2} />
+              <span className={`text-[10px] font-black uppercase tracking-wider ${isTabActive('approvals') ? 'opacity-100' : 'opacity-70'}`}>{t('approvals', lang)}</span>
+            </button>
+            <button 
+              onClick={() => setView('admin-dashboard')}
+              className={`flex flex-col items-center gap-1 transition-all active:scale-90 p-1.5 ${isTabActive('dashboard') ? 'text-white' : 'text-white/40'}`}
+            >
+              <BarChart3 size={22} strokeWidth={isTabActive('dashboard') ? 2.5 : 2} />
+              <span className={`text-[10px] font-black uppercase tracking-wider ${isTabActive('dashboard') ? 'opacity-100' : 'opacity-70'}`}>{t('dashboard', lang)}</span>
+            </button>
+          </>
+        )}
+
         {!isSuperAdmin && (
           <>
             <button 
