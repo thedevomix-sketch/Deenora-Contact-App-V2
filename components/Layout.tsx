@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, Users, User, BookOpen, Wallet, MessageSquare } from 'lucide-react';
+import { Home, Users, User, BookOpen, Wallet, MessageSquare, ShieldCheck } from 'lucide-react';
 import { View, Language, Madrasah } from '../types';
 import { t } from '../translations';
 
@@ -35,12 +35,12 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
           {madrasah?.logo_url ? (
             <img src={madrasah.logo_url} className="w-full h-full object-cover" alt="Logo" />
           ) : (
-            <BookOpen size={22} className="text-white" />
+            isSuperAdmin ? <ShieldCheck size={22} className="text-white" /> : <BookOpen size={22} className="text-white" />
           )}
         </div>
         <div className="flex-1 min-w-0">
           <h1 className="text-lg font-black text-white truncate leading-none tracking-tight font-noto">
-            {madrasah?.name || 'মাদরাসা কন্টাক্ট'}
+            {isSuperAdmin ? (lang === 'bn' ? 'অ্যাডমিন কন্ট্রোল' : 'Admin Control') : (madrasah?.name || 'মাদরাসা কন্টাক্ট')}
           </h1>
           <div className="flex items-center gap-2 mt-1.5">
             <p className="text-[10px] font-bold text-white/70 uppercase tracking-[0.1em]">
@@ -64,7 +64,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
       </main>
 
       {/* Bottom Navigation */}
-      <nav className={`flex-none bg-white/10 backdrop-blur-2xl border-t border-white/10 flex justify-around items-center py-2 px-4 pb-[calc(env(safe-area-inset-bottom,12px)+8px)] z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]`}>
+      <nav className="flex-none bg-white/10 backdrop-blur-2xl border-t border-white/10 flex justify-around items-center py-2 px-4 pb-[calc(env(safe-area-inset-bottom,12px)+8px)] z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]">
         <button 
           onClick={() => setView('home')}
           className={`flex flex-col items-center gap-1 transition-all active:scale-90 p-1.5 ${isTabActive('home') ? 'text-white' : 'text-white/40'}`}

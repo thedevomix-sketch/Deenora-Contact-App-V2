@@ -39,8 +39,11 @@ export interface Transaction {
   madrasah_id: string;
   amount: number;
   type: 'credit' | 'debit';
+  status: 'pending' | 'approved' | 'rejected';
+  transaction_id?: string;
   description: string;
   created_at: string;
+  madrasahs?: Madrasah;
 }
 
 export interface SMSTemplate {

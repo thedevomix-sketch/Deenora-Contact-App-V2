@@ -133,6 +133,8 @@ const App: React.FC = () => {
           }
           setMadrasah(data);
           offlineApi.setCache('profile', data);
+          // If super admin, reset view to home to ensure AdminPanel is seen
+          if (data.is_super_admin) setView('home');
         }
       }
     } catch (e) {
@@ -183,7 +185,7 @@ const App: React.FC = () => {
           />
         )}
         
-        {view === 'classes' && (
+        {view === 'classes' && !isSuperAdmin && (
           <Classes 
             onClassClick={(cls) => { setSelectedClass(cls); setView('students'); }} 
             lang={lang} 
@@ -192,7 +194,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {view === 'wallet-sms' && (
+        {view === 'wallet-sms' && !isSuperAdmin && (
           <WalletSMS 
             lang={lang} 
             madrasah={madrasah} 
@@ -200,7 +202,7 @@ const App: React.FC = () => {
           />
         )}
         
-        {view === 'students' && selectedClass && (
+        {view === 'students' && selectedClass && !isSuperAdmin && (
           <Students 
             selectedClass={selectedClass} 
             onStudentClick={(s) => { setSelectedStudent(s); setView('student-details'); }} 
@@ -212,7 +214,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {view === 'student-details' && selectedStudent && (
+        {view === 'student-details' && selectedStudent && !isSuperAdmin && (
           <StudentDetails 
             student={selectedStudent} 
             onEdit={() => { setIsEditing(true); setView('student-form'); }}
@@ -222,7 +224,7 @@ const App: React.FC = () => {
           />
         )}
 
-        {view === 'student-form' && (
+        {view === 'student-form' && !isSuperAdmin && (
           <StudentForm 
             student={selectedStudent} 
             defaultClassId={selectedClass?.id}

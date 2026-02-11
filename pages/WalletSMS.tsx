@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { Wallet, MessageSquare, Plus, Trash2, CreditCard, History, Loader2, Check, AlertCircle, Phone } from 'lucide-react';
+import { Wallet, MessageSquare, Plus, Trash2, CreditCard, History, Loader2, Check, AlertCircle, Phone, Send, Hash } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
-import { SMSTemplate, Language, Madrasah } from '../types';
+import { SMSTemplate, Language, Madrasah, Transaction } from '../types';
 import { t } from '../translations';
 
 interface WalletSMSProps {
@@ -20,7 +20,16 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
   const [newBody, setNewBody] = useState('');
   const [saving, setSaving] = useState(false);
 
-  useEffect(() => { if (activeTab === 'templates') fetchTemplates(); }, [activeTab]);
+  // Recharge State
+  const [rechargeAmount, setRechargeAmount] = useState('');
+  const [trxId, setTrxId] = useState('');
+  const [recharging, setRecharging] = useState(false);
+  const [recentTrans, setRecentTrans] = useState<Transaction[]>([]);
+
+  useEffect(() => { 
+    if (activeTab === 'templates') fetchTemplates(); 
+    if (activeTab === 'recharge') fetchRecentTransactions();
+  }, [activeTab]);
 
   const fetchTemplates = async () => {
     setLoading(true);
@@ -38,6 +47,19 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
     } else { setLoading(false); }
   };
 
+  const fetchRecentTransactions = async () => {
+    if (!madrasah) return;
+    try {
+      const { data } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('madrasah_id', madrasah.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (data) setRecentTrans(data);
+    } catch (err) { console.error(err); }
+  };
+
   const handleSaveTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newBody.trim()) return;
@@ -47,17 +69,12 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error(lang === 'bn' ? 'ইউজার লগইন নেই' : 'Auth user not found');
 
-      // Check if madrasah profile exists
-      if (!madrasah) throw new Error(lang === 'bn' ? 'মাদরাসা প্রোফাইল লোড হয়নি, কিছুক্ষণ পর চেষ্টা করুন' : 'Madrasah profile not loaded yet');
+      if (!madrasah) throw new Error(lang === 'bn' ? 'মাদরাসা প্রোফাইল লোড হয়নি' : 'Madrasah profile not loaded');
 
       const payload = { madrasah_id: user.id, title: newTitle.trim(), body: newBody.trim() };
 
       if (navigator.onLine) {
-        const { error } = await supabase.from('sms_templates').insert(payload);
-        if (error) {
-          console.error("Template save error:", error);
-          throw new Error(error.message);
-        }
+        await supabase.from('sms_templates').insert(payload);
       } else {
         offlineApi.queueAction('sms_templates', 'INSERT', payload);
       }
@@ -67,8 +84,34 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
       setNewBody('');
       fetchTemplates();
     } catch (err: any) {
-      alert(lang === 'bn' ? `টেমপ্লেট সেভ করা যায়নি: ${err.message}` : `Save failed: ${err.message}`);
+      alert(err.message);
     } finally { setSaving(false); }
+  };
+
+  const handleRechargeRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!rechargeAmount || !trxId || !madrasah) return;
+    
+    setRecharging(true);
+    try {
+      const { error } = await supabase.from('transactions').insert({
+        madrasah_id: madrasah.id,
+        amount: parseFloat(rechargeAmount),
+        transaction_id: trxId.trim(),
+        type: 'credit',
+        status: 'pending',
+        description: `Manual Recharge Request via TrxID: ${trxId}`
+      });
+
+      if (error) throw error;
+      
+      setRechargeAmount('');
+      setTrxId('');
+      alert(lang === 'bn' ? 'অনুরোধ পাঠানো হয়েছে। অনুমোদনের জন্য অপেক্ষা করুন।' : 'Request sent. Please wait for approval.');
+      fetchRecentTransactions();
+    } catch (err: any) {
+      alert(err.message);
+    } finally { setRecharging(false); }
   };
 
   const deleteTemplate = async (id: string) => {
@@ -132,18 +175,72 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
              <div className="absolute top-0 right-0 w-32 h-32 bg-[#d35132]/5 rounded-full -mr-16 -mt-16"></div>
              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-2">{t('balance', lang)}</p>
              <h3 className="text-4xl font-black text-[#d35132] flex items-baseline gap-2">{madrasah?.balance || 0} <span className="text-lg font-bold">৳</span></h3>
-             <div className="mt-8 pt-6 border-t border-slate-100 flex items-center justify-between">
-                <div className="flex items-center gap-2 text-slate-500">
-                   <Check className="text-green-500" size={16} />
-                   <span className="text-xs font-bold">{lang === 'bn' ? 'লাইফটাইম মেয়াদ' : 'Lifetime Validity'}</span>
-                </div>
-                <button className="text-[#d35132] text-xs font-black uppercase tracking-wider flex items-center gap-1.5"><History size={14} /> {t('history', lang)}</button>
-             </div>
           </div>
-          <div className="bg-black/20 p-6 rounded-[2rem] border border-white/5 text-center">
-             <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-4 text-white/60"><Phone size={24} /></div>
-             <p className="text-white text-sm font-bold font-noto mb-2">{lang === 'bn' ? 'রিচার্জ করতে সমস্যা হচ্ছে?' : 'Need help with recharge?'}</p>
-             <a href="tel:01700000000" className="inline-block py-3 px-8 bg-white text-[#d35132] font-black rounded-xl shadow-lg text-sm">01700000000</a>
+
+          {/* Recharge Request Form */}
+          <div className="bg-white/10 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/20 shadow-xl space-y-4">
+             <h3 className="text-lg font-black text-white font-noto px-1">{t('recharge_request', lang)}</h3>
+             <form onSubmit={handleRechargeRequest} className="space-y-4">
+                <div>
+                   <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1 mb-1 block">{t('amount', lang)}</label>
+                   <div className="relative">
+                      <CreditCard size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+                      <input 
+                         required 
+                         type="number" 
+                         className="w-full pl-11 pr-5 py-4 bg-white/10 border border-white/20 rounded-2xl outline-none text-white font-bold text-sm focus:bg-white/20 transition-all" 
+                         placeholder="500" 
+                         value={rechargeAmount}
+                         onChange={(e) => setRechargeAmount(e.target.value)}
+                      />
+                   </div>
+                </div>
+                <div>
+                   <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1 mb-1 block">{t('trx_id', lang)}</label>
+                   <div className="relative">
+                      <Hash size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+                      <input 
+                         required 
+                         type="text" 
+                         className="w-full pl-11 pr-5 py-4 bg-white/10 border border-white/20 rounded-2xl outline-none text-white font-bold text-sm focus:bg-white/20 transition-all" 
+                         placeholder="TRX12345678" 
+                         value={trxId}
+                         onChange={(e) => setTrxId(e.target.value)}
+                      />
+                   </div>
+                </div>
+                <button type="submit" disabled={recharging} className="w-full py-4 bg-white text-[#d35132] font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
+                   {recharging ? <Loader2 className="animate-spin" size={20} /> : <><Send size={18} /> {lang === 'bn' ? 'অনুরোধ পাঠান' : 'Submit Request'}</>}
+                </button>
+             </form>
+          </div>
+
+          {/* Recent Transactions */}
+          <div className="space-y-3">
+             <h3 className="text-[11px] font-black text-white/50 uppercase tracking-widest px-2">{t('history', lang)}</h3>
+             {recentTrans.length > 0 ? recentTrans.map(tr => (
+                <div key={tr.id} className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
+                   <div className="min-w-0 pr-2">
+                      <p className="text-xs font-bold text-white truncate">{tr.description}</p>
+                      <div className="flex items-center gap-2 mt-1">
+                         <span className="text-[9px] text-white/40 font-black uppercase">{new Date(tr.created_at).toLocaleDateString()}</span>
+                         <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded ${
+                            tr.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                            tr.status === 'pending' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400'
+                         }`}>
+                            {t(tr.status || 'approved', lang)}
+                         </span>
+                      </div>
+                   </div>
+                   <span className={`text-sm font-black ${tr.type === 'credit' ? 'text-green-400' : 'text-red-400'}`}>
+                      {tr.type === 'credit' ? '+' : '-'}{tr.amount}
+                   </span>
+                </div>
+             )) : (
+                <div className="text-center py-10 opacity-40">
+                   <p className="text-white text-xs">{t('no_transactions', lang)}</p>
+                </div>
+             )}
           </div>
         </div>
       )}
