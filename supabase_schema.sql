@@ -1,104 +1,79 @@
 
--- ১. এক্সটেনশন
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+-- ১. মাদরাসা টেবিল আপডেট (sms_balance যোগ করা হয়েছে)
+ALTER TABLE public.madrasahs ADD COLUMN IF NOT EXISTS sms_balance INTEGER DEFAULT 0;
 
--- ২. মাদরাসা টেবিল
-CREATE TABLE IF NOT EXISTS public.madrasahs (
-    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    name TEXT NOT NULL DEFAULT 'নতুন মাদরাসা',
-    phone TEXT,
-    logo_url TEXT,
-    login_code TEXT, 
-    balance NUMERIC(10, 2) DEFAULT 0.00 NOT NULL,
-    is_active BOOLEAN DEFAULT true,
-    is_super_admin BOOLEAN DEFAULT false,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+-- ২. ট্রানজ্যাকশন টেবিল আপডেট (sms_count যোগ করা হয়েছে)
+ALTER TABLE public.transactions ADD COLUMN IF NOT EXISTS sms_count INTEGER DEFAULT 0;
+
+-- ৩. এসএমএস স্টক টেবিল রিসেট/আপডেট
+DROP TABLE IF EXISTS public.admin_sms_stock;
+CREATE TABLE public.admin_sms_stock (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    remaining_sms INTEGER DEFAULT 0,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ৩. ক্লাস টেবিল
-CREATE TABLE IF NOT EXISTS public.classes (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
-    class_name TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
+-- ইনিশিয়াল ডাটা যদি না থাকে
+INSERT INTO public.admin_sms_stock (remaining_sms) 
+SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM public.admin_sms_stock);
 
--- ৪. ছাত্র টেবিল
-CREATE TABLE IF NOT EXISTS public.students (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
-    class_id UUID REFERENCES public.classes(id) ON DELETE CASCADE NOT NULL,
-    student_name TEXT NOT NULL,
-    guardian_name TEXT,
-    roll INTEGER,
-    guardian_phone TEXT NOT NULL,
-    guardian_phone_2 TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
+-- ৪. আরএলএস পলিসি
+ALTER TABLE public.admin_sms_stock ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Everyone view stock" ON public.admin_sms_stock FOR SELECT USING (true);
+CREATE POLICY "Super admin update stock" ON public.admin_sms_stock FOR ALL USING (public.is_super_admin_secure());
 
--- ৫. ট্রানজ্যাকশন টেবিল (Fixed: Added status column)
-CREATE TABLE IF NOT EXISTS public.transactions (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
-    amount NUMERIC(10, 2) NOT NULL,
-    type TEXT CHECK (type IN ('credit', 'debit')),
-    status TEXT DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected')),
-    transaction_id TEXT,
-    description TEXT,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- ৬. এসএমএস লগ টেবিল
-CREATE TABLE IF NOT EXISTS public.sms_logs (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
-    recipient_phone TEXT NOT NULL,
-    message TEXT NOT NULL,
-    cost NUMERIC(10, 2) DEFAULT 0.00,
-    status TEXT DEFAULT 'sent',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- ৭. আরএলএস পলিসি এনাবল করা
-ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.sms_logs ENABLE ROW LEVEL SECURITY;
-
--- লুপ এড়াতে সিকিউরিটি ফাংশন
-CREATE OR REPLACE FUNCTION public.is_super_admin_secure()
-RETURNS BOOLEAN AS $$
+-- ৫. পেমেন্ট এপ্রুভাল এবং এসএমএস ক্রেডিট করার ফাংশন
+CREATE OR REPLACE FUNCTION public.approve_payment_with_sms(
+    t_id UUID, 
+    m_id UUID, 
+    sms_to_give INTEGER
+)
+RETURNS VOID AS $$
+DECLARE
+    admin_stock_id UUID;
 BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM public.madrasahs 
-    WHERE id = auth.uid() AND is_super_admin = true
-  );
+    -- ১. ট্রানজ্যাকশন স্ট্যাটাস আপডেট
+    UPDATE public.transactions 
+    SET status = 'approved', sms_count = sms_to_give 
+    WHERE id = t_id;
+
+    -- ২. ইউজারের এসএমএস ব্যালেন্স আপডেট
+    UPDATE public.madrasahs 
+    SET sms_balance = sms_balance + sms_to_give 
+    WHERE id = m_id;
+
+    -- ৩. অ্যাডমিনের মেইন স্টক থেকে এসএমএস কমানো
+    SELECT id INTO admin_stock_id FROM public.admin_sms_stock LIMIT 1;
+    UPDATE public.admin_sms_stock 
+    SET remaining_sms = remaining_sms - sms_to_give, 
+        updated_at = now() 
+    WHERE id = admin_stock_id;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- মাদরাসা আরএলএস
-CREATE POLICY "View own profile" ON public.madrasahs FOR SELECT USING (auth.uid() = id);
-CREATE POLICY "Super admin view all" ON public.madrasahs FOR SELECT USING (public.is_super_admin_secure());
-CREATE POLICY "Update own profile" ON public.madrasahs FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Insert own profile" ON public.madrasahs FOR INSERT WITH CHECK (auth.uid() = id);
-
--- ট্রানজ্যাকশন আরএলএস
-CREATE POLICY "View own transactions" ON public.transactions FOR SELECT USING (auth.uid() = madrasah_id);
-CREATE POLICY "Super admin view all transactions" ON public.transactions FOR SELECT USING (public.is_super_admin_secure());
-CREATE POLICY "Insert transactions" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = madrasah_id);
-CREATE POLICY "Super admin update transactions" ON public.transactions FOR UPDATE USING (public.is_super_admin_secure());
-
--- অন্যান্য পলিসি
-CREATE POLICY "Madrasah access own rows" ON public.classes FOR ALL USING (auth.uid() = madrasah_id OR public.is_super_admin_secure());
-CREATE POLICY "Madrasah access own students" ON public.students FOR ALL USING (auth.uid() = madrasah_id OR public.is_super_admin_secure());
-
--- ফাংশন: অ্যাডমিন ব্যালেন্স আপডেট (RPC)
-CREATE OR REPLACE FUNCTION public.admin_update_balance(m_id UUID, amount_change NUMERIC, trx_desc TEXT)
-RETURNS VOID AS $$
+-- ৬. এসএমএস বিলিং ফাংশন আপডেট (টাকার বদলে এসএমএস ক্রেডিট কাটবে)
+CREATE OR REPLACE FUNCTION public.process_sms_billing_credits(
+    m_id UUID, 
+    sms_needed INTEGER, 
+    campaign_reason TEXT
+)
+RETURNS JSON AS $$
+DECLARE
+    current_bal INTEGER;
 BEGIN
-  UPDATE public.madrasahs SET balance = balance + amount_change WHERE id = m_id;
-  INSERT INTO public.transactions (madrasah_id, amount, type, description, status)
-  VALUES (m_id, ABS(amount_change), CASE WHEN amount_change >= 0 THEN 'credit' ELSE 'debit' END, trx_desc, 'approved');
+    SELECT sms_balance INTO current_bal FROM public.madrasahs WHERE id = m_id;
+    
+    IF current_bal < sms_needed THEN
+        RETURN json_build_object('success', false, 'error', 'Insufficient SMS balance');
+    END IF;
+
+    -- ব্যালেন্স কমানো
+    UPDATE public.madrasahs SET sms_balance = sms_balance - sms_needed WHERE id = m_id;
+    
+    -- লগ এন্ট্রি
+    INSERT INTO public.transactions (madrasah_id, amount, type, description, status, sms_count)
+    VALUES (m_id, 0, 'debit', campaign_reason, 'approved', sms_needed);
+
+    RETURN json_build_object('success', true);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

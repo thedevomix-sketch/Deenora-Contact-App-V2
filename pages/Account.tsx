@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, Check, Smartphone, Copy, Camera, Loader2, Hash, AlertCircle, RefreshCw, Lock, WifiOff, History, CreditCard, ArrowUpRight, ArrowDownLeft, User as UserIcon, BookOpen, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LogOut, Check, Smartphone, Copy, Camera, Loader2, Hash, AlertCircle, RefreshCw, Lock, History, User as UserIcon, BookOpen, ShieldCheck } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Madrasah, Language, View, Transaction } from '../types';
 import { t } from '../translations';
@@ -11,58 +11,33 @@ interface AccountProps {
   onProfileUpdate?: () => void;
   setView: (view: View) => void;
   isSuperAdmin?: boolean;
+  initialMadrasah: Madrasah | null;
 }
 
-const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setView, isSuperAdmin }) => {
-  const [madrasah, setMadrasah] = useState<Madrasah | null>(null);
-  const [loading, setLoading] = useState(true);
+const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setView, isSuperAdmin, initialMadrasah }) => {
+  const [madrasah, setMadrasah] = useState<Madrasah | null>(initialMadrasah);
   const [saving, setSaving] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newPhone, setNewPhone] = useState('');
-  const [newLoginCode, setNewLoginCode] = useState('');
+  const [newName, setNewName] = useState(initialMadrasah?.name || '');
+  const [newPhone, setNewPhone] = useState(initialMadrasah?.phone || '');
+  const [newLoginCode, setNewLoginCode] = useState(initialMadrasah?.login_code || '');
   const [showSuccess, setShowSuccess] = useState(false);
   const [copying, setCopying] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [loadingTrans, setLoadingTrans] = useState(false);
 
   useEffect(() => {
-    fetchProfile();
-    if (!isSuperAdmin) fetchTransactions();
-  }, [isSuperAdmin]);
-
-  const fetchProfile = async () => {
-    // Use cached first for zero-latency UI
-    const cachedProfile = offlineApi.getCache('profile');
-    if (cachedProfile) {
-      updateLocalState(cachedProfile);
-      setLoading(false);
+    if (initialMadrasah) {
+      setMadrasah(initialMadrasah);
+      setNewName(initialMadrasah.name || '');
+      setNewPhone(initialMadrasah.phone || '');
+      setNewLoginCode(initialMadrasah.login_code || '');
     }
+  }, [initialMadrasah]);
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.user && navigator.onLine) {
-        const { data, error } = await supabase.from('madrasahs').select('*').eq('id', session.user.id).maybeSingle();
-        if (data && !error) {
-          updateLocalState(data);
-          offlineApi.setCache('profile', data);
-        }
-      }
-    } catch (err) { 
-      console.error("Profile fetch error in Account:", err); 
-    } finally { 
-      setLoading(false); 
-    }
-  };
-
-  const updateLocalState = (data: Madrasah) => {
-    setMadrasah(data);
-    setNewName(data.name || '');
-    setNewPhone(data.phone || '');
-    setNewLoginCode(data.login_code || '');
-  };
+  useEffect(() => {
+    if (!isSuperAdmin && initialMadrasah) fetchTransactions();
+  }, [isSuperAdmin, initialMadrasah]);
 
   const fetchTransactions = async () => {
-    setLoadingTrans(true);
     try {
       const { data } = await supabase
         .from('transactions')
@@ -72,8 +47,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       if (data) setTransactions(data);
     } catch (err) { 
       console.error("Trans fetch error:", err); 
-    } finally { 
-      setLoadingTrans(false); 
     }
   };
 
@@ -87,17 +60,9 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         login_code: newLoginCode.trim() 
       };
 
-      if (navigator.onLine) {
-        const { error } = await supabase.from('madrasahs').update(updateData).eq('id', madrasah.id);
-        if (error) throw error;
-      } else {
-        offlineApi.queueAction('madrasahs', 'UPDATE', { ...updateData, id: madrasah.id });
-      }
+      const { error } = await supabase.from('madrasahs').update(updateData).eq('id', madrasah.id);
+      if (error) throw error;
 
-      const updatedProfile = { ...madrasah, ...updateData };
-      setMadrasah(updatedProfile);
-      offlineApi.setCache('profile', updatedProfile);
-      
       setShowSuccess(true);
       setTimeout(() => setShowSuccess(false), 2000);
       
@@ -116,11 +81,11 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     setTimeout(() => setCopying(null), 2000);
   };
 
-  if (loading && !madrasah) {
+  if (!madrasah) {
     return (
-      <div className="py-20 flex flex-col items-center justify-center gap-4 animate-pulse">
-        <Loader2 className="animate-spin text-white/40" size={40} />
-        <p className="text-[10px] text-white/40 font-black uppercase tracking-widest">Loading Profile...</p>
+      <div className="py-20 flex flex-col items-center justify-center text-white/40">
+        <Loader2 className="animate-spin mb-2" />
+        <p className="text-xs uppercase font-black">Loading Account...</p>
       </div>
     );
   }
@@ -140,40 +105,24 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       <div className="bg-white/20 backdrop-blur-xl rounded-[3rem] p-6 border border-white/30 shadow-2xl space-y-6">
         <div className="flex flex-col items-center gap-4">
           <div className="bg-white/20 w-24 h-24 rounded-full flex items-center justify-center ring-4 ring-white/10 overflow-hidden border-2 border-white/50 shadow-xl relative">
-            {madrasah?.logo_url ? (
-              <img src={madrasah.logo_url} className="w-full h-full object-cover" alt="Logo" />
-            ) : isSuperAdmin ? (
-               <ShieldCheck size={48} className="text-white" />
-            ) : (
-              <UserIcon size={40} className="text-white/60" />
-            )}
-            {isSuperAdmin && (
-              <div className="absolute bottom-0 right-0 bg-yellow-400 p-1.5 rounded-full border-2 border-[#d35132] shadow-lg">
-                <ShieldCheck size={14} className="text-slate-800" />
-              </div>
-            )}
+            {isSuperAdmin ? <ShieldCheck size={48} className="text-white" /> : <UserIcon size={40} className="text-white/60" />}
           </div>
           <div className="text-center">
             <h2 className="text-xl font-black text-white font-noto leading-tight">{madrasah?.name}</h2>
             <div className={`inline-block px-4 py-1.5 rounded-full mt-3 text-[10px] font-black uppercase tracking-widest border ${isSuperAdmin ? 'bg-yellow-400 border-yellow-500 text-slate-900' : 'bg-white/20 border-white/10 text-white'}`}>
-              {isSuperAdmin ? 'Super Admin System' : 'Madrasah Admin Account'}
+              {isSuperAdmin ? 'Super Admin Control' : 'Madrasah Admin Account'}
             </div>
           </div>
         </div>
 
         <div className="space-y-4 pt-2">
-          <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
-            <UserIcon size={12} /> {lang === 'bn' ? 'অ্যাকাউন্ট প্রোফাইল' : 'Account Profile'}
-          </h3>
-          
           <div className="space-y-3">
             <div className={`bg-white/5 p-4 rounded-3xl border flex items-center justify-between transition-all ${isSuperAdmin ? 'border-yellow-400/30 bg-yellow-400/5' : 'border-white/5'}`}>
               <div className="flex-1 min-w-0 pr-2">
                 <p className="text-[9px] font-black text-white/30 uppercase mb-1">{t('madrasah_id', lang)} (UUID)</p>
                 <p className="text-xs font-mono text-white/70 truncate tracking-tight">{madrasah?.id}</p>
-                {isSuperAdmin && <p className="text-[8px] text-yellow-400/60 mt-1 font-bold">SYSTEM CONTROL AUTHORIZED</p>}
               </div>
-              <button onClick={() => copyToClipboard(madrasah?.id || '', 'uuid')} className="p-3 bg-white/10 text-white rounded-2xl active:scale-90 transition-all shadow-lg border border-white/10">
+              <button onClick={() => copyToClipboard(madrasah?.id || '', 'uuid')} className="p-3 bg-white/10 text-white rounded-2xl active:scale-90 transition-all">
                 {copying === 'uuid' ? <Check size={16} className="text-green-400" /> : <Copy size={16} />}
               </button>
             </div>
@@ -182,7 +131,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
               <p className="text-[9px] font-black text-white/30 uppercase mb-1 px-1">{t('madrasah_name', lang)}</p>
               <div className="flex items-center gap-3">
                 <BookOpen size={18} className="text-white/30" />
-                <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} className="bg-transparent border-none outline-none text-white font-black w-full text-base font-noto placeholder:text-white/20" placeholder="Madrasah Name" />
+                <input type="text" value={newName} onChange={(e) => setNewName(e.target.value)} className="bg-transparent border-none outline-none text-white font-black w-full text-base font-noto" />
               </div>
             </div>
 
@@ -190,14 +139,14 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
               <p className="text-[9px] font-black text-white/30 uppercase mb-1 px-1">{lang === 'bn' ? 'লগইন পাসওয়ার্ড' : 'Login Password'}</p>
               <div className="flex items-center gap-3">
                 <Lock size={18} className="text-white/30" />
-                <input type="text" value={newLoginCode} onChange={(e) => setNewLoginCode(e.target.value)} className="bg-transparent border-none outline-none text-white font-black w-full text-base tracking-widest placeholder:text-white/20" placeholder="••••••" />
+                <input type="text" value={newLoginCode} onChange={(e) => setNewLoginCode(e.target.value)} className="bg-transparent border-none outline-none text-white font-black w-full text-base tracking-widest" />
               </div>
             </div>
           </div>
         </div>
 
         <button onClick={handleUpdate} disabled={saving} className="w-full py-5 bg-white text-[#d35132] font-black rounded-[2rem] shadow-2xl active:scale-95 transition-all text-sm flex items-center justify-center gap-3 border border-white/50">
-          {saving ? <Loader2 className="animate-spin" size={20} /> : showSuccess ? <><Check size={20} /> PROFILE UPDATED</> : <><RefreshCw size={18} /> {t('update_info', lang)}</>}
+          {saving ? <Loader2 className="animate-spin" size={20} /> : showSuccess ? <><Check size={20} /> SAVED</> : <><RefreshCw size={18} /> {t('update_info', lang)}</>}
         </button>
 
         {!isSuperAdmin && transactions.length > 0 && (
@@ -206,7 +155,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                <History size={12} /> {t('history', lang)}
              </h3>
              {transactions.map(tr => (
-               <div key={tr.id} className="bg-white/5 p-4 rounded-2xl border border-white/5 flex items-center justify-between text-white transition-all active:bg-white/10">
+               <div key={tr.id} className="bg-white/5 p-4 rounded-2xl border border-white/5 flex items-center justify-between text-white transition-all">
                   <div className="min-w-0 flex-1 pr-3">
                     <span className="text-xs font-black truncate block font-noto">{tr.description}</span>
                     <span className="text-[9px] font-bold text-white/30 block mt-0.5">{new Date(tr.created_at).toLocaleDateString()}</span>
@@ -221,8 +170,8 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       </div>
 
       <div className="grid grid-cols-2 gap-4">
-        <button onClick={() => setLang('bn')} className={`py-4 rounded-[1.8rem] font-black text-sm transition-all border shadow-lg ${lang === 'bn' ? 'bg-white text-[#d35132] border-white' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`}>বাংলা</button>
-        <button onClick={() => setLang('en')} className={`py-4 rounded-[1.8rem] font-black text-sm transition-all border shadow-lg ${lang === 'en' ? 'bg-white text-[#d35132] border-white' : 'bg-white/10 text-white border-white/20 hover:bg-white/20'}`}>English</button>
+        <button onClick={() => setLang('bn')} className={`py-4 rounded-[1.8rem] font-black text-sm transition-all border shadow-lg ${lang === 'bn' ? 'bg-white text-[#d35132] border-white' : 'bg-white/10 text-white border-white/20'}`}>বাংলা</button>
+        <button onClick={() => setLang('en')} className={`py-4 rounded-[1.8rem] font-black text-sm transition-all border shadow-lg ${lang === 'en' ? 'bg-white text-[#d35132] border-white' : 'bg-white/10 text-white border-white/20'}`}>English</button>
       </div>
 
       <button onClick={() => supabase.auth.signOut()} className="w-full flex items-center justify-center gap-3 py-5 text-white font-black bg-red-600/20 backdrop-blur-md border border-red-500/30 rounded-[2rem] active:scale-95 transition-all shadow-xl mt-4">

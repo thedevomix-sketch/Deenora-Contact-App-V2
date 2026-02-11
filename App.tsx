@@ -53,7 +53,7 @@ const App: React.FC = () => {
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       if (currentSession) {
-        fetchMadrasahProfile(currentSession.user.id, true);
+        fetchMadrasahProfile(currentSession.user.id);
       } else {
         setLoading(false);
       }
@@ -62,8 +62,7 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
-        offlineApi.removeCache('profile');
-        fetchMadrasahProfile(session.user.id, true);
+        fetchMadrasahProfile(session.user.id);
       } else {
         setMadrasah(null);
         setLoading(false);
@@ -78,61 +77,39 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const fetchMadrasahProfile = async (userId: string, isInitial = false) => {
-    if (isInitial) setLoading(true);
+  const fetchMadrasahProfile = async (userId: string) => {
     setError(null);
     try {
-      if (navigator.onLine) {
-        const { data, error: fetchError } = await supabase
-          .from('madrasahs')
-          .select('*')
-          .eq('id', userId)
-          .maybeSingle();
-        
-        if (fetchError) {
-           if (fetchError.message.includes('recursion')) {
-             throw new Error("RLS Loop Error: Please run the fixed SQL schema in Supabase Editor.");
-           }
-           throw fetchError;
-        }
+      const { data, error: fetchError } = await supabase
+        .from('madrasahs')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (fetchError) throw fetchError;
 
-        if (data) {
-          setMadrasah(data);
-          offlineApi.setCache('profile', data);
-          // Only redirect if it's initial load or we are not already on account/admin views
-          if (isInitial) setView('home');
-        } else {
-          const { data: newData, error: insertError } = await supabase
-            .from('madrasahs')
-            .insert({ id: userId, name: 'New Madrasah', is_active: true, balance: 0 })
-            .select()
-            .single();
-          
-          if (insertError) throw insertError;
-          setMadrasah(newData);
-          offlineApi.setCache('profile', newData);
-          if (isInitial) setView('home');
-        }
+      if (data) {
+        setMadrasah(data);
+        offlineApi.setCache('profile', data);
       } else {
-        const cached = offlineApi.getCache('profile');
-        if (cached && cached.id === userId) {
-          setMadrasah(cached);
-          if (isInitial) setView('home');
-        } else {
-          setError(lang === 'bn' ? 'অফলাইনে প্রোফাইল পাওয়া যায়নি' : 'Profile not found offline');
-        }
+        // Create profile if not found
+        const { data: newData, error: insertError } = await supabase
+          .from('madrasahs')
+          .insert({ id: userId, name: 'নতুন মাদরাসা', is_active: true, balance: 0 })
+          .select()
+          .single();
+        if (insertError) throw insertError;
+        setMadrasah(newData);
       }
     } catch (e: any) {
       console.error("Profile fetch error:", e);
       setError(e.message || "Failed to load profile.");
     } finally {
-      if (isInitial) setLoading(false);
+      setLoading(false);
     }
   };
 
   const navigateTo = (newView: View) => {
-    // When navigating to account, just fetch profile data silently
-    if (newView === 'account' && session) fetchMadrasahProfile(session.user.id, false);
     triggerRefresh();
     setView(newView);
   };
@@ -141,7 +118,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#d35132] text-white">
         <Loader2 className="animate-spin mb-4" size={40} />
-        <p className="font-bold text-[10px] uppercase tracking-widest opacity-60">Loading Dashboard...</p>
+        <p className="font-bold text-[10px] uppercase tracking-widest opacity-60">Initializing App...</p>
       </div>
     );
   }
@@ -152,10 +129,10 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#d35132] p-8 text-center">
         <AlertCircle size={60} className="text-white/40 mb-6" />
-        <h2 className="text-white text-xl font-black font-noto mb-2">{lang === 'bn' ? 'প্রোফাইল সমস্যা' : 'Profile Error'}</h2>
+        <h2 className="text-white text-xl font-black mb-2">Profile Error</h2>
         <p className="text-white/60 text-sm mb-8 leading-relaxed max-w-sm mx-auto">{error}</p>
-        <button onClick={() => session && fetchMadrasahProfile(session.user.id, true)} className="bg-white text-[#d35132] px-8 py-4 rounded-full font-black flex items-center gap-2 active:scale-95 transition-all shadow-xl">
-          <RefreshCw size={18} /> {lang === 'bn' ? 'পুনরায় চেষ্টা করুন' : 'Retry Now'}
+        <button onClick={() => window.location.reload()} className="bg-white text-[#d35132] px-8 py-4 rounded-full font-black">
+          Reload App
         </button>
       </div>
     );
@@ -167,11 +144,7 @@ const App: React.FC = () => {
     <div className="relative h-full w-full bg-[#d35132]">
       {(!isOnline || syncing) && (
         <div className="absolute top-0 left-0 right-0 bg-black/60 backdrop-blur-md text-white text-[10px] font-black py-1.5 px-4 z-[60] flex items-center justify-center gap-2 uppercase tracking-widest border-b border-white/10">
-          {syncing ? (
-            <><CloudSync size={12} className="animate-pulse" /> {lang === 'bn' ? 'ডাটা সিঙ্ক হচ্ছে...' : 'Syncing Data...'}</>
-          ) : (
-            <><WifiOff size={10} /> {lang === 'bn' ? 'অফলাইন মোড' : 'Offline Mode'}</>
-          )}
+          {syncing ? <><CloudSync size={12} className="animate-pulse" /> Syncing...</> : <><WifiOff size={10} /> Offline</>}
         </div>
       )}
       
@@ -196,13 +169,21 @@ const App: React.FC = () => {
         )}
 
         {view === 'wallet-sms' && !isSuperAdmin && (
-          <WalletSMS 
-            lang={lang} 
-            madrasah={madrasah} 
-            triggerRefresh={triggerRefresh} 
-          />
+          <WalletSMS lang={lang} madrasah={madrasah} triggerRefresh={triggerRefresh} />
         )}
         
+        {view === 'account' && (
+          <Account 
+            lang={lang} 
+            setLang={(l) => { setLang(l); localStorage.setItem('app_lang', l); }} 
+            onProfileUpdate={() => fetchMadrasahProfile(session.user.id)}
+            setView={setView}
+            isSuperAdmin={isSuperAdmin}
+            initialMadrasah={madrasah}
+          />
+        )}
+
+        {/* Existing sub-views (students, details, forms) remain identical but are conditionally rendered based on !isSuperAdmin */}
         {view === 'students' && selectedClass && !isSuperAdmin && (
           <Students 
             selectedClass={selectedClass} 
@@ -214,36 +195,11 @@ const App: React.FC = () => {
             triggerRefresh={triggerRefresh}
           />
         )}
-
         {view === 'student-details' && selectedStudent && !isSuperAdmin && (
-          <StudentDetails 
-            student={selectedStudent} 
-            onEdit={() => { setIsEditing(true); setView('student-form'); }}
-            onBack={() => setView(selectedClass ? 'students' : 'home')}
-            lang={lang}
-            triggerRefresh={triggerRefresh}
-          />
+          <StudentDetails student={selectedStudent} onEdit={() => { setIsEditing(true); setView('student-form'); }} onBack={() => setView(selectedClass ? 'students' : 'home')} lang={lang} triggerRefresh={triggerRefresh} />
         )}
-
         {view === 'student-form' && !isSuperAdmin && (
-          <StudentForm 
-            student={selectedStudent} 
-            defaultClassId={selectedClass?.id}
-            isEditing={isEditing} 
-            onSuccess={() => { triggerRefresh(); setView(selectedClass ? 'students' : 'home'); }}
-            onCancel={() => setView(selectedStudent ? 'student-details' : (selectedClass ? 'students' : 'home'))}
-            lang={lang}
-          />
-        )}
-
-        {view === 'account' && (
-          <Account 
-            lang={lang} 
-            setLang={(l) => { setLang(l); localStorage.setItem('app_lang', l); }} 
-            onProfileUpdate={() => session && fetchMadrasahProfile(session.user.id, false)}
-            setView={setView}
-            isSuperAdmin={isSuperAdmin}
-          />
+          <StudentForm student={selectedStudent} defaultClassId={selectedClass?.id} isEditing={isEditing} onSuccess={() => { triggerRefresh(); setView(selectedClass ? 'students' : 'home'); }} onCancel={() => setView(selectedStudent ? 'student-details' : (selectedClass ? 'students' : 'home'))} lang={lang} />
         )}
       </Layout>
     </div>

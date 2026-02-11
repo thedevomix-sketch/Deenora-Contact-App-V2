@@ -12,6 +12,13 @@ export interface Madrasah {
   email?: string;
   login_code?: string;
   balance: number;
+  sms_balance: number; // Added
+}
+
+export interface AdminSMSStock {
+  id: string;
+  remaining_sms: number;
+  updated_at: string;
 }
 
 export interface Class {
@@ -41,7 +48,9 @@ export interface Transaction {
   type: 'credit' | 'debit';
   status: 'pending' | 'approved' | 'rejected';
   transaction_id?: string;
+  sender_phone?: string;
   description: string;
+  sms_count?: number; // Added
   created_at: string;
   madrasahs?: Madrasah;
 }
