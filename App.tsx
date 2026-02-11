@@ -83,6 +83,7 @@ const App: React.FC = () => {
     setError(null);
     try {
       if (navigator.onLine) {
+        // Try to fetch profile
         const { data, error: fetchError } = await supabase
           .from('madrasahs')
           .select('*')
@@ -90,19 +91,18 @@ const App: React.FC = () => {
           .maybeSingle();
         
         if (fetchError) {
-          if (fetchError.message?.includes('infinite recursion')) {
-            throw new Error("Database Configuration Error: Infinite recursion detected in RLS policies. Please apply the latest SQL schema updates.");
-          }
-          throw fetchError;
+           if (fetchError.message.includes('recursion')) {
+             throw new Error("RLS Loop Error: Please run the fixed SQL schema in Supabase Editor.");
+           }
+           throw fetchError;
         }
 
         if (data) {
           setMadrasah(data);
           offlineApi.setCache('profile', data);
-          // Auto-navigate to home (which shows AdminPanel if super admin)
           setView('home');
         } else {
-          console.warn("Profile missing. Attempting to create default...");
+          // Profile missing, create it
           const { data: newData, error: insertError } = await supabase
             .from('madrasahs')
             .insert({ id: userId, name: 'New Madrasah', is_active: true, balance: 0 })
@@ -110,11 +110,9 @@ const App: React.FC = () => {
             .single();
           
           if (insertError) throw insertError;
-          if (newData) {
-            setMadrasah(newData);
-            offlineApi.setCache('profile', newData);
-            setView('home');
-          }
+          setMadrasah(newData);
+          offlineApi.setCache('profile', newData);
+          setView('home');
         }
       } else {
         const cached = offlineApi.getCache('profile');
@@ -127,7 +125,7 @@ const App: React.FC = () => {
       }
     } catch (e: any) {
       console.error("Profile fetch error:", e);
-      setError(e.message || "Unknown error occurred while fetching profile.");
+      setError(e.message || "Failed to load profile.");
     } finally {
       setLoading(false);
     }
@@ -143,7 +141,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#d35132] text-white">
         <Loader2 className="animate-spin mb-4" size={40} />
-        <p className="font-bold text-[10px] uppercase tracking-widest opacity-60">Initializing Profile...</p>
+        <p className="font-bold text-[10px] uppercase tracking-widest opacity-60">Loading Dashboard...</p>
       </div>
     );
   }
@@ -154,17 +152,10 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#d35132] p-8 text-center">
         <AlertCircle size={60} className="text-white/40 mb-6" />
-        <h2 className="text-white text-xl font-black font-noto mb-2">
-          {error.includes('recursion') ? (lang === 'bn' ? 'ডাটাবেস কনফিগারেশন এরর' : 'Database Configuration Error') : (lang === 'bn' ? 'প্রোফাইল লোড করা যায়নি' : 'Profile Load Error')}
-        </h2>
-        <p className="text-white/60 text-sm mb-8 leading-relaxed max-w-sm mx-auto">
-          {error}
-        </p>
-        <button 
-          onClick={() => session && fetchMadrasahProfile(session.user.id)} 
-          className="bg-white text-[#d35132] px-8 py-4 rounded-full font-black flex items-center gap-2 mx-auto active:scale-95 transition-all shadow-xl"
-        >
-          <RefreshCw size={18} /> {lang === 'bn' ? 'পুনরায় চেষ্টা করুন' : 'Retry'}
+        <h2 className="text-white text-xl font-black font-noto mb-2">{lang === 'bn' ? 'প্রোফাইল সমস্যা' : 'Profile Error'}</h2>
+        <p className="text-white/60 text-sm mb-8 leading-relaxed max-w-sm mx-auto">{error}</p>
+        <button onClick={() => session && fetchMadrasahProfile(session.user.id)} className="bg-white text-[#d35132] px-8 py-4 rounded-full font-black flex items-center gap-2 active:scale-95 transition-all shadow-xl">
+          <RefreshCw size={18} /> {lang === 'bn' ? 'পুনরায় চেষ্টা করুন' : 'Retry Now'}
         </button>
       </div>
     );
