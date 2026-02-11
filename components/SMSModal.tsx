@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Send, MessageSquare, Loader2, AlertCircle, CheckCircle2, ChevronDown, BookOpen } from 'lucide-react';
 import { t } from '../translations';
 import { Language, Student, Madrasah, SMSTemplate } from '../types';
-import { supabase, offlineApi } from '../supabase';
+import { supabase, smsApi } from '../supabase';
 
 interface SMSModalProps {
   students: Student[];
@@ -23,49 +23,28 @@ const SMSModal: React.FC<SMSModalProps> = ({ students, madrasah, lang, onClose, 
 
   useEffect(() => {
     fetchTemplates();
-  }, []);
+  }, [madrasah.id]);
 
   const fetchTemplates = async () => {
-    const { data } = await supabase.from('sms_templates').select('*').order('created_at', { ascending: false });
+    // Corrected to filter by current madrasah
+    const { data } = await supabase
+      .from('sms_templates')
+      .select('*')
+      .eq('madrasah_id', madrasah.id)
+      .order('created_at', { ascending: false });
+    
     if (data) setTemplates(data);
   };
 
-  const smsNeeded = students.length; // 1 credit per student
+  const smsNeeded = students.length; 
 
   const handleSend = async () => {
     if (!message.trim() || students.length === 0) return;
 
     setSending(true);
+    setStatus('idle');
     try {
-      // 1. Validate Credits via RPC
-      const { data: billingResult, error: billingError } = await supabase.rpc('process_sms_billing_credits', {
-        m_id: madrasah.id,
-        sms_needed: smsNeeded,
-        campaign_reason: `Sent SMS to ${students.length} students`
-      });
-
-      if (billingError) throw billingError;
-      if (!billingResult.success) {
-        setStatus('error');
-        setErrorMsg(billingResult.error === 'Insufficient SMS balance' ? (lang === 'bn' ? 'পর্যাপ্ত এসএমএস ব্যালেন্স নেই' : 'Insufficient SMS balance') : billingResult.error);
-        setSending(false);
-        return;
-      }
-
-      // 2. SMS Gateway API Call would go here
-      console.log(`Sending SMS to ${students.length} numbers`);
-
-      // 3. Log Records
-      await supabase.from('sms_logs').insert(
-        students.map(s => ({
-          madrasah_id: madrasah.id,
-          student_id: s.id,
-          recipient_phone: s.guardian_phone,
-          message: message,
-          cost: 1, // 1 credit
-          status: 'sent'
-        }))
-      );
+      await smsApi.sendBulk(madrasah.id, students, message);
 
       setStatus('success');
       setTimeout(() => {
@@ -74,7 +53,9 @@ const SMSModal: React.FC<SMSModalProps> = ({ students, madrasah, lang, onClose, 
       }, 1500);
     } catch (err: any) {
       setStatus('error');
-      setErrorMsg(err.message || 'Failed');
+      setErrorMsg(err.message === 'Insufficient SMS balance' 
+        ? (lang === 'bn' ? 'পর্যাপ্ত এসএমএস ব্যালেন্স নেই' : 'Insufficient SMS balance') 
+        : (lang === 'bn' ? 'এসএমএস পাঠানো ব্যর্থ হয়েছে' : 'Failed to send SMS'));
     } finally {
       setSending(false);
     }
@@ -121,35 +102,35 @@ const SMSModal: React.FC<SMSModalProps> = ({ students, madrasah, lang, onClose, 
         </div>
 
         <div className="space-y-4">
-          {/* Template Selector */}
+          {/* Template Selector Dropdown */}
           <div className="relative">
-            <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1 mb-2 block">টেমপ্লেট</label>
+            <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1 mb-2 block">টেমপ্লেট নির্বাচন করুন</label>
             <button 
               onClick={() => setShowTemplateDropdown(!showTemplateDropdown)}
-              className="w-full flex items-center justify-between px-4 py-3.5 bg-white/15 border border-white/20 rounded-xl text-white text-sm font-bold backdrop-blur-md active:bg-white/25 transition-all"
+              className="w-full flex items-center justify-between px-4 py-3.5 bg-white/15 border border-white/20 rounded-xl text-white text-sm font-bold backdrop-blur-md active:bg-white/25 transition-all shadow-sm"
             >
               <div className="flex items-center gap-2 truncate text-white/80">
                 <BookOpen size={16} />
-                <span className="truncate">{lang === 'bn' ? 'টেমপ্লেট সিলেক্ট করুন' : 'Select Template'}</span>
+                <span className="truncate">{lang === 'bn' ? 'সংরক্ষিত টেমপ্লেটসমূহ' : 'Saved Templates'}</span>
               </div>
-              <ChevronDown size={18} className={`text-white/40 transition-transform ${showTemplateDropdown ? 'rotate-180' : ''}`} />
+              <ChevronDown size={18} className={`text-white/40 transition-transform duration-300 ${showTemplateDropdown ? 'rotate-180' : ''}`} />
             </button>
 
             {showTemplateDropdown && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-white/30 z-10 max-h-48 overflow-y-auto">
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-white/30 z-[210] max-h-56 overflow-y-auto animate-in slide-in-from-top-2">
                 {templates.length > 0 ? (
                   templates.map(tmp => (
                     <button 
                       key={tmp.id} 
                       onClick={() => selectTemplate(tmp)}
-                      className="w-full text-left px-5 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
+                      className="w-full text-left px-5 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 active:bg-slate-100 transition-colors"
                     >
                       <p className="text-[10px] font-black text-[#d35132] uppercase mb-0.5">{tmp.title}</p>
                       <p className="text-xs font-bold text-slate-600 truncate">{tmp.body}</p>
                     </button>
                   ))
                 ) : (
-                  <div className="p-5 text-center text-slate-400 text-xs font-bold">টেমপ্লেট নেই</div>
+                  <div className="p-5 text-center text-slate-400 text-xs font-bold">কোনো টেমপ্লেট পাওয়া যায়নি</div>
                 )}
               </div>
             )}
@@ -159,7 +140,7 @@ const SMSModal: React.FC<SMSModalProps> = ({ students, madrasah, lang, onClose, 
             <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1 mb-2 block">মেসেজ বক্স</label>
             <textarea
               className="w-full h-32 px-5 py-4 bg-white/15 border border-white/25 rounded-2xl outline-none text-white placeholder:text-white/40 font-bold text-sm focus:bg-white/25 transition-all resize-none shadow-inner"
-              placeholder="আপনার বার্তা..."
+              placeholder="আপনার বার্তা এখানে লিখুন..."
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               maxLength={160}
@@ -169,7 +150,7 @@ const SMSModal: React.FC<SMSModalProps> = ({ students, madrasah, lang, onClose, 
                 {message.length} / 160
               </span>
               <div className="flex items-center gap-2 bg-white/10 px-3 py-1 rounded-full border border-white/10">
-                <span className="text-[10px] font-black text-white">{smsNeeded} SMS Credits Required</span>
+                <span className="text-[10px] font-black text-white">{smsNeeded} Credit Required</span>
               </div>
             </div>
           </div>
@@ -186,7 +167,7 @@ const SMSModal: React.FC<SMSModalProps> = ({ students, madrasah, lang, onClose, 
             disabled={sending || !message.trim()}
             className="w-full py-5 bg-white text-[#d35132] font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-base"
           >
-            {sending ? <Loader2 className="animate-spin" size={20} /> : <><Send size={18} /> {lang === 'bn' ? 'এসএমএস পাঠান' : 'Send SMS'}</>}
+            {sending ? <Loader2 className="animate-spin" size={20} /> : <><Send size={18} /> {lang === 'bn' ? 'বার্তা পাঠান' : 'Send Message'}</>}
           </button>
         </div>
       </div>

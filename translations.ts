@@ -88,7 +88,11 @@ export const translations = {
     approve: 'অনুমোদন দিন',
     reject: 'বাতিল করুন',
     no_transactions: 'কোনো লেনদেন নেই',
-    pending_approvals: 'অনুমোদনের অপেক্ষায়'
+    pending_approvals: 'অনুমোদনের অপেক্ষায়',
+    select_students: 'ছাত্র নির্বাচন করুন',
+    select_all: 'সবাইকে সিলেক্ট করুন',
+    deselect_all: 'সবাইকে আনসিলেক্ট করুন',
+    selected: 'জন নির্বাচিত'
   },
   en: {
     home: 'Home',
@@ -176,7 +180,11 @@ export const translations = {
     approve: 'Approve',
     reject: 'Reject',
     no_transactions: 'No transactions found',
-    pending_approvals: 'Pending Approvals'
+    pending_approvals: 'Pending Approvals',
+    select_students: 'Select Students',
+    select_all: 'Select All',
+    deselect_all: 'Deselect All',
+    selected: 'Selected'
   }
 };
 
