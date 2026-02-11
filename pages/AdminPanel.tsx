@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Search, Smartphone, Shield, ShieldOff, ChevronRight, User as UserIcon, Users, CheckCircle2, Ban, RefreshCw, Copy, Check, Eye, EyeOff, Edit3, GraduationCap, MonitorSmartphone, Clock, AlertTriangle, Tablet, Laptop, Monitor, Hash, PhoneCall, Lock, Calendar, PlusCircle, MinusCircle, Wallet, CheckCircle, XCircle } from 'lucide-react';
+import { Loader2, Search, Shield, ShieldOff, ChevronRight, User as UserIcon, Users, CheckCircle2, Ban, Copy, Check, Eye, EyeOff, Lock, Wallet, CheckCircle, XCircle, PlusCircle, MinusCircle } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Madrasah, Language, Transaction } from '../types';
 import { t } from '../translations';
@@ -102,14 +102,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
   const approveTransaction = async (tr: Transaction) => {
     setUpdatingId(tr.id);
     try {
-      // 1. Update Transaction Status
-      const { error: trError } = await supabase
-        .from('transactions')
-        .update({ status: 'approved' })
-        .eq('id', tr.id);
+      const { error: trError } = await supabase.from('transactions').update({ status: 'approved' }).eq('id', tr.id);
       if (trError) throw trError;
 
-      // 2. Add Balance to Madrasah
       const { error: mError } = await supabase.rpc('admin_update_balance', {
         m_id: tr.madrasah_id,
         amount_change: tr.amount,
@@ -119,7 +114,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
 
       setPendingTrans(prev => prev.filter(t => t.id !== tr.id));
       alert(lang === 'bn' ? 'অনুমোদিত হয়েছে!' : 'Approved successfully!');
-      fetchAllMadrasahs(); // Refresh list to show updated balance
+      fetchAllMadrasahs();
     } catch (err: any) {
       alert(err.message);
     } finally {
@@ -168,7 +163,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
   if (view === 'list') {
     return (
       <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-        {/* Statistics Grid */}
         <div className="grid grid-cols-2 gap-3">
           <div className="bg-white/10 p-4 rounded-3xl border border-white/10 backdrop-blur-md flex flex-col items-center text-center">
              <Users size={20} className="text-white/40 mb-1" />
@@ -236,7 +230,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
               </button>
               <h1 className="text-xl font-black text-white font-noto">{t('pending_approvals', lang)}</h1>
            </div>
-
            <div className="space-y-4">
               {pendingTrans.length > 0 ? pendingTrans.map(tr => (
                  <div key={tr.id} className="bg-white/15 backdrop-blur-2xl rounded-[2.5rem] p-6 border border-white/20 shadow-xl space-y-4">
@@ -250,32 +243,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
                           <p className="text-lg font-black text-white">{tr.amount} ৳</p>
                        </div>
                     </div>
-
                     <div className="bg-white/10 p-4 rounded-2xl border border-white/5">
                        <p className="text-[10px] font-black text-white/30 uppercase tracking-widest mb-1">{t('trx_id', lang)}</p>
                        <p className="text-base font-mono font-black text-white tracking-wider">{tr.transaction_id}</p>
                     </div>
-
                     <div className="flex gap-3">
-                       <button 
-                          onClick={() => approveTransaction(tr)} 
-                          disabled={updatingId === tr.id}
-                          className="flex-1 py-4 bg-green-500 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
-                       >
+                       <button onClick={() => approveTransaction(tr)} disabled={updatingId === tr.id} className="flex-1 py-4 bg-green-500 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 text-sm">
                           {updatingId === tr.id ? <Loader2 className="animate-spin" size={18} /> : <><CheckCircle size={18} /> {t('approve', lang)}</>}
                        </button>
-                       <button 
-                          onClick={() => rejectTransaction(tr.id)} 
-                          disabled={updatingId === tr.id}
-                          className="flex-1 py-4 bg-red-500/20 text-white font-black rounded-2xl border border-red-500/30 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm"
-                       >
+                       <button onClick={() => rejectTransaction(tr.id)} disabled={updatingId === tr.id} className="flex-1 py-4 bg-red-500/20 text-white font-black rounded-2xl border border-red-500/30 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm">
                           <XCircle size={18} /> {t('reject', lang)}
                        </button>
                     </div>
                  </div>
               )) : (
                  <div className="text-center py-20 opacity-40">
-                    <Wallet size={48} className="mx-auto mb-4 text-white" />
                     <p className="text-white font-bold">{lang === 'bn' ? 'অনুমোদনের জন্য কিছু নেই' : 'Nothing to approve'}</p>
                  </div>
               )}
@@ -312,26 +294,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
              <PlusCircle size={14} /> Balance Management
            </h3>
            <div className="flex flex-col gap-3">
-              <input 
-                type="number" 
-                placeholder="Amount (৳)" 
-                className="w-full px-5 py-4 bg-white/10 border border-white/20 rounded-2xl outline-none text-white font-black text-lg text-center focus:bg-white/20 transition-all shadow-inner"
-                value={rechargeAmount}
-                onChange={(e) => setRechargeAmount(e.target.value)}
-              />
+              <input type="number" placeholder="Amount (৳)" className="w-full px-5 py-4 bg-white/10 border border-white/20 rounded-2xl outline-none text-white font-black text-lg text-center focus:bg-white/20 transition-all shadow-inner" value={rechargeAmount} onChange={(e) => setRechargeAmount(e.target.value)} />
               <div className="flex gap-2">
-                 <button 
-                   onClick={() => handleRecharge(true)} 
-                   disabled={isRecharging || !rechargeAmount} 
-                   className="flex-1 py-4 bg-green-500 text-white font-black rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50"
-                 >
+                 <button onClick={() => handleRecharge(true)} disabled={isRecharging || !rechargeAmount} className="flex-1 py-4 bg-green-500 text-white font-black rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50">
                    {isRecharging ? <Loader2 className="animate-spin" size={18} /> : <PlusCircle size={18} />} Add
                  </button>
-                 <button 
-                   onClick={() => handleRecharge(false)} 
-                   disabled={isRecharging || !rechargeAmount} 
-                   className="flex-1 py-4 bg-red-500 text-white font-black rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50"
-                 >
+                 <button onClick={() => handleRecharge(false)} disabled={isRecharging || !rechargeAmount} className="flex-1 py-4 bg-red-500 text-white font-black rounded-2xl shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50">
                    {isRecharging ? <Loader2 className="animate-spin" size={18} /> : <MinusCircle size={18} />} Deduct
                  </button>
               </div>
@@ -364,16 +332,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
                 <button onClick={() => setShowPass(!showPass)} className="p-2.5 bg-white/10 text-white rounded-xl active:scale-90 transition-all">
                    {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
-              </div>
-           </div>
-
-           <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                 <Users size={16} className="text-white/30" />
-                 <div>
-                    <p className="text-[9px] font-black text-white/30 uppercase mb-0.5">Total Students</p>
-                    <p className="text-base font-black text-white tracking-wider">{loadingStats ? '...' : studentCount}</p>
-                 </div>
               </div>
            </div>
         </div>

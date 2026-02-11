@@ -34,30 +34,6 @@ const App: React.FC = () => {
     setDataVersion(prev => prev + 1);
   };
 
-  const registerDevice = async (userId: string) => {
-    if (!navigator.onLine) return;
-    try {
-      let deviceId = localStorage.getItem('app_device_id');
-      if (!deviceId) {
-        deviceId = Math.random().toString(36).substring(2) + Date.now().toString(36);
-        localStorage.setItem('app_device_id', deviceId);
-      }
-      const userAgent = navigator.userAgent;
-      let deviceInfo = 'PC/Browser';
-      if (/android/i.test(userAgent)) deviceInfo = 'Android Device';
-      else if (/iPhone|iPad|iPod/i.test(userAgent)) deviceInfo = 'iOS Device';
-
-      await supabase.from('device_sessions').upsert({
-        madrasah_id: userId,
-        device_id: deviceId,
-        device_info: deviceInfo,
-        last_active: new Date().toISOString()
-      }, { onConflict: 'madrasah_id, device_id' });
-    } catch (e) {
-      console.warn("Device registration failed (check if table exists):", e);
-    }
-  };
-
   const handleSync = async () => {
     if (navigator.onLine) {
       setSyncing(true);
@@ -77,7 +53,6 @@ const App: React.FC = () => {
       setSession(currentSession);
       if (currentSession) {
         fetchMadrasahProfile(currentSession.user.id);
-        registerDevice(currentSession.user.id);
       } else {
         setLoading(false);
       }
@@ -87,7 +62,6 @@ const App: React.FC = () => {
       setSession(session);
       if (session) {
         fetchMadrasahProfile(session.user.id);
-        registerDevice(session.user.id);
       } else {
         setMadrasah(null);
         setLoading(false);
@@ -103,9 +77,6 @@ const App: React.FC = () => {
 
   const fetchMadrasahProfile = async (userId: string) => {
     try {
-      const cached = offlineApi.getCache('profile');
-      if (cached) setMadrasah(cached);
-
       if (navigator.onLine) {
         const { data, error } = await supabase
           .from('madrasahs')
@@ -113,29 +84,17 @@ const App: React.FC = () => {
           .eq('id', userId)
           .single();
         
-        if (error && (error.code === 'PGRST116' || error.message.includes('not found'))) {
-          // Profile not found, create it automatically
-          const { data: newProfile, error: createError } = await supabase
-            .from('madrasahs')
-            .insert({ id: userId, name: 'আমার মাদরাসা', balance: 0 })
-            .select()
-            .single();
-          
-          if (!createError && newProfile) {
-            setMadrasah(newProfile);
-            offlineApi.setCache('profile', newProfile);
-          }
-        } else if (data) {
-          if (data.is_active === false && !data.is_super_admin) {
-            alert(t('account_disabled', lang));
-            await supabase.auth.signOut();
-            return;
-          }
+        if (data) {
           setMadrasah(data);
           offlineApi.setCache('profile', data);
-          // If super admin, reset view to home to ensure AdminPanel is seen
+          // Force view to home if super admin to ensure AdminPanel is visible
           if (data.is_super_admin) setView('home');
+        } else if (error) {
+           console.error("Profile load error:", error);
         }
+      } else {
+        const cached = offlineApi.getCache('profile');
+        if (cached) setMadrasah(cached);
       }
     } catch (e) {
       console.error("Profile load error:", e);

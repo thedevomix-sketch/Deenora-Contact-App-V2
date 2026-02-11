@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
-import { supabase } from '../supabase';
-import { Mail, Lock, Loader2, User as UserIcon, AlertCircle, Phone, Hash } from 'lucide-react';
+import { supabase, offlineApi } from '../supabase';
+import { Mail, Lock, Loader2, User as UserIcon, AlertCircle, Phone } from 'lucide-react';
 import { Language } from '../types';
 import { t } from '../translations';
 
@@ -27,12 +27,19 @@ const Auth: React.FC<AuthProps> = ({ lang }) => {
     setError('');
     
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ 
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({ 
         email: email.trim(), 
         password: code 
       });
-      if (error) throw error;
+      
+      if (signInError) throw signInError;
+      
       if (data.user) {
+        // CRITICAL: Clear cache to force refresh profile status (Super Admin vs Madrasah)
+        offlineApi.removeCache('profile');
+        offlineApi.removeCache('classes_with_counts');
+        offlineApi.removeCache('recent_calls');
+        
         const { data: profile } = await supabase.from('madrasahs').select('name').eq('id', data.user.id).single();
         if (profile) localStorage.setItem('m_name', profile.name);
       }
@@ -45,8 +52,6 @@ const Auth: React.FC<AuthProps> = ({ lang }) => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#f27441] via-[#e5683b] to-[#d35132] flex flex-col items-center justify-center p-6 relative overflow-hidden">
-      
-      {/* Background Shapes */}
       <div className="absolute bottom-0 left-0 right-0 opacity-20 pointer-events-none select-none">
         <svg viewBox="0 0 1440 320" className="w-full h-auto">
           <path fill="#000000" d="M0,224L120,208C240,192,480,160,720,170.7C960,181,1200,235,1320,261.3L1440,288L1440,320L1320,320C1200,320,960,320,720,320C480,320,240,320,120,320L0,320Z"></path>
@@ -54,7 +59,6 @@ const Auth: React.FC<AuthProps> = ({ lang }) => {
       </div>
 
       <div className="w-full max-w-sm flex flex-col items-center z-10 space-y-8">
-        
         <div className="text-center space-y-2">
           <h2 className="text-xl font-bold text-white tracking-wide">Welcome to</h2>
           <h1 className="text-[28px] font-black text-white font-noto leading-tight drop-shadow-lg">
@@ -78,7 +82,7 @@ const Auth: React.FC<AuthProps> = ({ lang }) => {
 
         <form onSubmit={handleAuth} className="w-full space-y-5">
           {error && (
-            <div className="bg-red-500/20 backdrop-blur-md border border-red-500/50 p-3 rounded-2xl flex items-center gap-3 text-white font-bold text-xs animate-shake">
+            <div className="bg-red-500/20 backdrop-blur-md border border-red-500/50 p-3 rounded-2xl flex items-center gap-3 text-white font-bold text-xs">
               <AlertCircle size={16} />
               {error}
             </div>
