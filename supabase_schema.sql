@@ -51,6 +51,8 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
     amount NUMERIC(10, 2) NOT NULL,
     type TEXT CHECK (type IN ('credit', 'debit')),
+    status TEXT DEFAULT 'approved',
+    transaction_id TEXT,
     description TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
@@ -67,7 +69,7 @@ CREATE TABLE IF NOT EXISTS public.sms_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ৮. আরএলএস পলিসি
+-- ৮. আরএলএস পলিসি এনাবল করা
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
@@ -75,38 +77,36 @@ ALTER TABLE public.sms_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sms_logs ENABLE ROW LEVEL SECURITY;
 
+-- মাদরাসা পলিসি
+CREATE POLICY "Users can view own madrasah" ON public.madrasahs FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Super Admins can view all madrasahs" ON public.madrasahs FOR SELECT USING (
+  (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
+);
+CREATE POLICY "Users can update own madrasah" ON public.madrasahs FOR UPDATE USING (auth.uid() = id);
+
+-- ট্রানজ্যাকশন পলিসি
+CREATE POLICY "Users can view own transactions" ON public.transactions FOR SELECT USING (auth.uid() = madrasah_id);
+CREATE POLICY "Super Admins can view all transactions" ON public.transactions FOR SELECT USING (
+  (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
+);
+CREATE POLICY "Users can insert transactions" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = madrasah_id);
+CREATE POLICY "Super Admins can update transactions" ON public.transactions FOR UPDATE USING (
+  (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
+);
+
+-- অন্যান্য টেবিল পলিসি
+CREATE POLICY "Madrasah access own rows" ON public.classes FOR ALL USING (auth.uid() = madrasah_id);
+CREATE POLICY "Madrasah access own students" ON public.students FOR ALL USING (auth.uid() = madrasah_id);
+CREATE POLICY "Madrasah access own templates" ON public.sms_templates FOR ALL USING (auth.uid() = madrasah_id);
+CREATE POLICY "Madrasah access own logs" ON public.sms_logs FOR ALL USING (auth.uid() = madrasah_id);
+
 -- ৯. ফাংশন: অ্যাডমিন ব্যালেন্স আপডেট (RPC)
 CREATE OR REPLACE FUNCTION public.admin_update_balance(m_id UUID, amount_change NUMERIC, trx_desc TEXT)
 RETURNS VOID AS $$
 BEGIN
   UPDATE public.madrasahs SET balance = balance + amount_change WHERE id = m_id;
-  INSERT INTO public.transactions (madrasah_id, amount, type, description)
-  VALUES (m_id, ABS(amount_change), CASE WHEN amount_change >= 0 THEN 'credit' ELSE 'debit' END, trx_desc);
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- ১০. ফাংশন: বাল্ক এসএমএস কস্ট ক্যালকুলেশন
-CREATE OR REPLACE FUNCTION public.calculate_bulk_sms_cost(total_numbers INTEGER, per_sms_rate NUMERIC)
-RETURNS NUMERIC AS $$
-BEGIN
-  RETURN total_numbers * per_sms_rate;
-END;
-$$ LANGUAGE plpgsql;
-
--- ১১. ফাংশন: এসএমএস বিলিং প্রসেস
-CREATE OR REPLACE FUNCTION public.process_sms_billing(m_id UUID, total_cost NUMERIC, campaign_reason TEXT)
-RETURNS JSONB AS $$
-DECLARE
-  current_bal NUMERIC;
-BEGIN
-  SELECT balance INTO current_bal FROM public.madrasahs WHERE id = m_id;
-  IF current_bal < total_cost THEN
-    RETURN jsonb_build_object('success', false, 'error', 'Insufficient balance');
-  END IF;
-  UPDATE public.madrasahs SET balance = balance - total_cost WHERE id = m_id;
-  INSERT INTO public.transactions (madrasah_id, amount, type, description)
-  VALUES (m_id, total_cost, 'debit', campaign_reason);
-  RETURN jsonb_build_object('success', true);
+  INSERT INTO public.transactions (madrasah_id, amount, type, description, status)
+  VALUES (m_id, ABS(amount_change), CASE WHEN amount_change >= 0 THEN 'credit' ELSE 'debit' END, trx_desc, 'approved');
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 

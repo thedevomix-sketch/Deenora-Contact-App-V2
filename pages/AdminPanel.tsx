@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Search, Shield, ShieldOff, ChevronRight, User as UserIcon, Users, CheckCircle2, Ban, Copy, Check, Eye, EyeOff, Lock, Wallet, CheckCircle, XCircle, PlusCircle, MinusCircle } from 'lucide-react';
+import { Loader2, Search, Shield, ShieldOff, ChevronRight, User as UserIcon, Users, CheckCircle2, Ban, Copy, Check, Eye, EyeOff, Lock, Wallet, CheckCircle, XCircle, PlusCircle, MinusCircle, RefreshCw, AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Madrasah, Language, Transaction } from '../types';
 import { t } from '../translations';
@@ -13,6 +13,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
   const [madrasahs, setMadrasahs] = useState<Madrasah[]>([]);
   const [pendingTrans, setPendingTrans] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
   
@@ -33,30 +34,36 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
 
   const initData = async () => {
     setLoading(true);
-    await Promise.all([fetchAllMadrasahs(), fetchPendingTransactions()]);
-    setLoading(false);
+    setError(null);
+    try {
+      await Promise.all([fetchAllMadrasahs(), fetchPendingTransactions()]);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const fetchAllMadrasahs = async () => {
-    try {
-      const { data } = await supabase
-        .from('madrasahs')
-        .select('*')
-        .neq('is_super_admin', true) 
-        .order('created_at', { ascending: false });
-      setMadrasahs(data || []);
-    } catch (err) { console.error(err); }
+    const { data, error: fetchError } = await supabase
+      .from('madrasahs')
+      .select('*')
+      .neq('is_super_admin', true) 
+      .order('created_at', { ascending: false });
+    
+    if (fetchError) throw fetchError;
+    setMadrasahs(data || []);
   };
 
   const fetchPendingTransactions = async () => {
-    try {
-      const { data } = await supabase
-        .from('transactions')
-        .select('*, madrasahs(name)')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-      setPendingTrans(data || []);
-    } catch (err) { console.error(err); }
+    const { data, error: fetchError } = await supabase
+      .from('transactions')
+      .select('*, madrasahs(name)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
+    
+    if (fetchError) throw fetchError;
+    setPendingTrans(data || []);
   };
 
   const fetchMadrasahStats = async (madrasahId: string) => {
@@ -160,6 +167,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
     </div>
   );
 
+  if (error) return (
+    <div className="py-20 px-6 text-center space-y-4">
+      <div className="bg-red-500/20 p-6 rounded-[2.5rem] border border-red-500/30 text-white">
+        <AlertTriangle size={48} className="mx-auto mb-4 text-red-400" />
+        <h2 className="text-lg font-black font-noto mb-2">ডাটা লোড করতে সমস্যা হচ্ছে</h2>
+        <p className="text-xs opacity-70 font-bold mb-4">{error}</p>
+        <button onClick={initData} className="bg-white text-red-500 px-6 py-3 rounded-full font-black text-sm flex items-center justify-center gap-2 mx-auto">
+          <RefreshCw size={18} /> পুনরায় চেষ্টা করুন
+        </button>
+      </div>
+    </div>
+  );
+
   if (view === 'list') {
     return (
       <div className="space-y-6 animate-in fade-in duration-500 pb-20">
@@ -212,8 +232,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
               <ChevronRight className="text-white/20 shrink-0" size={20} />
             </div>
           )) : (
-            <div className="text-center py-20 opacity-40">
+            <div className="text-center py-20 opacity-40 bg-white/5 rounded-[2.5rem] border border-dashed border-white/10">
+               <UserIcon size={48} className="mx-auto mb-4 text-white/20" />
                <p className="text-white text-sm font-bold font-noto">কোনো মাদরাসা পাওয়া যায়নি</p>
+               <p className="text-[10px] text-white/40 mt-2 uppercase">Check RLS Policies if database has rows</p>
             </div>
           )}
         </div>
