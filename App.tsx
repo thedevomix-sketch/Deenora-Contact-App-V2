@@ -12,7 +12,7 @@ import Account from './pages/Account';
 import AdminPanel from './pages/AdminPanel';
 import WalletSMS from './pages/WalletSMS';
 import { View, Class, Student, Language, Madrasah } from './types';
-import { WifiOff, Loader2, CloudSync } from 'lucide-react';
+import { WifiOff, Loader2, CloudSync, AlertCircle, RefreshCw } from 'lucide-react';
 import { t } from './translations';
 
 const App: React.FC = () => {
@@ -26,6 +26,7 @@ const App: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [dataVersion, setDataVersion] = useState(0); 
+  const [error, setError] = useState<string | null>(null);
   const [lang, setLang] = useState<Language>(() => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
@@ -61,6 +62,7 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
+        offlineApi.removeCache('profile');
         fetchMadrasahProfile(session.user.id);
       } else {
         setMadrasah(null);
@@ -76,38 +78,48 @@ const App: React.FC = () => {
   }, []);
 
   const fetchMadrasahProfile = async (userId: string) => {
+    setLoading(true);
+    setError(null);
     try {
       if (navigator.onLine) {
-        const { data, error } = await supabase
+        const { data, error: fetchError } = await supabase
           .from('madrasahs')
           .select('*')
           .eq('id', userId)
-          .single();
+          .maybeSingle(); // Use maybeSingle to avoid 406 errors on missing rows
         
         if (data) {
           setMadrasah(data);
           offlineApi.setCache('profile', data);
-          // Force view to home if super admin to ensure AdminPanel is visible
           if (data.is_super_admin) setView('home');
         } else {
-          // If profile missing in DB, fallback to cache or empty
-          const cached = offlineApi.getCache('profile');
-          if (cached && cached.id === userId) setMadrasah(cached);
-          console.warn("Profile not found in DB for user:", userId);
+          // Attempt to create a basic profile if missing
+          console.warn("Profile missing. Attempting to create default...");
+          const { data: newData, error: insertError } = await supabase
+            .from('madrasahs')
+            .insert({ id: userId, name: 'New Madrasah', is_active: true, balance: 0 })
+            .select()
+            .single();
+          
+          if (insertError) throw insertError;
+          if (newData) {
+            setMadrasah(newData);
+            offlineApi.setCache('profile', newData);
+          }
         }
       } else {
         const cached = offlineApi.getCache('profile');
-        if (cached) setMadrasah(cached);
+        if (cached && cached.id === userId) setMadrasah(cached);
       }
-    } catch (e) {
-      console.error("Profile load error:", e);
+    } catch (e: any) {
+      console.error("Profile fetch error:", e);
+      setError(e.message);
     } finally {
       setLoading(false);
     }
   };
 
   const navigateTo = (newView: View) => {
-    // If switching to account, always re-fetch profile to check admin status
     if (newView === 'account' && session) fetchMadrasahProfile(session.user.id);
     triggerRefresh();
     setView(newView);
@@ -117,12 +129,25 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#d35132] text-white">
         <Loader2 className="animate-spin mb-4" size={40} />
-        <p className="font-bold text-[10px] uppercase tracking-widest opacity-60">System Initializing...</p>
+        <p className="font-bold text-[10px] uppercase tracking-widest opacity-60">Initializing Profile...</p>
       </div>
     );
   }
 
   if (!session) return <Auth lang={lang} />;
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#d35132] p-8 text-center">
+        <AlertCircle size={60} className="text-white/40 mb-6" />
+        <h2 className="text-white text-xl font-black font-noto mb-2">প্রোফাইল লোড করা যায়নি</h2>
+        <p className="text-white/60 text-sm mb-6">{error}</p>
+        <button onClick={() => session && fetchMadrasahProfile(session.user.id)} className="bg-white text-[#d35132] px-8 py-4 rounded-full font-black flex items-center gap-2">
+          <RefreshCw size={18} /> পুনরায় চেষ্টা করুন
+        </button>
+      </div>
+    );
+  }
 
   const isSuperAdmin = madrasah?.is_super_admin === true;
 

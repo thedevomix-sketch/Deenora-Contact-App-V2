@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Search, Shield, ShieldOff, ChevronRight, User as UserIcon, Users, CheckCircle2, Ban, Copy, Check, Eye, EyeOff, Lock, Wallet, CheckCircle, XCircle, PlusCircle, MinusCircle, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Loader2, Search, Shield, ShieldOff, ChevronRight, User as UserIcon, Users, Wallet, CheckCircle, XCircle, PlusCircle, MinusCircle, RefreshCw, AlertTriangle, Bug, Check } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Madrasah, Language, Transaction } from '../types';
 import { t } from '../translations';
@@ -16,6 +16,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [debugInfo, setDebugInfo] = useState<any>(null);
   
   const [view, setView] = useState<'list' | 'details' | 'approvals'>('list');
   const [selectedMadrasah, setSelectedMadrasah] = useState<Madrasah | null>(null);
@@ -36,8 +37,21 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
     setLoading(true);
     setError(null);
     try {
+      // Get current user debug info
+      const { data: { user } } = await supabase.auth.getUser();
+      const { data: profile } = await supabase.from('madrasahs').select('*').eq('id', user?.id).single();
+      
+      setDebugInfo({ userId: user?.id, isSuperAdmin: profile?.is_super_admin });
+
+      if (!profile?.is_super_admin) {
+         setError("You do not have Super Admin permissions in the database.");
+         setLoading(false);
+         return;
+      }
+
       await Promise.all([fetchAllMadrasahs(), fetchPendingTransactions()]);
     } catch (err: any) {
+      console.error(err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -45,6 +59,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
   };
 
   const fetchAllMadrasahs = async () => {
+    // Note: If this returns 0 rows but you have data, check RLS policies
     const { data, error: fetchError } = await supabase
       .from('madrasahs')
       .select('*')
@@ -168,13 +183,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
   );
 
   if (error) return (
-    <div className="py-20 px-6 text-center space-y-4">
+    <div className="py-10 px-6 text-center space-y-4">
       <div className="bg-red-500/20 p-6 rounded-[2.5rem] border border-red-500/30 text-white">
         <AlertTriangle size={48} className="mx-auto mb-4 text-red-400" />
-        <h2 className="text-lg font-black font-noto mb-2">ডাটা লোড করতে সমস্যা হচ্ছে</h2>
+        <h2 className="text-lg font-black font-noto mb-2">Access Error</h2>
         <p className="text-xs opacity-70 font-bold mb-4">{error}</p>
+        <div className="bg-black/20 p-4 rounded-xl text-left text-[10px] font-mono text-white/60 mb-4">
+           <p>Current UUID: {debugInfo?.userId}</p>
+           <p>Database is_super_admin: {debugInfo?.isSuperAdmin ? 'TRUE' : 'FALSE'}</p>
+        </div>
         <button onClick={initData} className="bg-white text-red-500 px-6 py-3 rounded-full font-black text-sm flex items-center justify-center gap-2 mx-auto">
-          <RefreshCw size={18} /> পুনরায় চেষ্টা করুন
+          <RefreshCw size={18} /> Retry
         </button>
       </div>
     </div>
@@ -232,16 +251,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
               <ChevronRight className="text-white/20 shrink-0" size={20} />
             </div>
           )) : (
-            <div className="text-center py-20 bg-white/5 rounded-[2.5rem] border border-dashed border-white/10">
-               <AlertTriangle size={48} className="mx-auto mb-4 text-white/20" />
-               <p className="text-white text-sm font-bold font-noto">কোনো মাদরাসা পাওয়া যায়নি</p>
-               <div className="mt-4 p-4 bg-black/20 rounded-2xl text-[10px] text-left text-white/60 space-y-1">
-                  <p className="font-black text-white/80 uppercase">Troubleshooting:</p>
-                  <p>১. সুপাবেস SQL এডিটর চেক করুন।</p>
-                  <p>২. RLS পলিসি সঠিকভাবে সেট করা আছে কি না নিশ্চিত করুন।</p>
-                  <p>৩. ডাটাবেসে 'madrasahs' টেবিলে কোনো রো (Row) আছে কি না দেখুন।</p>
+            <div className="text-center py-12 px-6 bg-white/5 rounded-[2.5rem] border border-dashed border-white/10">
+               <div className="mb-4 flex justify-center"><AlertTriangle size={48} className="text-white/20" /></div>
+               <p className="text-white text-sm font-black font-noto">কোনো মাদরাসা পাওয়া যায়নি</p>
+               
+               {/* Debug Info Helper */}
+               <div className="mt-6 p-4 bg-black/30 rounded-2xl text-left border border-white/5">
+                 <div className="flex items-center gap-2 mb-2 text-yellow-400">
+                    <Bug size={14} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">Debug Info</span>
+                 </div>
+                 <div className="space-y-1 text-[10px] text-white/50 font-mono">
+                    <p>Current UUID: {debugInfo?.userId || 'Unknown'}</p>
+                    <p>Is Super Admin: {debugInfo?.isSuperAdmin ? 'YES' : 'NO'}</p>
+                    <p>Madrasahs Count: {madrasahs.length}</p>
+                    <p className="mt-2 text-white/30 italic">Tip: If Count is 0 but Admin is YES, no other users exist or RLS is blocking access.</p>
+                 </div>
                </div>
-               <button onClick={initData} className="mt-6 flex items-center gap-2 px-6 py-3 bg-white/10 text-white rounded-full mx-auto font-black text-xs border border-white/20 active:scale-95">
+               
+               <button onClick={initData} className="mt-6 flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-full mx-auto font-black text-xs active:scale-95 transition-all">
                   <RefreshCw size={14} /> Refresh List
                </button>
             </div>
@@ -343,26 +371,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang }) => {
                  <p className="text-[11px] font-mono text-white/90 truncate font-black tracking-tight">{selectedMadrasah?.id}</p>
               </div>
               <button onClick={() => copyToClipboard(selectedMadrasah?.id || '', 'uuid')} className="p-2.5 bg-white/10 text-white rounded-xl active:scale-90 transition-all shrink-0">
-                 {copying === 'uuid' ? <Check size={14} /> : <Copy size={14} />}
+                 {copying === 'uuid' ? <Check size={14} /> : <Bug size={14} />}
               </button>
-           </div>
-           
-           <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                 <Lock size={16} className="text-white/30" />
-                 <div>
-                    <p className="text-[9px] font-black text-white/30 uppercase mb-0.5">Login Code</p>
-                    <p className="text-base font-black text-white tracking-[0.2em]">{showPass ? selectedMadrasah?.login_code : '••••••'}</p>
-                 </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button onClick={() => selectedMadrasah?.login_code && copyToClipboard(selectedMadrasah.login_code, 'code')} className="p-2.5 bg-white/10 text-white rounded-xl active:scale-90 transition-all">
-                   {copying === 'code' ? <Check size={16} /> : <Copy size={16} />}
-                </button>
-                <button onClick={() => setShowPass(!showPass)} className="p-2.5 bg-white/10 text-white rounded-xl active:scale-90 transition-all">
-                   {showPass ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
            </div>
         </div>
 
