@@ -1,0 +1,7 @@
+{
+  "name": "Madrasah Contact App 2.0 (মাদরাসা কন্টাক্ট অ্যাপ)",
+  "description": "A professional contact management system for Madrasahs in Bangladesh, allowing admins to manage student records and quickly call guardians. Optimized for mobile and native Android WebView integration.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
