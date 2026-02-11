@@ -36,10 +36,35 @@ CREATE TABLE IF NOT EXISTS public.students (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ৫. আরএলএস পলিসি এনাবল করা
+-- ৫. ট্রানজ্যাকশন টেবিল (Fixed: Added status column)
+CREATE TABLE IF NOT EXISTS public.transactions (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
+    amount NUMERIC(10, 2) NOT NULL,
+    type TEXT CHECK (type IN ('credit', 'debit')),
+    status TEXT DEFAULT 'approved' CHECK (status IN ('pending', 'approved', 'rejected')),
+    transaction_id TEXT,
+    description TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ৬. এসএমএস লগ টেবিল
+CREATE TABLE IF NOT EXISTS public.sms_logs (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
+    recipient_phone TEXT NOT NULL,
+    message TEXT NOT NULL,
+    cost NUMERIC(10, 2) DEFAULT 0.00,
+    status TEXT DEFAULT 'sent',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ৭. আরএলএস পলিসি এনাবল করা
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.sms_logs ENABLE ROW LEVEL SECURITY;
 
 -- লুপ এড়াতে সিকিউরিটি ফাংশন
 CREATE OR REPLACE FUNCTION public.is_super_admin_secure()
@@ -52,11 +77,17 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- মাদরাসা আরএলএস (Fixed Recursion)
+-- মাদরাসা আরএলএস
 CREATE POLICY "View own profile" ON public.madrasahs FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Super admin view all" ON public.madrasahs FOR SELECT USING (public.is_super_admin_secure());
 CREATE POLICY "Update own profile" ON public.madrasahs FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "Insert own profile" ON public.madrasahs FOR INSERT WITH CHECK (auth.uid() = id);
+
+-- ট্রানজ্যাকশন আরএলএস
+CREATE POLICY "View own transactions" ON public.transactions FOR SELECT USING (auth.uid() = madrasah_id);
+CREATE POLICY "Super admin view all transactions" ON public.transactions FOR SELECT USING (public.is_super_admin_secure());
+CREATE POLICY "Insert transactions" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = madrasah_id);
+CREATE POLICY "Super admin update transactions" ON public.transactions FOR UPDATE USING (public.is_super_admin_secure());
 
 -- অন্যান্য পলিসি
 CREATE POLICY "Madrasah access own rows" ON public.classes FOR ALL USING (auth.uid() = madrasah_id OR public.is_super_admin_secure());

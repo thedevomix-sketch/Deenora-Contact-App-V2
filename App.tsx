@@ -53,7 +53,7 @@ const App: React.FC = () => {
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       if (currentSession) {
-        fetchMadrasahProfile(currentSession.user.id);
+        fetchMadrasahProfile(currentSession.user.id, true);
       } else {
         setLoading(false);
       }
@@ -63,7 +63,7 @@ const App: React.FC = () => {
       setSession(session);
       if (session) {
         offlineApi.removeCache('profile');
-        fetchMadrasahProfile(session.user.id);
+        fetchMadrasahProfile(session.user.id, true);
       } else {
         setMadrasah(null);
         setLoading(false);
@@ -78,12 +78,11 @@ const App: React.FC = () => {
     };
   }, []);
 
-  const fetchMadrasahProfile = async (userId: string) => {
-    setLoading(true);
+  const fetchMadrasahProfile = async (userId: string, isInitial = false) => {
+    if (isInitial) setLoading(true);
     setError(null);
     try {
       if (navigator.onLine) {
-        // Try to fetch profile
         const { data, error: fetchError } = await supabase
           .from('madrasahs')
           .select('*')
@@ -100,9 +99,9 @@ const App: React.FC = () => {
         if (data) {
           setMadrasah(data);
           offlineApi.setCache('profile', data);
-          setView('home');
+          // Only redirect if it's initial load or we are not already on account/admin views
+          if (isInitial) setView('home');
         } else {
-          // Profile missing, create it
           const { data: newData, error: insertError } = await supabase
             .from('madrasahs')
             .insert({ id: userId, name: 'New Madrasah', is_active: true, balance: 0 })
@@ -112,13 +111,13 @@ const App: React.FC = () => {
           if (insertError) throw insertError;
           setMadrasah(newData);
           offlineApi.setCache('profile', newData);
-          setView('home');
+          if (isInitial) setView('home');
         }
       } else {
         const cached = offlineApi.getCache('profile');
         if (cached && cached.id === userId) {
           setMadrasah(cached);
-          setView('home');
+          if (isInitial) setView('home');
         } else {
           setError(lang === 'bn' ? 'অফলাইনে প্রোফাইল পাওয়া যায়নি' : 'Profile not found offline');
         }
@@ -127,12 +126,13 @@ const App: React.FC = () => {
       console.error("Profile fetch error:", e);
       setError(e.message || "Failed to load profile.");
     } finally {
-      setLoading(false);
+      if (isInitial) setLoading(false);
     }
   };
 
   const navigateTo = (newView: View) => {
-    if (newView === 'account' && session) fetchMadrasahProfile(session.user.id);
+    // When navigating to account, just fetch profile data silently
+    if (newView === 'account' && session) fetchMadrasahProfile(session.user.id, false);
     triggerRefresh();
     setView(newView);
   };
@@ -154,7 +154,7 @@ const App: React.FC = () => {
         <AlertCircle size={60} className="text-white/40 mb-6" />
         <h2 className="text-white text-xl font-black font-noto mb-2">{lang === 'bn' ? 'প্রোফাইল সমস্যা' : 'Profile Error'}</h2>
         <p className="text-white/60 text-sm mb-8 leading-relaxed max-w-sm mx-auto">{error}</p>
-        <button onClick={() => session && fetchMadrasahProfile(session.user.id)} className="bg-white text-[#d35132] px-8 py-4 rounded-full font-black flex items-center gap-2 active:scale-95 transition-all shadow-xl">
+        <button onClick={() => session && fetchMadrasahProfile(session.user.id, true)} className="bg-white text-[#d35132] px-8 py-4 rounded-full font-black flex items-center gap-2 active:scale-95 transition-all shadow-xl">
           <RefreshCw size={18} /> {lang === 'bn' ? 'পুনরায় চেষ্টা করুন' : 'Retry Now'}
         </button>
       </div>
@@ -240,7 +240,7 @@ const App: React.FC = () => {
           <Account 
             lang={lang} 
             setLang={(l) => { setLang(l); localStorage.setItem('app_lang', l); }} 
-            onProfileUpdate={() => session && fetchMadrasahProfile(session.user.id)}
+            onProfileUpdate={() => session && fetchMadrasahProfile(session.user.id, false)}
             setView={setView}
             isSuperAdmin={isSuperAdmin}
           />
