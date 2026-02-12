@@ -54,14 +54,14 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
     if (!file) return;
 
     if (!navigator.onLine) {
-      alert(lang === 'bn' ? 'ছবি আপলোড করতে ইন্টারনেটে যুক্ত থাকুন' : 'Stay online to upload photo');
+      setErrorModal({ show: true, message: lang === 'bn' ? 'ছবি আপলোড করতে ইন্টারনেটে যুক্ত থাকুন' : 'Stay online to upload photo' });
       return;
     }
 
     setUploading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) throw new Error("Session expired. Please login again.");
 
       const fileExt = file.name.split('.').pop();
       const fileName = `std_${user.id}_${Date.now()}.${fileExt}`;
@@ -71,7 +71,12 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
         .from('madrasah-assets')
         .upload(filePath, file);
 
-      if (uploadError) throw uploadError;
+      if (uploadError) {
+        if (uploadError.message.includes('bucket not found')) {
+          throw new Error("Storage Bucket not initialized. Please run the SQL fix.");
+        }
+        throw uploadError;
+      }
 
       const { data: { publicUrl } } = supabase.storage
         .from('madrasah-assets')
@@ -79,8 +84,8 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
 
       setPhotoUrl(publicUrl);
     } catch (err: any) {
-      console.error(err);
-      alert(lang === 'bn' ? 'ছবি আপলোড ব্যর্থ হয়েছে' : 'Upload failed: ' + err.message);
+      console.error("Upload failed:", err);
+      setErrorModal({ show: true, message: lang === 'bn' ? `ছবি আপলোড ব্যর্থ হয়েছে: ${err.message}` : `Upload failed: ${err.message}` });
     } finally {
       setUploading(false);
     }
@@ -148,7 +153,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
         roll: roll ? parseInt(roll) : null,
         guardian_phone: phone.trim(),
         guardian_phone_2: phone2.trim() || null,
-        photo_url: photoUrl,
+        photo_url: photoUrl || null,
         class_id: classId,
         madrasah_id: user.id
       };
@@ -169,7 +174,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
         }
       }
 
-      // Clear relevant caches to force a fresh fetch
+      // Clear caches
       offlineApi.removeCache(`students_list_${classId}`);
       offlineApi.removeCache(`all_students_search`);
       offlineApi.removeCache(`recent_calls`);
@@ -205,7 +210,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
               {uploading ? (
                 <Loader2 className="animate-spin text-white" size={24} />
               ) : photoUrl ? (
-                <img src={photoUrl} className="w-full h-full object-cover" />
+                <img src={photoUrl} className="w-full h-full object-cover" alt="Preview" />
               ) : (
                 <>
                   <Camera size={24} />
