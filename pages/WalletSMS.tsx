@@ -187,7 +187,10 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
       alert(lang === 'bn' ? 'এসএমএস সফলভাবে পাঠানো হয়েছে!' : 'SMS sent successfully!');
       setQuickMessage('');
       triggerRefresh();
-    } catch (err: any) { alert(err.message); } finally { setSendingBulk(false); }
+    } catch (err: any) { 
+      const msg = err.message || "Unknown Error";
+      alert(lang === 'bn' ? `ব্যর্থ হয়েছে: ${msg}` : `Failed: ${msg}`);
+    } finally { setSendingBulk(false); }
   };
 
   const handleSelectTemplate = (id: string) => {
@@ -225,7 +228,8 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
       fetchRecentTransactions();
       triggerRefresh();
     } catch (err: any) {
-      alert(lang === 'bn' ? `ব্যর্থ হয়েছে: ${err.message}` : `Failed: ${err.message}`);
+      const errorMsg = err.message || "Unknown Database Error";
+      alert(lang === 'bn' ? `ব্যর্থ হয়েছে: ${errorMsg}\n\n(টিপস: অনুগ্রহ করে SQL Repair Script টি রান করুন)` : `Failed: ${errorMsg}\n\nPlease run the SQL Repair Script.`);
     } finally { setRecharging(false); }
   };
 
