@@ -122,12 +122,15 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name || !phone || !classId) return;
+    if (!name.trim() || !phone.trim() || !classId) {
+      setErrorModal({ show: true, message: lang === 'bn' ? 'দয়া করে নাম, ফোন এবং ক্লাস নিশ্চিত করুন' : 'Please fill required fields' });
+      return;
+    }
 
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) throw new Error("Auth session expired");
 
       if (roll) {
         const rollNum = parseInt(roll);
@@ -152,9 +155,11 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
 
       if (navigator.onLine) {
         if (isEditing && student) {
-          await supabase.from('students').update(payload).eq('id', student.id);
+          const { error } = await supabase.from('students').update(payload).eq('id', student.id);
+          if (error) throw error;
         } else {
-          await supabase.from('students').insert(payload);
+          const { error } = await supabase.from('students').insert(payload);
+          if (error) throw error;
         }
       } else {
         if (isEditing && student) {
@@ -164,14 +169,15 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
         }
       }
 
+      // Clear relevant caches to force a fresh fetch
       offlineApi.removeCache(`students_list_${classId}`);
       offlineApi.removeCache(`all_students_search`);
       offlineApi.removeCache(`recent_calls`);
       
       onSuccess();
-    } catch (err) { 
-      console.error(err); 
-      setErrorModal({ show: true, message: lang === 'bn' ? 'তথ্য সংরক্ষণ করা সম্ভব হয়নি' : 'Could not save data' });
+    } catch (err: any) { 
+      console.error("Save Error:", err); 
+      setErrorModal({ show: true, message: lang === 'bn' ? `সেভ করতে সমস্যা হয়েছে: ${err.message}` : `Save failed: ${err.message}` });
     } finally { 
       setLoading(false); 
     }
@@ -326,7 +332,6 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
         </button>
       </form>
 
-      {/* Class Modal and Error Modal remain same... */}
       {showClassModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[150] flex items-end sm:items-center justify-center p-0 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-[#d35132] w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl p-6 border-t sm:border border-white/20 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-10">

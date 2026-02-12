@@ -55,7 +55,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
           offlineApi.setCache(cacheKey, data);
         }
       } catch (err) {
-        console.error(err);
+        console.error("Fetch Students Error:", err);
       } finally {
         setLoading(false);
       }
@@ -159,8 +159,8 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
         </div>
       )}
 
-      {/* Floating Add Student '+' button - Adjusted for Mobile Bottom Nav */}
-      <div className="fixed bottom-24 right-6 z-50 pointer-events-none">
+      {/* Floating Add Student '+' button - Positioned specifically for mobile visibility */}
+      <div className="fixed bottom-28 right-6 z-50 pointer-events-none">
         <button 
           onClick={onAddClick}
           className="pointer-events-auto bg-white text-[#d35132] p-5 rounded-full shadow-2xl active:scale-90 transition-all border-4 border-white/20 flex items-center justify-center hover:bg-white/90"
