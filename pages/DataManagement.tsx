@@ -67,7 +67,6 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
         throw new Error(lang === 'bn' ? 'কোনো ছাত্রের ডাটা পাওয়া যায়নি' : 'No student data found');
       }
 
-      // Format data in exact order requested: Class, Roll, Student Name, Guardian Name, Guardian Phone, Guardian Phone 2
       const excelData = students.map(s => ({
         'Class': (s as any).classes?.class_name || '',
         'Roll': s.roll || '',
@@ -120,15 +119,25 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
 
             const classesMap = new Map();
             const processedStudents: any[] = [];
+            const rollCheck = new Set(); // To track duplicates within the file
 
             rows.forEach((row, idx) => {
-              // Flexible header matching following the requested format
               const className = row['Class'] || row['class'] || row['শ্রেণি'] || 'General';
-              const roll = parseInt(row['Roll'] || row['roll'] || row['রোল'] || '0');
+              let roll = parseInt(row['Roll'] || row['roll'] || row['রোল'] || '0');
+              if (isNaN(roll)) roll = 0;
+              
               const studentName = row['Student Name'] || row['Name'] || row['ছাত্রের নাম'] || row['name'] || 'New Student';
               const guardianName = row['Guardian Name'] || row['Father'] || row['অভিভাবক'] || '';
               const phone = String(row['Guardian Phone'] || row['Phone'] || row['মোবাইল'] || row['phone'] || '');
               const phone2 = String(row['Guardian Phone 2'] || row['Phone 2'] || '');
+
+              // Uniqueness Key: Class + Roll (only if roll > 0)
+              const rollKey = `${className}_${roll}`;
+              if (roll > 0 && rollCheck.has(rollKey)) {
+                console.warn(`Skipping duplicate roll ${roll} in class ${className} at row ${idx + 2}`);
+                return; // Skip this student to avoid duplicates
+              }
+              if (roll > 0) rollCheck.add(rollKey);
 
               if (!classesMap.has(className)) {
                 classesMap.set(className, { id: `temp_cls_${className}`, class_name: className });
@@ -138,7 +147,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
                 id: `temp_std_${idx}`,
                 student_name: studentName,
                 guardian_name: guardianName,
-                roll: roll,
+                roll: roll || null,
                 guardian_phone: phone,
                 guardian_phone_2: phone2,
                 class_id: classesMap.get(className).id
@@ -175,6 +184,8 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
 
     try {
       const classIdMap: Record<string, string> = {};
+      
+      // Step 1: Handle Classes
       for (const cls of importPreview.classes) {
         const { data: existing } = await supabase
           .from('classes')
@@ -195,6 +206,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
         }
       }
 
+      // Step 2: Handle Students
       const studentsToInsert = importPreview.students.map(s => ({
         student_name: s.student_name,
         guardian_name: s.guardian_name,
@@ -206,17 +218,23 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
       })).filter(s => s.class_id && s.guardian_phone); 
 
       if (studentsToInsert.length > 0) {
-        const chunkSize = 100;
-        for (let i = 0; i < studentsToInsert.length; i += chunkSize) {
-          const chunk = studentsToInsert.slice(i, i + chunkSize);
-          const { error: studentError } = await supabase.from('students').insert(chunk);
-          if (studentError) throw studentError;
+        // Insert in smaller chunks to handle errors better
+        for (const student of studentsToInsert) {
+           const { error: studentError } = await supabase.from('students').insert(student);
+           if (studentError) {
+             // If duplicate roll error, we just skip this one student and continue
+             if (studentError.code === '23505') {
+               console.warn(`Duplicate roll skipped for ${student.student_name} in DB`);
+               continue;
+             }
+             throw studentError;
+           }
         }
       }
 
       setStatus({ 
         type: 'success', 
-        message: lang === 'bn' ? `সফল হয়েছে! ${studentsToInsert.length} জন ছাত্র যোগ করা হয়েছে` : `Success! ${studentsToInsert.length} students imported` 
+        message: lang === 'bn' ? `সফল হয়েছে! ডাটা আপলোড সম্পন্ন হয়েছে।` : `Success! Data imported successfully.` 
       });
       setImportPreview(null);
       triggerRefresh();
@@ -347,7 +365,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
           ))}
         </div>
         <p className="text-[10px] text-white/30 font-medium leading-relaxed italic">
-          * ইমপোর্ট করার সময় এই হেডার নামগুলো ব্যবহার করলে ডাটা সঠিকভাবে আপলোড হবে।
+          * সিস্টেমে একই ক্লাসে একই রোল দুইবার থাকা সম্পূর্ণ নিষিদ্ধ। ইমপোর্ট করার সময় যদি ডুপ্লিকেট রোল থাকে তবে সিস্টেম শুধুমাত্র প্রথমজনকে গ্রহণ করবে।
         </p>
       </div>
     </div>

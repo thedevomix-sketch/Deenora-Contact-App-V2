@@ -1,6 +1,6 @@
 
 -- ======================================================
--- DATABASE REPAIR & INITIALIZATION SCRIPT (V2)
+-- DATABASE REPAIR & INITIALIZATION SCRIPT (V3)
 -- ======================================================
 
 -- ১. স্টুডেন্ট টেবিলে 'photo_url' কলাম যোগ করা (যদি না থাকে)
@@ -11,24 +11,25 @@ BEGIN
     END IF;
 END $$;
 
--- ২. স্টোরেজ বাকেট (Bucket) তৈরি করা
--- এটি ছবি আপলোড করার জন্য প্রয়োজনীয়
+-- ২. একই ক্লাসে রোল নম্বর ইউনিক করার জন্য কনস্ট্রেইন যোগ করা
+-- এটি নিশ্চিত করবে যে এক ক্লাসে একই রোল দুইজনের হবে না
+-- দ্রষ্টব্য: যদি আগে থেকেই ডুপ্লিকেট ডাটা থাকে তবে এই কমান্ডটি এরর দিবে। 
+-- সেক্ষেত্রে আগে ডুপ্লিকেট ডাটা ডিলিট বা এডিট করতে হবে।
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unique_roll_per_class') THEN
+        ALTER TABLE public.students ADD CONSTRAINT unique_roll_per_class UNIQUE (class_id, roll);
+    END IF;
+EXCEPTION
+    WHEN duplicate_table THEN NULL;
+    WHEN others THEN 
+        RAISE NOTICE 'Could not add unique constraint. Please check for existing duplicate rolls in your classes.';
+END $$;
+
+-- ৩. স্টোরেজ বাকেট এবং পলিসি
 INSERT INTO storage.buckets (id, name, public)
 VALUES ('madrasah-assets', 'madrasah-assets', true)
 ON CONFLICT (id) DO NOTHING;
-
--- ৩. স্টোরেজ পলিসি (যাতে সবাই ছবি দেখতে পারে এবং এডমিন আপলোড করতে পারে)
-DROP POLICY IF EXISTS "Public Access" ON storage.objects;
-CREATE POLICY "Public Access" ON storage.objects 
-FOR SELECT USING (bucket_id = 'madrasah-assets');
-
-DROP POLICY IF EXISTS "Authenticated Users Can Upload" ON storage.objects;
-CREATE POLICY "Authenticated Users Can Upload" ON storage.objects 
-FOR INSERT WITH CHECK (bucket_id = 'madrasah-assets' AND auth.role() = 'authenticated');
-
-DROP POLICY IF EXISTS "Authenticated Users Can Update" ON storage.objects;
-CREATE POLICY "Authenticated Users Can Update" ON storage.objects 
-FOR UPDATE USING (bucket_id = 'madrasah-assets' AND auth.role() = 'authenticated');
 
 -- ৪. ট্রানজ্যাকশন টেবিল ঠিক করা
 CREATE TABLE IF NOT EXISTS public.transactions (
@@ -44,17 +45,5 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ৫. হারানো কলামগুলো চেক করে যোগ করা
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='sender_phone') THEN
-        ALTER TABLE public.transactions ADD COLUMN sender_phone TEXT;
-    END IF;
-
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='transactions' AND column_name='transaction_id') THEN
-        ALTER TABLE public.transactions ADD COLUMN transaction_id TEXT;
-    END IF;
-END $$;
-
--- ৬. সুপাবেস ক্যাশ রিফ্রেশ
+-- ৫. সুপাবেস ক্যাশ রিফ্রেশ
 NOTIFY pgrst, 'reload schema';
