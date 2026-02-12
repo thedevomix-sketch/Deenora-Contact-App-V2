@@ -15,21 +15,43 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 /**
+ * SMS GATEWAY CONFIGURATION
+ * আপনার গেটওয়ে সার্ভিস থেকে পাওয়া তথ্যগুলো এখানে বসান
+ */
+const SMS_CONFIG = {
+  API_URL: 'https://bulksmsbd.net/api/smsapi', // উদাহরণ হিসেবে BulkSMSBD এর URL
+  API_KEY: 'YOUR_API_KEY_HERE',               // আপনার গেটওয়ে থেকে পাওয়া API Key
+  SENDER_ID: '88018XXXXXXXX',                 // আপনার অনুমোদিত Sender ID বা Masking
+};
+
+/**
  * SMS API UTILITY
  * Handles the backend-like logic for sending SMS
  */
 export const smsApi = {
   sendBulk: async (madrasahId: string, students: Student[], message: string) => {
-    const phoneNumbers = students.map(s => s.guardian_phone);
+    const phoneNumbers = students.map(s => s.guardian_phone).join(',');
     
     try {
-      // 1. Simulate calling an actual SMS Gateway API
-      // In a real environment, you would use a secret API key from process.env
-      // fetch('https://api.sms-provider.com/send', { method: 'POST', body: JSON.stringify({ to: phoneNumbers, msg: message }) });
-      console.log(`[SMS GATEWAY SIMULATION] Sending message to ${phoneNumbers.length} recipients...`);
+      // ১. আসল SMS Gateway-তে মেসেজ পাঠানো (Real API Integration)
+      // বাংলাদেশের বেশিরভাগ গেটওয়ে সাধারণত GET বা POST মেথড সাপোর্ট করে
       
-      // 2. Call the consolidated PostgreSQL RPC
-      // This handles: Credit check, Credit deduction, Transaction logging, and SMS logging
+      /* 
+      // উদাহরণস্বরূপ BulkSMSBD বা সিমিলার গেটওয়ের জন্য কোড:
+      const gatewayResponse = await fetch(`${SMS_CONFIG.API_URL}?api_key=${SMS_CONFIG.API_KEY}&type=text&number=${phoneNumbers}&senderid=${SMS_CONFIG.SENDER_ID}&message=${encodeURIComponent(message)}`);
+      const result = await gatewayResponse.json();
+      
+      if (result.response_code !== 202) { // ২০২ সাধারণত সফলতার কোড
+        throw new Error(result.error_message || "Gateway Error");
+      }
+      */
+
+      // সিমুলেশন লগ (যতক্ষণ আসল এপিআই কানেক্ট করছেন না)
+      console.log(`[SMS GATEWAY] Calling API with Key: ${SMS_CONFIG.API_KEY.substring(0, 5)}...`);
+      console.log(`[SMS GATEWAY] Recipients: ${phoneNumbers}`);
+      
+      // ২. সুপাবেস ডাটাবেজের ক্রেডিট আপডেট করা
+      // এটি ব্যালেন্স চেক করবে এবং ক্রেডিট কমিয়ে দেবে
       const { data, error } = await supabase.rpc('send_bulk_sms_rpc', {
         p_madrasah_id: madrasahId,
         p_student_ids: students.map(s => s.id),
@@ -39,7 +61,7 @@ export const smsApi = {
       if (error) throw error;
       if (data && !data.success) throw new Error(data.error);
 
-      return { success: true, count: phoneNumbers.length };
+      return { success: true, count: students.length };
     } catch (err: any) {
       console.error("SMS Sending Error:", err);
       throw err;
@@ -50,7 +72,6 @@ export const smsApi = {
 /**
  * OFFLINE MANAGEMENT SYSTEM
  */
-
 interface PendingAction {
   id: string;
   table: string;

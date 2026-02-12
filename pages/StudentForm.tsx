@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Save, User as UserIcon, Phone, List, Hash, Loader2, UserCheck, AlertCircle, X, Check, ChevronDown, BookOpen } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { ArrowLeft, Save, User as UserIcon, Phone, List, Hash, Loader2, UserCheck, AlertCircle, X, Check, ChevronDown, BookOpen, Camera, Upload } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Student, Class, Language } from '../types';
 import { t } from '../translations';
@@ -22,11 +22,13 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
   const [phone, setPhone] = useState(student?.guardian_phone || '');
   const [phone2, setPhone2] = useState(student?.guardian_phone_2 || '');
   const [classId, setClassId] = useState(student?.class_id || defaultClassId || '');
+  const [photoUrl, setPhotoUrl] = useState(student?.photo_url || '');
   const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [showClassModal, setShowClassModal] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Custom Alert State
   const [errorModal, setErrorModal] = useState<{show: boolean, message: string}>({show: false, message: ''});
 
   useEffect(() => {
@@ -44,6 +46,43 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
         setClasses(sorted);
         offlineApi.setCache('classes', sorted);
       }
+    }
+  };
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!navigator.onLine) {
+      alert(lang === 'bn' ? 'ছবি আপলোড করতে ইন্টারনেটে যুক্ত থাকুন' : 'Stay online to upload photo');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `std_${user.id}_${Date.now()}.${fileExt}`;
+      const filePath = `students/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('madrasah-assets')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('madrasah-assets')
+        .getPublicUrl(filePath);
+
+      setPhotoUrl(publicUrl);
+    } catch (err: any) {
+      console.error(err);
+      alert(lang === 'bn' ? 'ছবি আপলোড ব্যর্থ হয়েছে' : 'Upload failed: ' + err.message);
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -106,6 +145,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
         roll: roll ? parseInt(roll) : null,
         guardian_phone: phone.trim(),
         guardian_phone_2: phone2.trim() || null,
+        photo_url: photoUrl,
         class_id: classId,
         madrasah_id: user.id
       };
@@ -150,6 +190,40 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
 
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="bg-white/10 backdrop-blur-xl p-6 rounded-[2rem] border border-white/20 shadow-xl space-y-5">
+          {/* Photo Upload Section */}
+          <div className="flex flex-col items-center gap-3 pb-2 border-b border-white/10">
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className="w-24 h-24 rounded-[1.8rem] bg-white/10 border-2 border-dashed border-white/30 flex flex-col items-center justify-center text-white/40 cursor-pointer overflow-hidden relative group active:scale-95 transition-all shadow-inner"
+            >
+              {uploading ? (
+                <Loader2 className="animate-spin text-white" size={24} />
+              ) : photoUrl ? (
+                <img src={photoUrl} className="w-full h-full object-cover" />
+              ) : (
+                <>
+                  <Camera size={24} />
+                  <span className="text-[8px] font-black uppercase mt-1">Photo</span>
+                </>
+              )}
+              {photoUrl && !uploading && (
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <Camera size={20} className="text-white" />
+                </div>
+              )}
+            </div>
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handlePhotoUpload}
+            />
+            <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
+              {photoUrl ? (lang === 'bn' ? 'ছবি পরিবর্তন করুন' : 'Change Photo') : (lang === 'bn' ? 'ছাত্রের ছবি দিন' : 'Student Photo')}
+            </p>
+          </div>
+
           {!navigator.onLine && (
             <p className="text-[10px] bg-yellow-400/20 text-yellow-200 p-2 rounded-lg font-bold text-center">
               {lang === 'bn' ? 'আপনি অফলাইনে আছেন। ডাটা পরে সেভ হবে।' : 'You are offline. Data will sync later.'}
@@ -228,7 +302,6 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
             />
           </div>
 
-          {/* New Enhanced Class Selector Design */}
           <div className="space-y-1.5">
             <label className="flex items-center gap-2 text-[10px] font-black text-white/50 uppercase tracking-widest px-1">
               <List size={12} />
@@ -246,14 +319,14 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
 
         <button
           type="submit"
-          disabled={loading}
-          className="w-full py-4 bg-white text-[#d35132] font-black rounded-2xl shadow-xl active:scale-95 transition-all text-base flex items-center justify-center gap-2"
+          disabled={loading || uploading}
+          className="w-full py-4 bg-white text-[#d35132] font-black rounded-2xl shadow-xl active:scale-95 transition-all text-base flex items-center justify-center gap-2 disabled:opacity-50"
         >
           {loading ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> {t('save', lang)}</>}
         </button>
       </form>
 
-      {/* Modern Class Selection Modal */}
+      {/* Class Modal and Error Modal remain same... */}
       {showClassModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[150] flex items-end sm:items-center justify-center p-0 sm:p-6 animate-in fade-in duration-300">
           <div className="bg-[#d35132] w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl p-6 border-t sm:border border-white/20 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-10">
@@ -264,14 +337,8 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
                 </div>
                 <h2 className="text-xl font-black text-white font-noto">{t('class_select', lang)}</h2>
               </div>
-              <button 
-                onClick={() => setShowClassModal(false)}
-                className="p-2 bg-white/10 text-white rounded-full active:scale-90 transition-all"
-              >
-                <X size={20} />
-              </button>
+              <button onClick={() => setShowClassModal(false)} className="p-2 bg-white/10 text-white rounded-full active:scale-90 transition-all"><X size={20} /></button>
             </div>
-
             <div className="flex-1 overflow-y-auto space-y-3 px-1 custom-scrollbar pb-6">
               {classes.length > 0 ? (
                 classes.map((cls) => (
@@ -310,19 +377,14 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
         </div>
       )}
 
-      {/* Beautiful Custom Error Modal */}
       {errorModal.show && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 animate-in zoom-in-95 text-center border border-white/20">
             <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-5 text-red-500 shadow-sm">
               <AlertCircle size={32} />
             </div>
-            <h2 className="text-xl font-black text-slate-800 mb-3 font-noto">
-              {lang === 'bn' ? 'দুঃখিত!' : 'Sorry!'}
-            </h2>
-            <p className="text-slate-600 text-sm font-bold mb-8 font-noto leading-relaxed px-2">
-              {errorModal.message}
-            </p>
+            <h2 className="text-xl font-black text-slate-800 mb-3 font-noto">{lang === 'bn' ? 'দুঃখিত!' : 'Sorry!'}</h2>
+            <p className="text-slate-600 text-sm font-bold mb-8 font-noto leading-relaxed px-2">{errorModal.message}</p>
             <button
               onClick={() => setErrorModal({ show: false, message: '' })}
               className="w-full py-4 bg-[#d35132] text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"

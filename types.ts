@@ -12,7 +12,7 @@ export interface Madrasah {
   email?: string;
   login_code?: string;
   balance: number;
-  sms_balance: number; // Added
+  sms_balance: number;
 }
 
 export interface AdminSMSStock {
@@ -35,6 +35,7 @@ export interface Student {
   roll?: number;
   guardian_phone: string;
   guardian_phone_2?: string;
+  photo_url?: string; // Added
   class_id: string;
   madrasah_id: string;
   created_at: string;
@@ -50,7 +51,7 @@ export interface Transaction {
   transaction_id?: string;
   sender_phone?: string;
   description: string;
-  sms_count?: number; // Added
+  sms_count?: number;
   created_at: string;
   madrasahs?: Madrasah;
 }
@@ -83,7 +84,7 @@ export interface RecentCall {
   students?: Student;
 }
 
-export type View = 'home' | 'classes' | 'account' | 'students' | 'student-details' | 'student-form' | 'class-form' | 'admin-panel' | 'transactions' | 'wallet-sms' | 'admin-dashboard' | 'admin-approvals';
+export type View = 'home' | 'classes' | 'account' | 'students' | 'student-details' | 'student-form' | 'class-form' | 'admin-panel' | 'transactions' | 'wallet-sms' | 'admin-dashboard' | 'admin-approvals' | 'data-management';
 
 export interface AppState {
   currentView: View;

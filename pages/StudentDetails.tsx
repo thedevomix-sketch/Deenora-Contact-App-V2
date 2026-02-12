@@ -102,8 +102,12 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
 
       <div className="bg-white/15 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 shadow-2xl overflow-hidden">
         <div className="bg-gradient-to-br from-white/10 to-transparent p-6 text-center border-b border-white/10 relative">
-          <div className="w-20 h-20 bg-white/20 rounded-full mx-auto flex items-center justify-center border-2 border-white/30 shadow-xl mb-4 text-white">
-            <UserIcon size={40} strokeWidth={1.5} />
+          <div className="w-24 h-24 bg-white/20 rounded-[2rem] mx-auto flex items-center justify-center border-2 border-white/30 shadow-xl mb-4 text-white overflow-hidden">
+            {student.photo_url ? (
+              <img src={student.photo_url} className="w-full h-full object-cover" alt={student.student_name} />
+            ) : (
+              <UserIcon size={40} strokeWidth={1.5} />
+            )}
           </div>
           <h2 className="text-xl font-black text-white font-noto tracking-tight drop-shadow-sm truncate px-4 leading-normal">
             {student.student_name}
@@ -129,7 +133,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
             </div>
           </div>
 
-          {/* Guardian Name Card */}
           <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 flex items-center gap-4">
             <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white/70">
               <UserCheck size={20} />
@@ -142,8 +145,8 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
             </div>
           </div>
 
+          {/* Contact Section... (rest remains identical) */}
           <div className="space-y-6 pt-2">
-            {/* Primary Guardian Contact Section */}
             <div className="space-y-3">
               <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] px-1">
                 {t('guardian_phone', lang)} {lang === 'bn' ? '(হোয়াটসঅ্যাপ)' : '(WhatsApp)'}
@@ -180,7 +183,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
               </div>
             </div>
 
-            {/* Secondary Guardian Contact Section (Only shows if student has phone 2) */}
             {student.guardian_phone_2 && (
               <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
                 <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] px-1">{t('guardian_phone_2', lang)}</label>

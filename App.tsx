@@ -11,6 +11,7 @@ import StudentForm from './pages/StudentForm';
 import Account from './pages/Account';
 import AdminPanel from './pages/AdminPanel';
 import WalletSMS from './pages/WalletSMS';
+import DataManagement from './pages/DataManagement';
 import { View, Class, Student, Language, Madrasah } from './types';
 import { WifiOff, Loader2, CloudSync, AlertCircle, RefreshCw } from 'lucide-react';
 import { t } from './translations';
@@ -178,6 +179,10 @@ const App: React.FC = () => {
 
         {view === 'wallet-sms' && !isSuperAdmin && (
           <WalletSMS lang={lang} madrasah={madrasah} triggerRefresh={triggerRefresh} dataVersion={dataVersion} />
+        )}
+
+        {view === 'data-management' && !isSuperAdmin && (
+          <DataManagement lang={lang} madrasah={madrasah} onBack={() => setView('account')} triggerRefresh={triggerRefresh} />
         )}
         
         {view === 'account' && (

@@ -22,7 +22,6 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
   const fetchRecentCalls = async (isManual = false) => {
     if (isManual) setLoadingRecent(true);
     
-    // Load from cache first
     const cached = offlineApi.getCache('recent_calls');
     if (cached) setRecentCalls(cached);
 
@@ -52,14 +51,12 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
     fetchRecentCalls();
   }, [dataVersion]);
 
-  // Fix: Corrected syntax error by removing extra parenthesis in catch block
   const handleSearch = useCallback(async (query: string) => {
     if (!query.trim()) {
       setSearchResults([]);
       return;
     }
     
-    // Try offline search from all cached students if possible
     const allStudents = offlineApi.getCache('all_students_search') || [];
     if (!navigator.onLine) {
       setSearchResults(allStudents.filter((s: Student) => 
@@ -78,7 +75,6 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
       
       if (!error && data) {
         setSearchResults(data);
-        // Slowly build a master list for offline search
         const currentMaster = offlineApi.getCache('all_students_search') || [];
         const newIds = new Set(data.map(s => s.id));
         const filteredMaster = currentMaster.filter((s: Student) => !newIds.has(s.id));
@@ -94,7 +90,7 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
   useEffect(() => {
     const timer = setTimeout(() => {
       handleSearch(searchQuery);
-    }, 400);
+    }, 250); // Faster search response
     return () => clearTimeout(timer);
   }, [searchQuery, handleSearch]);
 
@@ -113,7 +109,6 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
       triggerRefresh();
     } else {
       offlineApi.queueAction('recent_calls', 'INSERT', payload);
-      // Manually add to UI for instant feedback
       const newCall: RecentCall = {
         id: 'temp_' + Date.now(),
         student_id: student.id,
@@ -133,7 +128,7 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-300">
       <div className="relative">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={18} />
         <input
@@ -156,7 +151,7 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
                 key={student.id} 
                 className="bg-white/10 backdrop-blur-md p-4 rounded-3xl border border-white/15 flex items-center justify-between animate-in slide-in-from-bottom-1"
               >
-                <div onClick={() => onStudentClick(student)} className="flex-1 pr-3 min-w-0">
+                <div onClick={() => onStudentClick(student)} className="flex-1 pr-3 min-w-0 cursor-pointer">
                   <h3 className="font-black text-white text-base font-noto truncate pr-1 leading-normal">
                     {student.student_name}
                   </h3>

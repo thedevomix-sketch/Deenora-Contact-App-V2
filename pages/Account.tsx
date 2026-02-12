@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect } from 'react';
-import { LogOut, Check, Smartphone, Copy, Camera, Loader2, Hash, AlertCircle, RefreshCw, Lock, History, User as UserIcon, BookOpen, ShieldCheck } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { LogOut, Check, Smartphone, Copy, Camera, Loader2, Hash, AlertCircle, RefreshCw, Lock, History, User as UserIcon, BookOpen, ShieldCheck, Database, ChevronDown, Upload } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Madrasah, Language, View, Transaction } from '../types';
 import { t } from '../translations';
@@ -17,12 +17,14 @@ interface AccountProps {
 const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setView, isSuperAdmin, initialMadrasah }) => {
   const [madrasah, setMadrasah] = useState<Madrasah | null>(initialMadrasah);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [newName, setNewName] = useState(initialMadrasah?.name || '');
   const [newPhone, setNewPhone] = useState(initialMadrasah?.phone || '');
   const [newLoginCode, setNewLoginCode] = useState(initialMadrasah?.login_code || '');
   const [showSuccess, setShowSuccess] = useState(false);
   const [copying, setCopying] = useState<string | null>(null);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (initialMadrasah) {
@@ -75,6 +77,44 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     }
   };
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !madrasah) return;
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `logo_${madrasah.id}_${Date.now()}.${fileExt}`;
+      const filePath = `logos/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('madrasah-assets')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('madrasah-assets')
+        .getPublicUrl(filePath);
+
+      const { error: updateError } = await supabase
+        .from('madrasahs')
+        .update({ logo_url: publicUrl })
+        .eq('id', madrasah.id);
+
+      if (updateError) throw updateError;
+
+      setMadrasah({ ...madrasah, logo_url: publicUrl });
+      if (onProfileUpdate) onProfileUpdate();
+      alert(lang === 'bn' ? 'লোগো আপডেট হয়েছে' : 'Logo updated successfully');
+    } catch (err: any) {
+      console.error(err);
+      alert(lang === 'bn' ? 'লোগো আপলোড ব্যর্থ হয়েছে' : 'Upload failed: ' + err.message);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const copyToClipboard = (text: string, type: string) => {
     navigator.clipboard.writeText(text);
     setCopying(type);
@@ -102,11 +142,48 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         )}
       </div>
 
-      <div className="bg-white/20 backdrop-blur-xl rounded-[3rem] p-6 border border-white/30 shadow-2xl space-y-6">
+      <div className="bg-white/20 backdrop-blur-xl rounded-[3rem] p-6 border border-white/30 shadow-2xl space-y-6 text-center">
         <div className="flex flex-col items-center gap-4">
-          <div className="bg-white/20 w-24 h-24 rounded-full flex items-center justify-center ring-4 ring-white/10 overflow-hidden border-2 border-white/50 shadow-xl relative">
-            {isSuperAdmin ? <ShieldCheck size={48} className="text-white" /> : <UserIcon size={40} className="text-white/60" />}
+          <div className="relative group">
+            <div className="bg-white/20 w-28 h-28 rounded-[2rem] flex items-center justify-center ring-4 ring-white/10 overflow-hidden border-2 border-white/50 shadow-xl relative transition-transform active:scale-95">
+              {uploading ? (
+                <Loader2 className="animate-spin text-white" size={32} />
+              ) : madrasah.logo_url ? (
+                <img src={madrasah.logo_url} className="w-full h-full object-cover" alt="Logo" />
+              ) : isSuperAdmin ? (
+                <ShieldCheck size={48} className="text-white" />
+              ) : (
+                <UserIcon size={40} className="text-white/60" />
+              )}
+              
+              {!isSuperAdmin && (
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity text-white"
+                >
+                  <Camera size={24} />
+                </button>
+              )}
+            </div>
+            
+            {!isSuperAdmin && (
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                className="absolute -bottom-2 -right-2 bg-white text-[#d35132] p-2 rounded-full shadow-lg border border-white/20 active:scale-90 transition-all"
+              >
+                <Camera size={16} />
+              </button>
+            )}
+            
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              className="hidden" 
+              accept="image/*" 
+              onChange={handleLogoUpload}
+            />
           </div>
+          
           <div className="text-center">
             <h2 className="text-xl font-black text-white font-noto leading-tight">{madrasah?.name}</h2>
             <div className={`inline-block px-4 py-1.5 rounded-full mt-3 text-[10px] font-black uppercase tracking-widest border ${isSuperAdmin ? 'bg-yellow-400 border-yellow-500 text-slate-900' : 'bg-white/20 border-white/10 text-white'}`}>
@@ -115,7 +192,27 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
           </div>
         </div>
 
-        <div className="space-y-4 pt-2">
+        {!isSuperAdmin && (
+          <button 
+            onClick={() => setView('data-management')}
+            className="w-full flex items-center justify-between p-4 bg-white/10 border border-white/20 rounded-2xl hover:bg-white/20 transition-all group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-white/20 rounded-xl text-white group-hover:scale-110 transition-transform">
+                <Database size={20} />
+              </div>
+              <div className="text-left">
+                <p className="text-sm font-black text-white">{lang === 'bn' ? 'ডাটা ব্যাকআপ ও রিস্টোর' : 'Data Backup & Restore'}</p>
+                <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest">{lang === 'bn' ? 'এক্সপোর্ট ও ইমপোর্ট করুন' : 'Export & Import Data'}</p>
+              </div>
+            </div>
+            <div className="p-2 text-white/30 group-hover:text-white transition-colors">
+               <ChevronDown size={20} className="-rotate-90" />
+            </div>
+          </button>
+        )}
+
+        <div className="space-y-4 pt-2 text-left">
           <div className="space-y-3">
             <div className={`bg-white/5 p-4 rounded-3xl border flex items-center justify-between transition-all ${isSuperAdmin ? 'border-yellow-400/30 bg-yellow-400/5' : 'border-white/5'}`}>
               <div className="flex-1 min-w-0 pr-2">
@@ -150,7 +247,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         </button>
 
         {!isSuperAdmin && transactions.length > 0 && (
-           <div className="space-y-3 pt-4 border-t border-white/10">
+           <div className="space-y-3 pt-4 border-t border-white/10 text-left">
              <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
                <History size={12} /> {t('history', lang)}
              </h3>

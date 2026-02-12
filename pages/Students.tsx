@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Plus, Phone, Search, Loader2, MessageSquare, CheckCircle2, Circle, X } from 'lucide-react';
+import { ArrowLeft, Plus, Phone, Search, Loader2, MessageSquare, CheckCircle2, Circle, X, User as UserIcon } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Class, Student, Language, Madrasah } from '../types';
 import { t } from '../translations';
@@ -23,7 +23,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   const [showSMSModal, setShowSMSModal] = useState(false);
   const [madrasah, setMadrasah] = useState<Madrasah | null>(null);
 
-  // Multi-Selection State
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -36,7 +35,8 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
 
   const filteredStudents = useMemo(() => {
     if (!searchQuery.trim()) return students;
-    return students.filter(s => s.student_name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const lowerQuery = searchQuery.toLowerCase();
+    return students.filter(s => s.student_name.toLowerCase().includes(lowerQuery));
   }, [searchQuery, students]);
 
   const fetchMadrasah = async () => {
@@ -117,7 +117,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   }, [students, selectedIds]);
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 relative">
+    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative">
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -193,7 +193,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
               <div 
                 key={student.id} 
                 onClick={() => isSelectionMode ? toggleStudentSelection(student.id) : onStudentClick(student)}
-                className={`p-4 rounded-[2rem] border transition-all animate-in slide-in-from-bottom-2 flex items-center justify-between shadow-lg relative overflow-hidden ${
+                className={`p-4 rounded-[2rem] border transition-all animate-in slide-in-from-bottom-2 flex items-center justify-between shadow-lg relative overflow-hidden transform-gpu ${
                   isSelected ? 'bg-white border-white' : 'bg-white/10 backdrop-blur-md border-white/15 active:bg-white/20'
                 }`}
               >
@@ -202,14 +202,28 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
                 )}
                 
                 <div className="flex items-center gap-4 flex-1 min-w-0">
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm border shrink-0 transition-all ${
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm border shrink-0 transition-all overflow-hidden relative ${
                     isSelected ? 'bg-[#d35132] text-white border-[#d35132]' : 'bg-white/15 text-white/80 border-white/10'
                   }`}>
-                    {student.roll || '-'}
+                    {student.photo_url ? (
+                      <img 
+                        src={student.photo_url} 
+                        className="w-full h-full object-cover" 
+                        loading="lazy" 
+                        alt="" 
+                      />
+                    ) : (
+                      <span className="relative z-10">{student.roll || '-'}</span>
+                    )}
                   </div>
-                  <h3 className={`font-black text-base font-noto truncate pr-1 leading-normal transition-colors ${isSelected ? 'text-[#d35132]' : 'text-white'}`}>
-                    {student.student_name}
-                  </h3>
+                  <div className="min-w-0 flex-1">
+                    <h3 className={`font-black text-base font-noto truncate pr-1 leading-normal transition-colors ${isSelected ? 'text-[#d35132]' : 'text-white'}`}>
+                      {student.student_name}
+                    </h3>
+                    <p className={`text-[9px] font-bold uppercase tracking-widest ${isSelected ? 'text-[#d35132]/60' : 'text-white/40'}`}>
+                      Roll: {student.roll || '-'}
+                    </p>
+                  </div>
                 </div>
                 
                 <div className="flex items-center gap-2 shrink-0">
@@ -236,12 +250,11 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
         </div>
       )}
 
-      {/* Floating Action Buttons */}
       <div className="fixed bottom-24 right-6 left-6 flex justify-end gap-3 pointer-events-none">
         {isSelectionMode && selectedIds.size > 0 ? (
           <button 
             onClick={() => setShowSMSModal(true)}
-            className="pointer-events-auto bg-white text-[#d35132] px-6 py-4 rounded-[1.8rem] shadow-2xl active:scale-90 transition-all flex items-center gap-3 border border-white/50 animate-in slide-in-from-bottom-10"
+            className="pointer-events-auto bg-white text-[#d35132] px-6 py-4 rounded-[1.8rem] shadow-2xl active:scale-90 transition-all flex items-center gap-3 border border-white/50 animate-in slide-in-from-bottom-5"
           >
             <MessageSquare size={20} strokeWidth={3} />
             <span className="font-black uppercase tracking-widest text-xs">
