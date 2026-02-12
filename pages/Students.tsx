@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Plus, Phone, Search, ChevronRight, User as UserIcon, Hash } from 'lucide-react';
+import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Class, Student, Language } from '../types';
 import { t } from '../translations';
@@ -119,31 +119,17 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
               className="p-4 rounded-[2rem] bg-white/10 backdrop-blur-md border border-white/15 active:bg-white/20 transition-all animate-in slide-in-from-bottom-2 flex items-center justify-between shadow-lg relative overflow-hidden"
             >
               <div className="flex items-center gap-4 flex-1 min-w-0">
-                {/* Dedicated Photo Box */}
-                <div className="w-14 h-14 rounded-2xl flex items-center justify-center border shrink-0 overflow-hidden bg-white/10 border-white/10 shadow-inner">
-                  {student.photo_url ? (
-                    <img 
-                      src={student.photo_url} 
-                      className="w-full h-full object-cover" 
-                      loading="lazy" 
-                      alt="" 
-                    />
-                  ) : (
-                    <UserIcon size={24} className="text-white/20" />
-                  )}
+                {/* Roll Number Box - Displayed instead of Photo */}
+                <div className="w-12 h-12 rounded-xl flex flex-col items-center justify-center border shrink-0 bg-white/10 border-white/10 shadow-inner text-white">
+                  <span className="text-[7px] font-black opacity-40 uppercase leading-none">Roll</span>
+                  <span className="text-lg font-black leading-tight">{student.roll || '-'}</span>
                 </div>
                 
                 <div className="min-w-0 flex-1">
                   <h3 className="font-black text-white text-base font-noto truncate pr-1 leading-normal">
                     {student.student_name}
                   </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    {/* Separate Roll Badge */}
-                    <div className="px-2 py-0.5 bg-white/20 rounded-lg flex items-center gap-1 border border-white/10 shrink-0">
-                      <span className="text-[8px] font-black text-white/40 uppercase">Roll</span>
-                      <span className="text-[10px] font-black text-white">{student.roll || '-'}</span>
-                    </div>
-                  </div>
+                  <p className="text-[10px] font-bold text-white/40 truncate">{student.guardian_name || '-'}</p>
                 </div>
               </div>
               
