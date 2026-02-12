@@ -200,7 +200,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
             <div className="space-y-1.5">
               <label className="flex items-center gap-2 text-[10px] font-black text-white/50 uppercase tracking-widest px-1">
                 <Phone size={12} />
-                {t('guardian_phone', lang)}
+                {t('guardian_phone', lang)} {lang === 'bn' ? '(হোয়াটসঅ্যাপ)' : '(WhatsApp)'}
               </label>
               <input
                 type="tel"

@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Phone, Edit3, Trash2, User as UserIcon, Smartphone, UserCheck, ShieldCheck, Loader2, AlertTriangle, MessageSquare } from 'lucide-react';
+import { ArrowLeft, Phone, Edit3, Trash2, User as UserIcon, Smartphone, ShieldCheck, Loader2, AlertTriangle, MessageCircle, PhoneCall, UserCheck } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Student, Language, Madrasah } from '../types';
 import { t } from '../translations';
-import SMSModal from '../components/SMSModal';
 
 interface StudentDetailsProps {
   student: Student;
@@ -17,7 +16,6 @@ interface StudentDetailsProps {
 const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack, lang, triggerRefresh }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showSMSModal, setShowSMSModal] = useState(false);
   const [madrasah, setMadrasah] = useState<Madrasah | null>(null);
 
   useEffect(() => {
@@ -44,6 +42,19 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
   const initiateCall = async (phoneNumber: string) => {
     await recordCall(phoneNumber);
     window.location.href = `tel:${phoneNumber}`;
+  };
+
+  const formatWhatsAppNumber = (phone: string) => {
+    let cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 11 && cleaned.startsWith('0')) {
+      return '88' + cleaned;
+    }
+    return cleaned;
+  };
+
+  const openWhatsApp = (phone: string) => {
+    const waNumber = formatWhatsAppNumber(phone);
+    window.open(`https://wa.me/${waNumber}`, '_blank');
   };
 
   const performDelete = async () => {
@@ -118,40 +129,78 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
             </div>
           </div>
 
-          <div className="space-y-3 pt-2">
-            <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] px-1">{lang === 'bn' ? 'যোগাযোগ মাধ্যম' : 'Communication Options'}</label>
-            
-            <button 
-              onClick={() => initiateCall(student.guardian_phone)}
-              className="w-full bg-white p-4 rounded-2xl flex items-center justify-between active:scale-[0.98] transition-all shadow-xl group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-[#d35132]/10 rounded-xl flex items-center justify-center text-[#d35132]"><Smartphone size={20} /></div>
-                <div className="text-left">
-                  <span className="text-[9px] text-slate-400 font-black uppercase tracking-widest block leading-none mb-1">{t('guardian_phone', lang)}</span>
-                  <span className="text-base font-black text-slate-800 tracking-wider leading-none">{student.guardian_phone}</span>
-                </div>
-              </div>
-              <div className="bg-[#d35132] text-white p-2.5 rounded-xl group-active:rotate-12 transition-transform">
-                <Phone size={18} fill="currentColor" />
-              </div>
-            </button>
+          {/* Guardian Name Card */}
+          <div className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 flex items-center gap-4">
+            <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white/70">
+              <UserCheck size={20} />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="text-[9px] text-white/40 font-black uppercase tracking-widest block mb-0.5">{t('guardian_name', lang)}</span>
+              <p className="text-base font-black text-white font-noto truncate leading-tight">
+                {student.guardian_name || (lang === 'bn' ? 'অজানা' : 'Unknown')}
+              </p>
+            </div>
+          </div>
 
-            <button 
-              onClick={() => setShowSMSModal(true)}
-              className="w-full bg-white/10 p-4 rounded-2xl flex items-center justify-between active:scale-[0.98] transition-all border border-white/10 group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white/60"><MessageSquare size={20} /></div>
-                <div className="text-left">
-                  <span className="text-[9px] text-white/40 font-black uppercase tracking-widest block leading-none mb-1">{t('send_sms', lang)}</span>
-                  <span className="text-base font-bold text-white tracking-wider">{lang === 'bn' ? 'বার্তা পাঠান' : 'Send Message'}</span>
+          <div className="space-y-6 pt-2">
+            {/* Primary Guardian Contact Section */}
+            <div className="space-y-3">
+              <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] px-1">
+                {t('guardian_phone', lang)} {lang === 'bn' ? '(হোয়াটসঅ্যাপ)' : '(WhatsApp)'}
+              </label>
+              
+              <div className="space-y-2">
+                <button 
+                  onClick={() => initiateCall(student.guardian_phone)}
+                  className="w-full bg-white p-4 rounded-2xl flex items-center justify-between active:scale-[0.98] transition-all shadow-xl group border-b-4 border-slate-200"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-[#d35132]/10 rounded-xl flex items-center justify-center text-[#d35132]"><Smartphone size={20} /></div>
+                    <span className="text-base font-black text-slate-800 tracking-wider">{student.guardian_phone}</span>
+                  </div>
+                  <div className="bg-[#d35132] text-white p-2.5 rounded-xl group-active:rotate-12 transition-transform">
+                    <Phone size={18} fill="currentColor" />
+                  </div>
+                </button>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    onClick={() => openWhatsApp(student.guardian_phone)}
+                    className="bg-[#25D366] py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md text-white font-black text-[10px] uppercase"
+                  >
+                    <MessageCircle size={16} /> {lang === 'bn' ? 'মেসেজ' : 'Message'}
+                  </button>
+                  <button 
+                    onClick={() => openWhatsApp(student.guardian_phone)}
+                    className="bg-[#128C7E] py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md text-white font-black text-[10px] uppercase"
+                  >
+                    <PhoneCall size={16} /> {lang === 'bn' ? 'কল করুন' : 'WA Call'}
+                  </button>
                 </div>
               </div>
-              <div className="bg-white text-[#d35132] p-2.5 rounded-xl shadow-lg">
-                <MessageSquare size={18} />
+            </div>
+
+            {/* Secondary Guardian Contact Section (Only shows if student has phone 2) */}
+            {student.guardian_phone_2 && (
+              <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] px-1">{t('guardian_phone_2', lang)}</label>
+                
+                <div className="space-y-2">
+                  <button 
+                    onClick={() => initiateCall(student.guardian_phone_2!)}
+                    className="w-full bg-white/10 backdrop-blur-md p-4 rounded-2xl flex items-center justify-between active:scale-[0.98] transition-all border border-white/20 group shadow-lg"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white"><Smartphone size={20} /></div>
+                      <span className="text-base font-black text-white tracking-wider">{student.guardian_phone_2}</span>
+                    </div>
+                    <div className="bg-white text-[#d35132] p-2.5 rounded-xl group-active:rotate-12 transition-transform">
+                      <Phone size={18} fill="currentColor" />
+                    </div>
+                  </button>
+                </div>
               </div>
-            </button>
+            )}
           </div>
         </div>
       </div>
@@ -167,16 +216,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
             </div>
           </div>
         </div>
-      )}
-
-      {showSMSModal && madrasah && (
-        <SMSModal 
-          students={[student]} 
-          madrasah={madrasah} 
-          lang={lang} 
-          onClose={() => setShowSMSModal(false)}
-          onSuccess={() => { triggerRefresh(); fetchMadrasah(); }}
-        />
       )}
     </div>
   );
