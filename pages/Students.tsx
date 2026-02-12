@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Plus, Phone, Search, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Plus, Phone, Search, ChevronRight, User as UserIcon, Hash } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Class, Student, Language } from '../types';
 import { t } from '../translations';
@@ -116,10 +116,11 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
             <div 
               key={student.id} 
               onClick={() => onStudentClick(student)}
-              className="p-4 rounded-[2rem] bg-white/10 backdrop-blur-md border border-white/15 active:bg-white/20 transition-all animate-in slide-in-from-bottom-2 flex items-center justify-between shadow-lg relative overflow-hidden transform-gpu"
+              className="p-4 rounded-[2rem] bg-white/10 backdrop-blur-md border border-white/15 active:bg-white/20 transition-all animate-in slide-in-from-bottom-2 flex items-center justify-between shadow-lg relative overflow-hidden"
             >
               <div className="flex items-center gap-4 flex-1 min-w-0">
-                <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-sm border shrink-0 transition-all overflow-hidden relative bg-white/15 text-white/80 border-white/10">
+                {/* Dedicated Photo Box */}
+                <div className="w-14 h-14 rounded-2xl flex items-center justify-center border shrink-0 overflow-hidden bg-white/10 border-white/10 shadow-inner">
                   {student.photo_url ? (
                     <img 
                       src={student.photo_url} 
@@ -128,16 +129,21 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
                       alt="" 
                     />
                   ) : (
-                    <span className="relative z-10">{student.roll || '-'}</span>
+                    <UserIcon size={24} className="text-white/20" />
                   )}
                 </div>
+                
                 <div className="min-w-0 flex-1">
                   <h3 className="font-black text-white text-base font-noto truncate pr-1 leading-normal">
                     {student.student_name}
                   </h3>
-                  <p className="text-[9px] font-bold uppercase tracking-widest text-white/40">
-                    Roll: {student.roll || '-'}
-                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    {/* Separate Roll Badge */}
+                    <div className="px-2 py-0.5 bg-white/20 rounded-lg flex items-center gap-1 border border-white/10 shrink-0">
+                      <span className="text-[8px] font-black text-white/40 uppercase">Roll</span>
+                      <span className="text-[10px] font-black text-white">{student.roll || '-'}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
               
@@ -159,7 +165,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
         </div>
       )}
 
-      {/* Floating Add Student '+' button - Positioned specifically for mobile visibility */}
       <div className="fixed bottom-28 right-6 z-50 pointer-events-none">
         <button 
           onClick={onAddClick}

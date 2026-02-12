@@ -16,42 +16,20 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 /**
  * SMS GATEWAY CONFIGURATION
- * আপনার গেটওয়ে সার্ভিস থেকে পাওয়া তথ্যগুলো এখানে বসান
  */
 const SMS_CONFIG = {
-  API_URL: 'https://bulksmsbd.net/api/smsapi', // উদাহরণ হিসেবে BulkSMSBD এর URL
-  API_KEY: 'YOUR_API_KEY_HERE',               // আপনার গেটওয়ে থেকে পাওয়া API Key
-  SENDER_ID: '88018XXXXXXXX',                 // আপনার অনুমোদিত Sender ID বা Masking
+  API_URL: 'https://bulksmsbd.net/api/smsapi',
+  API_KEY: 'YOUR_API_KEY_HERE',
+  SENDER_ID: '88018XXXXXXXX',
 };
 
-/**
- * SMS API UTILITY
- * Handles the backend-like logic for sending SMS
- */
 export const smsApi = {
   sendBulk: async (madrasahId: string, students: Student[], message: string) => {
     const phoneNumbers = students.map(s => s.guardian_phone).join(',');
     
     try {
-      // ১. আসল SMS Gateway-তে মেসেজ পাঠানো (Real API Integration)
-      // বাংলাদেশের বেশিরভাগ গেটওয়ে সাধারণত GET বা POST মেথড সাপোর্ট করে
+      console.log(`[SMS GATEWAY] Calling API... Recipients: ${phoneNumbers}`);
       
-      /* 
-      // উদাহরণস্বরূপ BulkSMSBD বা সিমিলার গেটওয়ের জন্য কোড:
-      const gatewayResponse = await fetch(`${SMS_CONFIG.API_URL}?api_key=${SMS_CONFIG.API_KEY}&type=text&number=${phoneNumbers}&senderid=${SMS_CONFIG.SENDER_ID}&message=${encodeURIComponent(message)}`);
-      const result = await gatewayResponse.json();
-      
-      if (result.response_code !== 202) { // ২০২ সাধারণত সফলতার কোড
-        throw new Error(result.error_message || "Gateway Error");
-      }
-      */
-
-      // সিমুলেশন লগ (যতক্ষণ আসল এপিআই কানেক্ট করছেন না)
-      console.log(`[SMS GATEWAY] Calling API with Key: ${SMS_CONFIG.API_KEY.substring(0, 5)}...`);
-      console.log(`[SMS GATEWAY] Recipients: ${phoneNumbers}`);
-      
-      // ২. সুপাবেস ডাটাবেজের ক্রেডিট আপডেট করা
-      // এটি ব্যালেন্স চেক করবে এবং ক্রেডিট কমিয়ে দেবে
       const { data, error } = await supabase.rpc('send_bulk_sms_rpc', {
         p_madrasah_id: madrasahId,
         p_student_ids: students.map(s => s.id),
@@ -102,12 +80,32 @@ export const offlineApi = {
     });
     localStorage.setItem('sync_queue', JSON.stringify(queue));
     
-    if (table === 'students' || table === 'classes') {
-      const cacheKey = table;
+    // UI Update Logic for Students specifically
+    if (table === 'students') {
+      const classId = payload.class_id;
+      if (classId) {
+        const cacheKey = `students_list_${classId}`;
+        const currentCache = offlineApi.getCache(cacheKey) || [];
+        
+        if (type === 'INSERT') {
+          const tempId = 'temp_' + Date.now();
+          offlineApi.setCache(cacheKey, [...currentCache, { ...payload, id: tempId, created_at: new Date().toISOString() }]);
+        } else if (type === 'UPDATE') {
+          offlineApi.setCache(cacheKey, currentCache.map((s: any) => s.id === payload.id ? { ...s, ...payload } : s));
+        } else if (type === 'DELETE') {
+          offlineApi.setCache(cacheKey, currentCache.filter((s: any) => s.id !== payload.id));
+        }
+      }
+      offlineApi.removeCache('all_students_search');
+    }
+    
+    if (table === 'classes') {
+      const cacheKey = 'classes';
       const currentCache = offlineApi.getCache(cacheKey) || [];
       if (type === 'INSERT') {
         offlineApi.setCache(cacheKey, [...currentCache, { ...payload, id: 'temp_' + Date.now(), created_at: new Date().toISOString() }]);
       }
+      offlineApi.removeCache('classes_with_counts');
     }
   },
   getQueue: (): PendingAction[] => {
