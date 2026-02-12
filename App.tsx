@@ -177,7 +177,7 @@ const App: React.FC = () => {
         )}
 
         {view === 'wallet-sms' && !isSuperAdmin && (
-          <WalletSMS lang={lang} madrasah={madrasah} triggerRefresh={triggerRefresh} />
+          <WalletSMS lang={lang} madrasah={madrasah} triggerRefresh={triggerRefresh} dataVersion={dataVersion} />
         )}
         
         {view === 'account' && (

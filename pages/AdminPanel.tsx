@@ -8,6 +8,7 @@ import { t } from '../translations';
 interface AdminPanelProps {
   lang: Language;
   currentView?: 'list' | 'dashboard' | 'approvals';
+  dataVersion?: number;
 }
 
 interface SystemStats {
@@ -18,12 +19,13 @@ interface SystemStats {
   totalSmsBalance: number;
 }
 
-const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) => {
+const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dataVersion = 0 }) => {
   const [madrasahs, setMadrasahs] = useState<Madrasah[]>([]);
   const [pendingTrans, setPendingTrans] = useState<Transaction[]>([]);
   const [adminStock, setAdminStock] = useState<AdminSMSStock | null>(null);
   const [stats, setStats] = useState<SystemStats | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [updatingId, setUpdatingId] = useState<string | null>(null);
@@ -41,7 +43,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
 
   useEffect(() => {
     initData();
-  }, []);
+  }, [dataVersion]);
 
   // Sync internal view with currentView prop from App/Layout
   useEffect(() => {
@@ -54,8 +56,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
     }
   }, [currentView]);
 
-  const initData = async () => {
-    setLoading(true);
+  const initData = async (isManual = false) => {
+    if (isManual) setIsRefreshing(true);
+    else setLoading(true);
+    
     setError(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -64,8 +68,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
       if (!profile?.is_super_admin) {
          setError("You do not have Super Admin permissions.");
          setLoading(false);
+         setIsRefreshing(false);
          return;
       }
+
       await Promise.all([
         fetchAllMadrasahs(), 
         fetchPendingTransactions(), 
@@ -73,9 +79,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
         fetchSystemStats()
       ]);
     } catch (err: any) {
+      console.error("Admin init error:", err);
       setError(err.message);
     } finally {
       setLoading(false);
+      setIsRefreshing(false);
     }
   };
 
@@ -114,8 +122,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
   };
 
   const fetchPendingTransactions = async () => {
-    const { data } = await supabase.from('transactions').select('*, madrasahs(name)').eq('status', 'pending').order('created_at', { ascending: false });
-    setPendingTrans(data || []);
+    try {
+      const { data, error } = await supabase
+        .from('transactions')
+        .select('*, madrasahs(name)')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setPendingTrans(data || []);
+    } catch (err) {
+      console.error("Pending trans fetch error:", err);
+      // Fallback: try without join if RLS blocks it
+      const { data } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('status', 'pending')
+        .order('created_at', { ascending: false });
+      setPendingTrans(data || []);
+    }
   };
 
   const fetchMadrasahDetails = async (madrasah: Madrasah) => {
@@ -245,10 +270,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
     </div>
   );
 
+  if (error) return (
+    <div className="py-20 flex flex-col items-center justify-center gap-4 text-white px-8 text-center">
+      <AlertTriangle size={48} className="text-yellow-400 opacity-50" />
+      <p className="text-sm font-bold opacity-70">{error}</p>
+      <button onClick={() => initData()} className="mt-4 px-6 py-2 bg-white text-[#d35132] font-black rounded-xl">Retry</button>
+    </div>
+  );
+
   if (view === 'list') {
     return (
       <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-        {/* Managed Actions at Top */}
         <div className="grid grid-cols-1 gap-3">
           <div onClick={() => setView('stock')} className="bg-white/10 p-5 rounded-[2.2rem] border border-white/10 backdrop-blur-md flex items-center justify-between cursor-pointer active:scale-95 transition-all shadow-lg group">
              <div className="flex items-center gap-4">
@@ -264,13 +296,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
           </div>
         </div>
 
-        {/* Search Bar */}
         <div className="relative">
           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/20" size={18} />
           <input type="text" placeholder={t('search_madrasah', lang)} className="w-full pl-12 pr-5 py-4.5 bg-white/10 border border-white/20 rounded-[2rem] outline-none text-white font-bold backdrop-blur-md focus:bg-white/15 transition-all shadow-inner placeholder:text-white/20" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </div>
 
-        {/* Registered Madrasahs List */}
         <div className="space-y-3">
           <h2 className="text-[10px] font-black text-white/40 uppercase tracking-widest px-2">Registered Madrasahs</h2>
           {filtered.map(m => (
@@ -422,7 +452,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
         </div>
 
         <div className="grid grid-cols-2 gap-4">
-           {/* Total Madrasahs */}
            <div className="bg-white/10 p-6 rounded-[2.5rem] border border-white/10 shadow-xl text-center relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
                 <Users size={48} />
@@ -436,7 +465,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
               </div>
            </div>
 
-           {/* Total Students */}
            <div className="bg-white/10 p-6 rounded-[2.5rem] border border-white/10 shadow-xl text-center relative overflow-hidden group">
               <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:scale-110 transition-transform">
                 <UserIcon size={48} />
@@ -446,7 +474,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
               <p className="text-[9px] font-black text-white/20 uppercase mt-2 tracking-tighter italic">Global Student Records</p>
            </div>
 
-           {/* Financial: Wallet */}
            <div className="bg-gradient-to-br from-green-500/10 to-emerald-500/10 p-6 rounded-[2.5rem] border border-green-500/20 shadow-xl text-center relative overflow-hidden group col-span-2 flex items-center justify-between">
               <div className="text-left">
                 <p className="text-[10px] font-black text-green-400 uppercase tracking-widest mb-1">Global Wallet Balance</p>
@@ -458,7 +485,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
               </div>
            </div>
 
-           {/* SMS Overview */}
            <div className="bg-gradient-to-br from-blue-500/10 to-indigo-500/10 p-6 rounded-[2.5rem] border border-blue-500/20 shadow-xl text-center relative overflow-hidden group col-span-2 flex items-center justify-between">
               <div className="text-left">
                 <p className="text-[10px] font-black text-blue-400 uppercase tracking-widest mb-1">Distributed SMS Credits</p>
@@ -493,10 +519,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
         </div>
 
         <button 
-          onClick={fetchSystemStats}
+          onClick={() => initData(true)}
           className="w-full py-4 bg-white/10 hover:bg-white/20 text-white font-black rounded-2xl border border-white/10 flex items-center justify-center gap-2 transition-all active:scale-95"
         >
-          <RefreshCw size={18} />
+          <RefreshCw size={18} className={isRefreshing ? 'animate-spin' : ''} />
           Refresh Stats
         </button>
       </div>
@@ -590,8 +616,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
   if (view === 'approvals') {
      return (
         <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-20">
-           <div className="flex items-center gap-4">
+           <div className="flex items-center justify-between">
               <h1 className="text-xl font-black text-white font-noto">পেমেন্ট রিকোয়েস্ট</h1>
+              <button 
+                onClick={() => initData(true)}
+                className={`p-3 bg-white/10 text-white rounded-xl border border-white/20 transition-all ${isRefreshing ? 'animate-spin opacity-50' : 'active:scale-90'}`}
+              >
+                <RefreshCw size={18} />
+              </button>
            </div>
            
            <div className="space-y-4">
@@ -600,7 +632,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
                     <div className="flex items-start justify-between">
                        <div className="min-w-0 pr-2">
                           <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">মাদরাসার নাম</p>
-                          <h4 className="text-base font-black text-white font-noto truncate">{tr.madrasahs?.name}</h4>
+                          <h4 className="text-base font-black text-white font-noto truncate">
+                            {tr.madrasahs?.name || 'অজানা মাদরাসা'}
+                          </h4>
                           <div className="flex items-center gap-2 mt-1">
                              <Phone size={10} className="text-white/40" />
                              <span className="text-xs font-bold text-white/60">{tr.sender_phone}</span>
@@ -613,11 +647,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
                     </div>
                     
                     <div className="bg-white/5 p-4 rounded-2xl border border-white/5 flex items-center justify-between">
-                       <div>
+                       <div className="min-w-0 pr-2">
                           <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">bKash TrxID</p>
-                          <p className="text-sm font-mono font-black text-white uppercase">{tr.transaction_id}</p>
+                          <p className="text-sm font-mono font-black text-white uppercase truncate">{tr.transaction_id}</p>
                        </div>
-                       <div className="text-right">
+                       <div className="text-right shrink-0">
                           <p className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Date</p>
                           <p className="text-[10px] font-bold text-white/60">{new Date(tr.created_at).toLocaleDateString()}</p>
                        </div>
@@ -635,17 +669,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list' }) =
                     </div>
 
                     <div className="flex gap-3 pt-2">
-                       <button onClick={() => approveTransaction(tr)} disabled={updatingId === tr.id} className="flex-1 py-4 bg-green-500 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 text-sm">
+                       <button onClick={() => approveTransaction(tr)} disabled={updatingId === tr.id} className="flex-1 py-4 bg-green-500 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50">
                           {updatingId === tr.id ? <Loader2 className="animate-spin" size={18} /> : <><CheckCircle size={18} /> Approve & Credit</>}
                        </button>
-                       <button onClick={() => rejectTransaction(tr.id)} disabled={updatingId === tr.id} className="flex-1 py-4 bg-red-500/20 text-white font-black rounded-2xl border border-red-500/30 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm">
+                       <button onClick={() => rejectTransaction(tr.id)} disabled={updatingId === tr.id} className="flex-1 py-4 bg-red-500/20 text-white font-black rounded-2xl border border-red-500/30 active:scale-95 transition-all flex items-center justify-center gap-2 text-sm disabled:opacity-50">
                           <XCircle size={18} /> Reject
                        </button>
                     </div>
                  </div>
               )) : (
-                 <div className="text-center py-20 opacity-40">
-                    <p className="text-white font-bold">অনুমোদনের জন্য কোনো পেমেন্ট রিকোয়েস্ট নেই</p>
+                 <div className="text-center py-20 bg-white/5 rounded-[2.5rem] border border-dashed border-white/10 animate-pulse">
+                    <p className="text-white/30 font-black uppercase text-xs tracking-widest">অনুমোদনের জন্য কোনো পেমেন্ট রিকোয়েস্ট নেই</p>
+                    <button onClick={() => initData(true)} className="mt-4 text-white font-black text-[10px] uppercase border-b border-white/20 pb-1">ম্যানুয়ালি রিফ্রেশ করুন</button>
                  </div>
               )}
            </div>

@@ -1,25 +1,42 @@
 
-import React, { useState, useEffect } from 'react';
-import { Wallet, MessageSquare, Plus, Trash2, CreditCard, History, Loader2, Check, AlertCircle, Phone, Send, Hash, X, Save, Edit3 } from 'lucide-react';
-import { supabase, offlineApi } from '../supabase';
-import { SMSTemplate, Language, Madrasah, Transaction } from '../types';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Wallet, MessageSquare, Plus, Trash2, CreditCard, History, Loader2, Check, AlertCircle, Phone, Send, Hash, X, Save, Edit3, Users, BookOpen, ChevronDown, Eye, AlertTriangle } from 'lucide-react';
+import { supabase, offlineApi, smsApi } from '../supabase';
+import { SMSTemplate, Language, Madrasah, Transaction, Class, Student } from '../types';
 import { t } from '../translations';
+import { sortMadrasahClasses } from './Classes';
 
 interface WalletSMSProps {
   lang: Language;
   madrasah: Madrasah | null;
   triggerRefresh: () => void;
+  dataVersion: number;
 }
 
-const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh }) => {
-  const [activeTab, setActiveTab] = useState<'templates' | 'recharge'>('templates');
+const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, dataVersion }) => {
+  const [activeTab, setActiveTab] = useState<'templates' | 'recharge' | 'quick-send'>('templates');
   const [templates, setTemplates] = useState<SMSTemplate[]>([]);
+  const [classes, setClasses] = useState<Class[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // Quick Send State
+  const [selectedClassId, setSelectedClassId] = useState('');
+  const [selectedTemplateId, setSelectedTemplateId] = useState('');
+  const [quickMessage, setQuickMessage] = useState('');
+  const [studentsInClass, setStudentsInClass] = useState<Student[]>([]);
+  const [sendingBulk, setSendingBulk] = useState(false);
+  const [fetchingStudents, setFetchingStudents] = useState(false);
+
+  // Template Modal State
   const [showModal, setShowModal] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<SMSTemplate | null>(null);
   const [newTitle, setNewTitle] = useState('');
   const [newBody, setNewBody] = useState('');
   const [saving, setSaving] = useState(false);
+  
+  // Custom Delete Confirmation State
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Recharge State
   const [rechargeAmount, setRechargeAmount] = useState('');
@@ -31,22 +48,68 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
   useEffect(() => { 
     if (activeTab === 'templates') fetchTemplates(); 
     if (activeTab === 'recharge') fetchRecentTransactions();
-  }, [activeTab]);
+    if (activeTab === 'quick-send') {
+      fetchTemplates();
+      fetchClasses();
+    }
+  }, [activeTab, madrasah?.id, dataVersion]);
+
+  useEffect(() => {
+    if (selectedClassId) fetchStudentsOfClass(selectedClassId);
+    else setStudentsInClass([]);
+  }, [selectedClassId]);
+
+  const fetchClasses = async () => {
+    const cached = offlineApi.getCache('classes');
+    if (cached) setClasses(sortMadrasahClasses(cached));
+
+    if (navigator.onLine && madrasah?.id) {
+      const { data } = await supabase.from('classes').select('*').eq('madrasah_id', madrasah.id);
+      if (data) {
+        const sorted = sortMadrasahClasses(data);
+        setClasses(sorted);
+        offlineApi.setCache('classes', sorted);
+      }
+    }
+  };
+
+  const fetchStudentsOfClass = async (id: string) => {
+    setFetchingStudents(true);
+    try {
+      const { data } = await supabase.from('students').select('*').eq('class_id', id);
+      setStudentsInClass(data || []);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setFetchingStudents(false);
+    }
+  };
 
   const fetchTemplates = async () => {
     setLoading(true);
     const cached = offlineApi.getCache('sms_templates');
     if (cached) setTemplates(cached);
 
-    if (navigator.onLine) {
+    if (navigator.onLine && madrasah?.id) {
       try {
-        const { data } = await supabase.from('sms_templates').select('*').order('created_at', { ascending: false });
+        const { data } = await supabase
+          .from('sms_templates')
+          .select('*')
+          .eq('madrasah_id', madrasah.id)
+          .order('created_at', { ascending: false });
+        
         if (data) {
           setTemplates(data);
           offlineApi.setCache('sms_templates', data);
         }
-      } catch (err) { console.error(err); } finally { setLoading(false); }
-    } else { setLoading(false); }
+      } catch (err) { 
+        console.error("Template fetch error:", err); 
+      } finally { 
+        setLoading(false); 
+      }
+    } else { 
+      setLoading(false); 
+    }
   };
 
   const fetchRecentTransactions = async () => {
@@ -62,6 +125,31 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
     } catch (err) { console.error(err); }
   };
 
+  const handleQuickSend = async () => {
+    if (!madrasah || studentsInClass.length === 0 || !quickMessage.trim()) return;
+    
+    setSendingBulk(true);
+    try {
+      await smsApi.sendBulk(madrasah.id, studentsInClass, quickMessage);
+      alert(lang === 'bn' ? 'এসএমএস সফলভাবে পাঠানো হয়েছে!' : 'SMS sent successfully!');
+      setSelectedClassId('');
+      setSelectedTemplateId('');
+      setQuickMessage('');
+      triggerRefresh();
+    } catch (err: any) {
+      alert(err.message);
+    } finally {
+      setSendingBulk(false);
+    }
+  };
+
+  const handleTemplateSelect = (id: string) => {
+    setSelectedTemplateId(id);
+    const tmp = templates.find(t => t.id === id);
+    if (tmp) setQuickMessage(tmp.body);
+    else setQuickMessage('');
+  };
+
   const openAddModal = () => {
     setEditingTemplate(null);
     setNewTitle('');
@@ -69,7 +157,8 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
     setShowModal(true);
   };
 
-  const openEditModal = (tmp: SMSTemplate) => {
+  const openEditModal = (e: React.MouseEvent, tmp: SMSTemplate) => {
+    e.stopPropagation();
     setEditingTemplate(tmp);
     setNewTitle(tmp.title);
     setNewBody(tmp.body);
@@ -78,15 +167,12 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
 
   const handleSaveTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newTitle.trim() || !newBody.trim()) return;
+    if (!newTitle.trim() || !newBody.trim() || !madrasah) return;
     
     setSaving(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error(lang === 'bn' ? 'ইউজার লগইন নেই' : 'Auth user not found');
-
       const payload = { 
-        madrasah_id: user.id, 
+        madrasah_id: madrasah.id, 
         title: newTitle.trim(), 
         body: newBody.trim() 
       };
@@ -99,7 +185,9 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
             .eq('id', editingTemplate.id);
           if (error) throw error;
         } else {
-          const { error } = await supabase.from('sms_templates').insert(payload);
+          const { error } = await supabase
+            .from('sms_templates')
+            .insert(payload);
           if (error) throw error;
         }
       } else {
@@ -111,27 +199,45 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
       }
 
       setShowModal(false);
-      fetchTemplates();
+      triggerRefresh();
     } catch (err: any) {
       alert(lang === 'bn' ? `সেভ করা যায়নি: ${err.message}` : `Save failed: ${err.message}`);
-    } finally { setSaving(false); }
+    } finally { 
+      setSaving(false); 
+    }
   };
 
-  const deleteTemplate = async (id: string) => {
-    if (!confirm(t('confirm_delete', lang))) return;
+  const initiateDelete = (e: React.MouseEvent, id: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setConfirmDeleteId(id);
+  };
+
+  const performDelete = async () => {
+    if (!confirmDeleteId) return;
+    
+    setIsDeleting(true);
     try {
+      // Immediate UI update for speed
+      const updatedList = templates.filter(t => t.id !== confirmDeleteId);
+      setTemplates(updatedList);
+      offlineApi.setCache('sms_templates', updatedList);
+
       if (navigator.onLine) {
-        const { error } = await supabase.from('sms_templates').delete().eq('id', id);
+        const { error } = await supabase.from('sms_templates').delete().eq('id', confirmDeleteId);
         if (error) throw error;
       } else {
-        offlineApi.queueAction('sms_templates', 'DELETE', { id });
+        offlineApi.queueAction('sms_templates', 'DELETE', { id: confirmDeleteId });
       }
-      setTemplates(prev => prev.filter(t => t.id !== id));
-      const cached = offlineApi.getCache('sms_templates');
-      if (cached) offlineApi.setCache('sms_templates', cached.filter((t: any) => t.id !== id));
+      
+      triggerRefresh();
+      setConfirmDeleteId(null);
     } catch (err: any) { 
-      console.error(err); 
+      console.error("Delete template error:", err); 
+      fetchTemplates(); // Revert on error
       alert(lang === 'bn' ? 'ডিলিট করা যায়নি' : 'Delete failed');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -165,16 +271,19 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-20">
-      <div className="flex bg-white/10 p-1.5 rounded-3xl border border-white/20 backdrop-blur-xl">
-        <button onClick={() => setActiveTab('templates')} className={`flex-1 py-3.5 rounded-[1.4rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${activeTab === 'templates' ? 'bg-white text-[#d35132] shadow-xl' : 'text-white/60 hover:text-white'}`}>
-          <MessageSquare size={16} /> {t('templates', lang)}
+      <div className="flex bg-white/10 p-1 rounded-3xl border border-white/20 backdrop-blur-xl">
+        <button onClick={() => setActiveTab('templates')} className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${activeTab === 'templates' ? 'bg-white text-[#d35132] shadow-xl' : 'text-white/60'}`}>
+          <MessageSquare size={14} /> {t('templates', lang)}
         </button>
-        <button onClick={() => setActiveTab('recharge')} className={`flex-1 py-3.5 rounded-[1.4rem] font-black text-xs uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${activeTab === 'recharge' ? 'bg-white text-[#d35132] shadow-xl' : 'text-white/60 hover:text-white'}`}>
-          <CreditCard size={16} /> {t('recharge', lang)}
+        <button onClick={() => setActiveTab('quick-send')} className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${activeTab === 'quick-send' ? 'bg-white text-[#d35132] shadow-xl' : 'text-white/60'}`}>
+          <Send size={14} /> {lang === 'bn' ? 'কুইক সেন্ড' : 'Quick Send'}
+        </button>
+        <button onClick={() => setActiveTab('recharge')} className={`flex-1 py-3 rounded-2xl font-black text-[10px] uppercase tracking-wider flex items-center justify-center gap-1.5 transition-all ${activeTab === 'recharge' ? 'bg-white text-[#d35132] shadow-xl' : 'text-white/60'}`}>
+          <CreditCard size={14} /> {t('recharge', lang)}
         </button>
       </div>
 
-      {activeTab === 'templates' ? (
+      {activeTab === 'templates' && (
         <div className="space-y-4">
           <div className="flex items-center justify-between px-1">
             <h2 className="text-xl font-black text-white font-noto tracking-tight">{lang === 'bn' ? 'সংরক্ষিত টেমপ্লেট' : 'Saved Templates'}</h2>
@@ -194,11 +303,19 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
                   <div className="flex justify-between items-start mb-2">
                     <h4 className="font-black text-white text-base font-noto truncate pr-2">{tmp.title}</h4>
                     <div className="flex items-center gap-1 shrink-0">
-                      <button onClick={() => openEditModal(tmp)} className="p-2 bg-white/5 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-all">
-                        <Edit3 size={14} />
+                      <button 
+                        type="button"
+                        onClick={(e) => openEditModal(e, tmp)} 
+                        className="p-2.5 bg-white/5 text-white/40 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                      >
+                        <Edit3 size={16} />
                       </button>
-                      <button onClick={() => deleteTemplate(tmp.id)} className="p-2 bg-white/5 text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all">
-                        <Trash2 size={14} />
+                      <button 
+                        type="button"
+                        onClick={(e) => initiateDelete(e, tmp.id)} 
+                        className="p-2.5 bg-white/5 text-white/40 hover:text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                      >
+                        <Trash2 size={16} />
                       </button>
                     </div>
                   </div>
@@ -213,7 +330,98 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
             </div>
           )}
         </div>
-      ) : (
+      )}
+
+      {activeTab === 'quick-send' && (
+        <div className="space-y-5 animate-in slide-in-from-bottom-4 duration-500">
+           <div className="bg-white/10 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white/20 shadow-xl space-y-6">
+              <div className="flex items-center gap-3 px-1">
+                 <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white"><Send size={20} /></div>
+                 <h3 className="text-lg font-black text-white font-noto">{lang === 'bn' ? 'দ্রুত এসএমএস পাঠান' : 'Quick SMS Send'}</h3>
+              </div>
+
+              <div className="space-y-4">
+                 <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1 block">{lang === 'bn' ? 'ক্লাস সিলেক্ট করুন' : 'Select Class'}</label>
+                    <div className="relative">
+                      <Users size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+                      <select 
+                        className="w-full pl-11 pr-5 py-4 bg-white/10 border border-white/20 rounded-2xl outline-none text-white font-black text-sm appearance-none focus:bg-white/20 transition-all"
+                        value={selectedClassId}
+                        onChange={(e) => setSelectedClassId(e.target.value)}
+                      >
+                        <option value="" className="text-slate-900">{lang === 'bn' ? 'ক্লাস বেছে নিন' : 'Choose a class'}</option>
+                        {classes.map(cls => <option key={cls.id} value={cls.id} className="text-slate-900">{cls.class_name}</option>)}
+                      </select>
+                      <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                    </div>
+                    {fetchingStudents && <p className="text-[9px] text-white/40 animate-pulse px-1">ছাত্র সংখ্যা গণনা করা হচ্ছে...</p>}
+                    {!fetchingStudents && selectedClassId && (
+                      <p className="text-[9px] font-black text-green-400 uppercase tracking-widest px-1">
+                        {studentsInClass.length} {lang === 'bn' ? 'জন ছাত্র নির্বাচিত' : 'Students Selected'}
+                      </p>
+                    )}
+                 </div>
+
+                 <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1 block">{lang === 'bn' ? 'টেমপ্লেট সিলেক্ট করুন' : 'Select Template'}</label>
+                    <div className="relative">
+                      <BookOpen size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/40" />
+                      <select 
+                        className="w-full pl-11 pr-5 py-4 bg-white/10 border border-white/20 rounded-2xl outline-none text-white font-black text-sm appearance-none focus:bg-white/20 transition-all"
+                        value={selectedTemplateId}
+                        onChange={(e) => handleTemplateSelect(e.target.value)}
+                      >
+                        <option value="" className="text-slate-900">{lang === 'bn' ? 'টেমপ্লেট বেছে নিন' : 'Choose a template'}</option>
+                        {templates.map(tmp => <option key={tmp.id} value={tmp.id} className="text-slate-900">{tmp.title}</option>)}
+                      </select>
+                      <ChevronDown size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/40 pointer-events-none" />
+                    </div>
+                 </div>
+
+                 <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1 block flex items-center gap-1.5">
+                      <Eye size={12} /> {lang === 'bn' ? 'মেসেজ প্রিভিউ' : 'Message Preview'}
+                    </label>
+                    <div className="w-full min-h-[6.5rem] px-5 py-4 bg-white/5 border border-white/10 rounded-2xl text-white/90 font-bold text-sm italic leading-relaxed shadow-inner">
+                      {quickMessage || (lang === 'bn' ? 'টেমপ্লেট বেছে নিন মেসেজ দেখার জন্য...' : 'Select a template to preview message...')}
+                    </div>
+                    {quickMessage && (
+                      <div className="flex justify-between items-center px-1 mt-1">
+                        <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">{quickMessage.length} / 160</span>
+                        <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                          {Math.ceil(quickMessage.length / 160)} Part(s)
+                        </span>
+                      </div>
+                    )}
+                 </div>
+
+                 <button 
+                  type="button"
+                  onClick={handleQuickSend}
+                  disabled={sendingBulk || !selectedClassId || !quickMessage.trim() || studentsInClass.length === 0}
+                  className="w-full py-5 bg-white text-[#d35132] font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 text-base disabled:opacity-50"
+                 >
+                   {sendingBulk ? <Loader2 className="animate-spin" size={20} /> : <><Send size={18} /> {lang === 'bn' ? 'এসএমএস পাঠান' : 'Send SMS'}</>}
+                 </button>
+              </div>
+           </div>
+
+           <div className="bg-yellow-400/10 border border-yellow-400/20 p-5 rounded-3xl flex items-start gap-4">
+              <AlertCircle size={20} className="text-yellow-400 shrink-0" />
+              <div className="space-y-1">
+                 <h4 className="text-[10px] font-black text-yellow-400 uppercase tracking-widest">{lang === 'bn' ? 'সতর্কতা' : 'Notice'}</h4>
+                 <p className="text-[11px] text-white/50 font-bold leading-relaxed">
+                   {lang === 'bn' 
+                    ? 'কুইক সেন্ড ব্যবহার করলে সিলেক্ট করা ক্লাসের সকল ছাত্রের অভিভাবকের কাছে মেসেজ চলে যাবে। আপনার ওয়ালেটে পর্যাপ্ত এসএমএস ব্যালেন্স থাকতে হবে।' 
+                    : 'Using Quick Send will message all parents in the selected class. Ensure you have enough SMS credits in your wallet.'}
+                 </p>
+              </div>
+           </div>
+        </div>
+      )}
+
+      {activeTab === 'recharge' && (
         <div className="space-y-6">
           <div className="bg-white rounded-[2.5rem] p-8 shadow-2xl relative overflow-hidden text-center">
              <div className="absolute top-0 right-0 w-32 h-32 bg-[#d35132]/5 rounded-full -mr-16 -mt-16"></div>
@@ -289,11 +497,11 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
         </div>
       )}
 
-      {/* Template Modal */}
+      {/* Template Modal (Add/Edit) */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300">
           <div className="bg-[#e57d4a] w-full max-w-sm rounded-[3rem] shadow-2xl p-8 border border-white/30 animate-in zoom-in-95 relative">
-            <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 text-white/60 hover:text-white">
+            <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 text-white/60 hover:text-white transition-colors">
               <X size={24} />
             </button>
             <h2 className="text-2xl font-black text-white mb-6 text-center font-noto">
@@ -305,7 +513,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
                 <input 
                   type="text" 
                   required 
-                  className="w-full px-5 py-4 bg-white/10 border border-white/20 rounded-2xl outline-none text-white font-black text-sm focus:bg-white/20 transition-all" 
+                  className="w-full px-5 py-4 bg-white/10 border border-white/20 rounded-2xl outline-none text-white font-black text-sm focus:bg-white/20 transition-all shadow-inner" 
                   placeholder={lang === 'bn' ? 'যেমন: অনুপস্থিতি' : 'e.g. Absence'} 
                   value={newTitle} 
                   onChange={(e) => setNewTitle(e.target.value)} 
@@ -315,21 +523,53 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh })
                 <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1 mb-2 block">{t('template_body', lang)}</label>
                 <textarea 
                   required 
-                  className="w-full h-32 px-5 py-4 bg-white/10 border border-white/20 rounded-2xl outline-none text-white font-bold text-sm focus:bg-white/20 transition-all resize-none" 
+                  className="w-full h-32 px-5 py-4 bg-white/10 border border-white/20 rounded-2xl outline-none text-white font-bold text-sm focus:bg-white/20 transition-all resize-none shadow-inner" 
                   placeholder={lang === 'bn' ? 'মেসেজটি লিখুন...' : 'Write message body...'} 
                   value={newBody} 
                   onChange={(e) => setNewBody(e.target.value)} 
                 ></textarea>
               </div>
-              <div className="flex gap-3">
-                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-4 bg-white/10 text-white font-black rounded-xl border border-white/20">
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowModal(false)} className="flex-1 py-4 bg-white/10 text-white font-black rounded-xl border border-white/20 active:scale-95 transition-all">
                   {t('cancel', lang)}
                 </button>
-                <button type="submit" disabled={saving} className="flex-1 py-4 bg-white text-[#d35132] font-black rounded-xl shadow-xl flex items-center justify-center gap-2">
+                <button type="submit" disabled={saving} className="flex-1 py-4 bg-white text-[#d35132] font-black rounded-xl shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all">
                   {saving ? <Loader2 className="animate-spin" size={20} /> : <><Save size={18} /> {t('save', lang)}</>}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Custom Delete Confirmation Modal */}
+      {confirmDeleteId && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[250] flex items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center border border-white/20 animate-in zoom-in-95">
+            <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-6 text-red-500 shadow-sm">
+              <AlertTriangle size={32} />
+            </div>
+            <h2 className="text-xl font-black text-slate-800 mb-2 font-noto">
+              {lang === 'bn' ? 'ডিলিট করতে চান?' : 'Confirm Delete'}
+            </h2>
+            <p className="text-slate-500 text-sm font-bold mb-8 leading-relaxed px-2">
+              {t('confirm_delete', lang)}
+            </p>
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setConfirmDeleteId(null)}
+                className="flex-1 py-4 bg-slate-100 text-slate-600 font-black text-sm rounded-xl active:scale-95 transition-all"
+              >
+                {t('cancel', lang)}
+              </button>
+              <button 
+                onClick={performDelete}
+                disabled={isDeleting}
+                className="flex-1 py-4 bg-red-500 text-white font-black text-sm rounded-xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
+              >
+                {isDeleting ? <Loader2 className="animate-spin" size={18} /> : (lang === 'bn' ? 'হ্যাঁ, ডিলিট করুন' : 'Yes, Delete')}
+              </button>
+            </div>
           </div>
         </div>
       )}
