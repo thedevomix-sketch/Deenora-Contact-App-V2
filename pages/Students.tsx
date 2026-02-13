@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash, CheckCircle2, MessageSquare, Send, X, BookOpen, ChevronDown, Check, Trash2, LayoutGrid } from 'lucide-react';
+import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash, CheckCircle2, MessageSquare, Send, X, BookOpen, ChevronDown, Check, Trash2, LayoutGrid, PhoneCall } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Class, Student, Language, SMSTemplate } from '../types';
 import { t } from '../translations';
@@ -60,7 +60,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
       
       if (error) throw error;
       
-      // Merge custom templates from "Wallet & SMS" with some standard defaults
       if (data && data.length > 0) {
         setTemplates(data);
       } else {
@@ -130,6 +129,20 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   const initiateCall = async (e: React.MouseEvent, student: Student) => {
     e.stopPropagation();
     window.location.href = `tel:${student.guardian_phone}`;
+  };
+
+  const formatWhatsAppNumber = (phone: string) => {
+    let cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 11 && cleaned.startsWith('0')) {
+      return '88' + cleaned;
+    }
+    return cleaned;
+  };
+
+  const openWhatsApp = (e: React.MouseEvent, phone: string) => {
+    e.stopPropagation();
+    const waNumber = formatWhatsAppNumber(phone);
+    window.open(`https://wa.me/${waNumber}`, '_blank');
   };
 
   const selectAll = () => {
@@ -239,6 +252,12 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
                     className="bg-white text-[#d35132] p-2.5 rounded-xl shadow-xl active:scale-90 transition-all"
                   >
                     <Phone size={18} strokeWidth={3} fill="currentColor" />
+                  </button>
+                  <button 
+                    onClick={(e) => openWhatsApp(e, student.guardian_phone)}
+                    className="bg-[#25D366] text-white p-2.5 rounded-xl shadow-xl active:scale-90 transition-all"
+                  >
+                    <PhoneCall size={18} strokeWidth={3} fill="currentColor" />
                   </button>
                   <ChevronRight size={18} className="text-white/20" />
                 </div>
