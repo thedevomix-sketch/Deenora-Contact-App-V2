@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Plus, ChevronRight, BookOpen, Loader2, Edit2, X, Trash2, AlertTriangle } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
@@ -191,7 +190,7 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
 
       {/* Class Form Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-[#d35132]/95 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-200">
           <div className="bg-[#e57d4a] w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 border border-white/30 animate-in zoom-in-95 relative">
             <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 text-white/60 hover:text-white"><X size={24} /></button>
             <h2 className="text-2xl font-black text-white mb-6 text-center font-noto">{editingClass ? t('edit_class', lang) : t('new_class', lang)}</h2>
@@ -211,24 +210,36 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
+      {/* Delete Confirmation Modal - Optimized Layout and Removed Black Blur */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[110] flex items-center justify-center p-6 animate-in fade-in zoom-in-95">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center relative border border-white/20">
-            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500 shadow-inner">
+        <div className="fixed inset-0 bg-[#d35132]/95 z-[110] flex items-center justify-center p-6 animate-in fade-in zoom-in-95">
+          <div className="bg-white w-full max-w-[340px] rounded-[3rem] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.5)] p-8 text-center relative border border-white/20 flex flex-col items-center">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6 text-red-500 shadow-inner shrink-0">
               <AlertTriangle size={40} />
             </div>
-            <h2 className="text-2xl font-black text-slate-800 mb-2 font-noto">{t('confirm_delete', lang)}</h2>
-            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-8 leading-relaxed">
+            
+            <h2 className="text-2xl font-black text-slate-800 mb-3 font-noto leading-tight px-2">
+              {lang === 'bn' ? 'আপনি কি নিশ্চিতভাবে ডিলিট করতে চান?' : t('confirm_delete', lang)}
+            </h2>
+            
+            <p className="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-8 leading-relaxed px-4">
               {lang === 'bn' 
                 ? 'এই ক্লাসটি ডিলিট করলে এর সকল ছাত্রের তথ্যও মুছে যাবে।' 
                 : 'Deleting this class will also remove all student records inside it.'}
             </p>
-            <div className="flex gap-3">
-              <button onClick={() => { setShowDeleteModal(false); setClassToDelete(null); }} className="flex-1 py-4 bg-slate-100 text-slate-600 font-black text-sm rounded-2xl">
+            
+            <div className="flex w-full gap-3">
+              <button 
+                onClick={() => { setShowDeleteModal(false); setClassToDelete(null); }} 
+                className="flex-1 py-4 bg-slate-50 text-slate-500 font-black text-sm rounded-2xl active:bg-slate-100 transition-colors border border-slate-100"
+              >
                 {t('cancel', lang)}
               </button>
-              <button onClick={handleDeleteClass} disabled={deleting} className="flex-1 py-4 bg-red-500 text-white font-black text-sm rounded-2xl shadow-xl flex items-center justify-center gap-2">
+              <button 
+                onClick={handleDeleteClass} 
+                disabled={deleting} 
+                className="flex-1 py-4 bg-[#f14848] text-white font-black text-sm rounded-2xl shadow-[0_8px_20px_-4px_rgba(241,72,72,0.4)] flex items-center justify-center gap-2 active:scale-95 transition-all"
+              >
                 {deleting ? <Loader2 className="animate-spin" size={18} /> : t('delete', lang)}
               </button>
             </div>

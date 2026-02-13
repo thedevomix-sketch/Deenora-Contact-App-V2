@@ -205,13 +205,17 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
       </div>
 
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[100] flex items-center justify-center p-6 animate-in fade-in zoom-in-95">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center relative border border-white/20">
-            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500"><AlertTriangle size={40} /></div>
-            <h2 className="text-2xl font-black text-slate-800 mb-2 font-noto">{t('confirm_delete', lang)}</h2>
-            <div className="flex gap-3">
-              <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-4 bg-slate-100 text-slate-600 font-black text-sm rounded-2xl"> {t('cancel', lang)} </button>
-              <button onClick={performDelete} className="flex-1 py-4 bg-red-500 text-white font-black text-sm rounded-2xl shadow-xl flex items-center justify-center gap-2"> {isDeleting ? <Loader2 className="animate-spin" size={18} /> : t('delete', lang)} </button>
+        <div className="fixed inset-0 bg-[#d35132]/95 z-[110] flex items-center justify-center p-6 animate-in fade-in zoom-in-95">
+          <div className="bg-white w-full max-w-[340px] rounded-[3rem] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.5)] p-8 text-center relative border border-white/20 flex flex-col items-center">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6 text-red-500 shadow-inner">
+              <AlertTriangle size={40} />
+            </div>
+            <h2 className="text-2xl font-black text-slate-800 mb-3 font-noto leading-tight px-2">
+              {t('confirm_delete', lang)}
+            </h2>
+            <div className="flex w-full gap-3 mt-6">
+              <button onClick={() => setShowDeleteModal(false)} className="flex-1 py-4 bg-slate-50 text-slate-500 font-black text-sm rounded-2xl active:bg-slate-100 border border-slate-100"> {t('cancel', lang)} </button>
+              <button onClick={performDelete} className="flex-1 py-4 bg-[#f14848] text-white font-black text-sm rounded-2xl shadow-xl flex items-center justify-center gap-2 active:scale-95 transition-all"> {isDeleting ? <Loader2 className="animate-spin" size={18} /> : t('delete', lang)} </button>
             </div>
           </div>
         </div>
