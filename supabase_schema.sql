@@ -1,37 +1,74 @@
 
 -- ======================================================
--- DATABASE REPAIR & INITIALIZATION SCRIPT (V3)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V4)
 -- ======================================================
 
--- ১. স্টুডেন্ট টেবিলে 'photo_url' কলাম যোগ করা (যদি না থাকে)
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='students' AND column_name='photo_url') THEN
-        ALTER TABLE public.students ADD COLUMN photo_url TEXT;
-    END IF;
-END $$;
+-- ১. মাদরাসা প্রোফাইল টেবিল
+CREATE TABLE IF NOT EXISTS public.madrasahs (
+    id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
+    name TEXT NOT NULL DEFAULT 'নতুন মাদরাসা',
+    phone TEXT,
+    logo_url TEXT,
+    is_active BOOLEAN DEFAULT true,
+    is_super_admin BOOLEAN DEFAULT false,
+    balance DECIMAL DEFAULT 0,
+    sms_balance INTEGER DEFAULT 0,
+    login_code TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 
--- ২. একই ক্লাসে রোল নম্বর ইউনিক করার জন্য কনস্ট্রেইন যোগ করা
--- এটি নিশ্চিত করবে যে এক ক্লাসে একই রোল দুইজনের হবে না
--- দ্রষ্টব্য: যদি আগে থেকেই ডুপ্লিকেট ডাটা থাকে তবে এই কমান্ডটি এরর দিবে। 
--- সেক্ষেত্রে আগে ডুপ্লিকেট ডাটা ডিলিট বা এডিট করতে হবে।
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unique_roll_per_class') THEN
-        ALTER TABLE public.students ADD CONSTRAINT unique_roll_per_class UNIQUE (class_id, roll);
-    END IF;
-EXCEPTION
-    WHEN duplicate_table THEN NULL;
-    WHEN others THEN 
-        RAISE NOTICE 'Could not add unique constraint. Please check for existing duplicate rolls in your classes.';
-END $$;
+-- ২. ক্লাস টেবিল
+CREATE TABLE IF NOT EXISTS public.classes (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
+    class_name TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 
--- ৩. স্টোরেজ বাকেট এবং পলিসি
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('madrasah-assets', 'madrasah-assets', true)
-ON CONFLICT (id) DO NOTHING;
+-- ৩. স্টুডেন্ট টেবিল
+CREATE TABLE IF NOT EXISTS public.students (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
+    class_id UUID REFERENCES public.classes(id) ON DELETE CASCADE NOT NULL,
+    student_name TEXT NOT NULL,
+    guardian_name TEXT,
+    roll INTEGER,
+    guardian_phone TEXT NOT NULL,
+    guardian_phone_2 TEXT,
+    photo_url TEXT,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
+    CONSTRAINT unique_roll_per_class UNIQUE (class_id, roll)
+);
 
--- ৪. ট্রানজ্যাকশন টেবিল ঠিক করা
+-- ৪. এসএমএস টেমপ্লেট টেবিল
+CREATE TABLE IF NOT EXISTS public.sms_templates (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ৫. এসএমএস লগ টেবিল
+CREATE TABLE IF NOT EXISTS public.sms_logs (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
+    recipient_phone TEXT NOT NULL,
+    message TEXT NOT NULL,
+    status TEXT DEFAULT 'sent',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ৬. কল লগ টেবিল
+CREATE TABLE IF NOT EXISTS public.recent_calls (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
+    student_id UUID REFERENCES public.students(id) ON DELETE CASCADE NOT NULL,
+    guardian_phone TEXT NOT NULL,
+    called_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ৭. ট্রানজ্যাকশন টেবিল
 CREATE TABLE IF NOT EXISTS public.transactions (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
@@ -41,9 +78,43 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     description TEXT,
     sender_phone TEXT,
     transaction_id TEXT,
-    sms_count INTEGER DEFAULT 0,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ৫. সুপাবেস ক্যাশ রিফ্রেশ
+-- ৮. বাল্ক এসএমএস পাঠানোর আরপিসি (RPC) ফাংশন
+-- এই ফাংশনটি ছাড়া অ্যাপ থেকে এসএমএস যাবে না
+CREATE OR REPLACE FUNCTION public.send_bulk_sms_rpc(
+  p_madrasah_id UUID,
+  p_student_ids UUID[],
+  p_message TEXT
+) RETURNS JSON AS $$
+DECLARE
+    v_sms_count INTEGER;
+    v_balance INTEGER;
+BEGIN
+    v_sms_count := array_length(p_student_ids, 1);
+    
+    -- ব্যালেন্স চেক
+    SELECT sms_balance INTO v_balance FROM public.madrasahs WHERE id = p_madrasah_id;
+    
+    IF v_balance < v_sms_count THEN
+        RETURN json_build_object('success', false, 'error', 'Insufficient SMS balance');
+    END IF;
+
+    -- ব্যালেন্স কমানো
+    UPDATE public.madrasahs 
+    SET sms_balance = sms_balance - v_sms_count 
+    WHERE id = p_madrasah_id;
+
+    -- লগ তৈরি (সহজ করার জন্য লুপ ব্যবহার করা যেতে পারে, তবে এখানে বেসিক রাখছি)
+    INSERT INTO public.sms_logs (madrasah_id, recipient_phone, message, status)
+    SELECT p_madrasah_id, guardian_phone, p_message, 'sent'
+    FROM public.students
+    WHERE id = ANY(p_student_ids);
+
+    RETURN json_build_object('success', true, 'count', v_sms_count);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ৯. সুপাবেস ক্যাশ রিফ্রেশ
 NOTIFY pgrst, 'reload schema';
