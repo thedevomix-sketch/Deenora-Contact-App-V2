@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Loader2, Send, ChevronDown, BookOpen, Users, CheckCircle2, MessageSquare, Plus, Edit3, Trash2, Smartphone, X, Check, AlertCircle, Sparkles, LayoutList } from 'lucide-react';
 import { supabase, offlineApi, smsApi } from '../supabase';
@@ -143,7 +142,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-24">
-      {/* Dynamic Tab Switcher */}
+      {/* Premium Dynamic Tab Switcher */}
       <div className="flex bg-white/10 backdrop-blur-xl p-2 rounded-[2.5rem] shadow-[0_15px_40px_rgba(46,11,94,0.15)] border border-white/20">
         {(['bulk-sms', 'templates', 'recharge'] as const).map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} 
@@ -159,6 +158,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
       {activeTab === 'bulk-sms' && (
         <div className="space-y-6 animate-in slide-in-from-bottom-5">
           <div className="bg-white/95 backdrop-blur-xl p-10 rounded-[3.5rem] shadow-[0_50px_120px_rgba(46,11,94,0.35)] border border-white/50 space-y-10">
+            {/* Step 1: Target Audience */}
             <div className="space-y-5">
               <label className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.25em] px-1 opacity-80">১. অডিয়েন্স (Target Audience)</label>
               <div className="relative">
@@ -210,6 +210,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
               )}
             </div>
 
+            {/* Step 2: Composition */}
             <div className="space-y-6">
               <label className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.25em] px-1 opacity-80">২. মেসেজ কম্পোজিশন (Composition)</label>
               
@@ -278,7 +279,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
         </div>
       )}
 
-      {/* Templates and Recharge tabs keep their existing structure but benefit from the global styles */}
+      {/* Templates Tab */}
       {activeTab === 'templates' && (
         <div className="space-y-6 animate-in slide-in-from-bottom-5">
           <div className="flex items-center justify-between px-4">
@@ -311,7 +312,29 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
         </div>
       )}
 
-      {/* Modal for Template Add/Edit - Consistent with new enlarged sizing */}
+      {/* Recharge Tab */}
+      {activeTab === 'recharge' && (
+        <div className="bg-white/95 backdrop-blur-xl p-10 rounded-[3.5rem] shadow-2xl border border-white space-y-10 text-center animate-in slide-in-from-bottom-5">
+          <div className="bg-[#8D30F4]/5 p-10 rounded-[3rem] border-2 border-dashed border-[#8D30F4]/20">
+            <Smartphone size={45} className="mx-auto text-[#8D30F4] mb-6" />
+            <p className="text-[13px] font-black text-slate-400 uppercase tracking-widest mb-3">Send Money (bKash/Nagad)</p>
+            <h3 className="text-3xl font-black text-[#2E0B5E] tracking-tighter">017XXXXXXXX</h3>
+          </div>
+          <div className="space-y-8 text-left">
+            <div className="space-y-3">
+              <label className="text-[11px] font-black text-[#4B168A] uppercase tracking-widest px-2">টাকার পরিমাণ</label>
+              <input type="number" className="w-full px-7 py-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.8rem] text-[#2D3142] font-black text-2xl outline-none focus:border-[#8D30F4]" placeholder="Amount (৳)" />
+            </div>
+            <div className="space-y-3">
+              <label className="text-[11px] font-black text-[#4B168A] uppercase tracking-widest px-2">TrxID</label>
+              <input type="text" className="w-full px-7 py-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.8rem] text-[#2D3142] font-black text-2xl outline-none focus:border-[#8D30F4] uppercase" placeholder="8X23M1..." />
+            </div>
+            <button className="w-full py-7 premium-btn text-white font-black rounded-[2.5rem] shadow-2xl active:scale-[0.98] transition-all text-2xl">রিচার্জ রিকোয়েস্ট পাঠান</button>
+          </div>
+        </div>
+      )}
+
+      {/* Add/Edit Template Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[500] flex items-center justify-center p-8 animate-in fade-in duration-300">
            <div className="bg-white w-full max-w-md rounded-[3.5rem] p-12 shadow-[0_50px_120px_rgba(0,0,0,0.4)] border-2 border-[#8D30F4]/10 relative animate-in zoom-in-95">

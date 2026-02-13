@@ -94,14 +94,14 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
       return;
     }
 
-    // Phone validation
+    // Phone validation - Must be exactly 11 digits
     if (phone.length !== 11) {
-      setErrorModal({ show: true, message: t('invalid_phone', lang) });
+      setErrorModal({ show: true, message: lang === 'bn' ? 'সঠিক ১১ ডিজিটের মোবাইল নম্বর দিন' : 'Enter a valid 11-digit mobile number' });
       return;
     }
 
     if (phone2 && phone2.length !== 11) {
-      setErrorModal({ show: true, message: t('invalid_phone', lang) });
+      setErrorModal({ show: true, message: lang === 'bn' ? '২য় ফোন নম্বরটি ১১ ডিজিটের হতে হবে' : 'Second phone must be 11 digits' });
       return;
     }
 

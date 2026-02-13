@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, Plus, Phone, Search, CheckCircle2, MessageSquare, X, BookOpen, ChevronDown, Check, PhoneCall, Smartphone, Loader2, ListChecks } from 'lucide-react';
 import { supabase, offlineApi, smsApi } from '../supabase';
