@@ -32,6 +32,8 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
+  const APP_VERSION = "2.1.0-SMS-TEMPLATE";
+
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
   };
@@ -242,6 +244,11 @@ const App: React.FC = () => {
         {view === 'student-form' && !isSuperAdmin && (
           <StudentForm student={selectedStudent} defaultClassId={selectedClass?.id} isEditing={isEditing} onSuccess={() => { triggerRefresh(); setView(selectedClass ? 'students' : 'home'); }} onCancel={() => setView(selectedStudent ? 'student-details' : (selectedClass ? 'students' : 'home'))} lang={lang} />
         )}
+        
+        {/* Version Indicator to verify update */}
+        <div className="mt-8 mb-4 text-center opacity-20 select-none">
+           <span className="text-[9px] font-black text-white uppercase tracking-widest">{APP_VERSION}</span>
+        </div>
       </Layout>
     </div>
   );
