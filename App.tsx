@@ -32,7 +32,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.1.0-SMS-TEMPLATE";
+  const APP_VERSION = "2.1.1-GOLD-SMS";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -54,7 +54,6 @@ const App: React.FC = () => {
         await registration.unregister();
       }
     }
-    // Clear all localStorage caches
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('cache_')) localStorage.removeItem(key);
     });
@@ -99,7 +98,6 @@ const App: React.FC = () => {
       await fetchMadrasahProfile(userId);
     } catch (err) {
       if (retries > 0) {
-        console.log(`Retrying profile fetch... (${retries} left)`);
         setTimeout(() => fetchMadrasahProfileWithRetry(userId, retries - 1), 1000);
       } else {
         setError("Network connectivity issue. Please check your internet.");
@@ -122,7 +120,6 @@ const App: React.FC = () => {
       setMadrasah(data);
       offlineApi.setCache('profile', data);
     } else {
-      // Create profile if not found
       const { data: newData, error: insertError } = await supabase
         .from('madrasahs')
         .insert({ id: userId, name: 'নতুন মাদরাসা', is_active: true, balance: 0 })
@@ -155,9 +152,6 @@ const App: React.FC = () => {
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#d35132] p-8 text-center">
         <AlertCircle size={60} className="text-white/40 mb-6" />
         <h2 className="text-white text-xl font-black mb-2">Connection Error</h2>
-        <p className="text-white/60 text-sm mb-8 leading-relaxed max-w-sm mx-auto">
-          {error.includes('fetch') || error.includes('internet') ? t('login_error', lang) : error}
-        </p>
         <div className="flex flex-col gap-3 w-full max-w-xs">
           <button onClick={() => window.location.reload()} className="bg-white text-[#d35132] px-8 py-4 rounded-full font-black flex items-center justify-center gap-2">
             <RefreshCw size={18} /> Retry Connection
@@ -183,69 +177,20 @@ const App: React.FC = () => {
       <Layout currentView={view} setView={navigateTo} lang={lang} madrasah={madrasah}>
         {view === 'home' && (
           isSuperAdmin ? <AdminPanel lang={lang} currentView="list" /> : 
-          <Home 
-            onStudentClick={(s) => { setSelectedStudent(s); setView('student-details'); }} 
-            lang={lang} 
-            dataVersion={dataVersion}
-            triggerRefresh={triggerRefresh}
-          />
+          <Home onStudentClick={(s) => { setSelectedStudent(s); setView('student-details'); }} lang={lang} dataVersion={dataVersion} triggerRefresh={triggerRefresh} />
         )}
-        
-        {view === 'admin-dashboard' && isSuperAdmin && (
-          <AdminPanel lang={lang} currentView="dashboard" />
-        )}
-
-        {view === 'admin-approvals' && isSuperAdmin && (
-          <AdminPanel lang={lang} currentView="approvals" />
-        )}
-
-        {view === 'classes' && !isSuperAdmin && (
-          <Classes 
-            onClassClick={(cls) => { setSelectedClass(cls); setView('students'); }} 
-            lang={lang} 
-            dataVersion={dataVersion} 
-            triggerRefresh={triggerRefresh} 
-          />
-        )}
-
-        {view === 'wallet-sms' && !isSuperAdmin && (
-          <WalletSMS lang={lang} madrasah={madrasah} triggerRefresh={triggerRefresh} dataVersion={dataVersion} />
-        )}
-
-        {view === 'data-management' && !isSuperAdmin && (
-          <DataManagement lang={lang} madrasah={madrasah} onBack={() => setView('account')} triggerRefresh={triggerRefresh} />
-        )}
-        
-        {view === 'account' && (
-          <Account 
-            lang={lang} 
-            setLang={(l) => { setLang(l); localStorage.setItem('app_lang', l); }} 
-            onProfileUpdate={() => fetchMadrasahProfileWithRetry(session.user.id)}
-            setView={setView}
-            isSuperAdmin={isSuperAdmin}
-            initialMadrasah={madrasah}
-          />
-        )}
-
+        {view === 'admin-dashboard' && isSuperAdmin && <AdminPanel lang={lang} currentView="dashboard" />}
+        {view === 'admin-approvals' && isSuperAdmin && <AdminPanel lang={lang} currentView="approvals" />}
+        {view === 'classes' && !isSuperAdmin && <Classes onClassClick={(cls) => { setSelectedClass(cls); setView('students'); }} lang={lang} dataVersion={dataVersion} triggerRefresh={triggerRefresh} />}
+        {view === 'wallet-sms' && !isSuperAdmin && <WalletSMS lang={lang} madrasah={madrasah} triggerRefresh={triggerRefresh} dataVersion={dataVersion} />}
+        {view === 'data-management' && !isSuperAdmin && <DataManagement lang={lang} madrasah={madrasah} onBack={() => setView('account')} triggerRefresh={triggerRefresh} />}
+        {view === 'account' && <Account lang={lang} setLang={(l) => { setLang(l); localStorage.setItem('app_lang', l); }} onProfileUpdate={() => fetchMadrasahProfileWithRetry(session.user.id)} setView={setView} isSuperAdmin={isSuperAdmin} initialMadrasah={madrasah} />}
         {view === 'students' && selectedClass && !isSuperAdmin && (
-          <Students 
-            selectedClass={selectedClass} 
-            onStudentClick={(s) => { setSelectedStudent(s); setView('student-details'); }} 
-            onAddClick={() => { setSelectedStudent(null); setIsEditing(false); setView('student-form'); }}
-            onBack={() => setView('classes')}
-            lang={lang}
-            dataVersion={dataVersion}
-            triggerRefresh={triggerRefresh}
-          />
+          <Students selectedClass={selectedClass} onStudentClick={(s) => { setSelectedStudent(s); setView('student-details'); }} onAddClick={() => { setSelectedStudent(null); setIsEditing(false); setView('student-form'); }} onBack={() => setView('classes')} lang={lang} dataVersion={dataVersion} triggerRefresh={triggerRefresh} />
         )}
-        {view === 'student-details' && selectedStudent && !isSuperAdmin && (
-          <StudentDetails student={selectedStudent} onEdit={() => { setIsEditing(true); setView('student-form'); }} onBack={() => setView(selectedClass ? 'students' : 'home')} lang={lang} triggerRefresh={triggerRefresh} />
-        )}
-        {view === 'student-form' && !isSuperAdmin && (
-          <StudentForm student={selectedStudent} defaultClassId={selectedClass?.id} isEditing={isEditing} onSuccess={() => { triggerRefresh(); setView(selectedClass ? 'students' : 'home'); }} onCancel={() => setView(selectedStudent ? 'student-details' : (selectedClass ? 'students' : 'home'))} lang={lang} />
-        )}
+        {view === 'student-details' && selectedStudent && !isSuperAdmin && <StudentDetails student={selectedStudent} onEdit={() => { setIsEditing(true); setView('student-form'); }} onBack={() => setView(selectedClass ? 'students' : 'home')} lang={lang} triggerRefresh={triggerRefresh} />}
+        {view === 'student-form' && !isSuperAdmin && <StudentForm student={selectedStudent} defaultClassId={selectedClass?.id} isEditing={isEditing} onSuccess={() => { triggerRefresh(); setView(selectedClass ? 'students' : 'home'); }} onCancel={() => setView(selectedStudent ? 'student-details' : (selectedClass ? 'students' : 'home'))} lang={lang} />}
         
-        {/* Version Indicator to verify update */}
         <div className="mt-8 mb-4 text-center opacity-20 select-none">
            <span className="text-[9px] font-black text-white uppercase tracking-widest">{APP_VERSION}</span>
         </div>

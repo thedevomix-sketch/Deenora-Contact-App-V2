@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash, CheckCircle2, MessageSquare, Send, X, BookOpen, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash, CheckCircle2, MessageSquare, Send, X, BookOpen, ChevronDown, Check } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Class, Student, Language, SMSTemplate } from '../types';
 import { t } from '../translations';
@@ -15,14 +15,21 @@ interface StudentsProps {
   triggerRefresh: () => void;
 }
 
+const DEFAULT_TEMPLATES = [
+  { id: 'def-1', title: 'উপস্থিতি (Attendance)', body: 'আস-সালামু আলাইকুম, আজ আপনার সন্তান মাদরাসায় উপস্থিত হয়েছে। ধন্যবাদ।' },
+  { id: 'def-2', title: 'অনুপস্থিতি (Absence)', body: 'আস-সালামু আলাইকুম, আজ আপনার সন্তান মাদরাসায় অনুপস্থিত। অনুগ্রহ করে কারণ জানান।' },
+  { id: 'def-3', title: 'ফি বকেয়া (Fees)', body: 'আস-সালামু আলাইকুম, আপনার সন্তানের মাদরাসার মাসিক ফি বকেয়া রয়েছে। অনুগ্রহ করে দ্রুত পরিশোধ করুন।' },
+  { id: 'def-4', title: 'ছুটির নোটিশ (Holiday)', body: 'আস-সালামু আলাইকুম, বিশেষ কারণে আগামী কাল মাদরাসা বন্ধ থাকবে। ইনশাআল্লাহ আগামী পরশু যথারীতি খুলবে।' }
+];
+
 const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAddClick, onBack, lang, dataVersion, triggerRefresh }) => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [templates, setTemplates] = useState<SMSTemplate[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<SMSTemplate | null>(null);
+  const [templates, setTemplates] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
 
   const cacheKey = `students_list_${selectedClass.id}`;
@@ -43,22 +50,19 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
 
   const fetchTemplates = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
     
-    const cached = offlineApi.getCache('sms_templates');
-    if (cached) setTemplates(cached);
-
-    if (navigator.onLine) {
+    let dbTemplates: any[] = [];
+    if (navigator.onLine && user) {
       const { data } = await supabase
         .from('sms_templates')
         .select('*')
         .eq('madrasah_id', user.id)
         .order('created_at', { ascending: false });
-      if (data) {
-        setTemplates(data);
-        offlineApi.setCache('sms_templates', data);
-      }
+      if (data) dbTemplates = data;
     }
+    
+    // Combine defaults with DB templates
+    setTemplates([...DEFAULT_TEMPLATES, ...dbTemplates]);
   };
 
   const fetchStudents = async () => {
@@ -108,16 +112,11 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     if (selectedStudents.length === 0) return;
     
     const phoneNumbers = selectedStudents.map(s => s.guardian_phone);
-    
-    // Multi-recipient SMS URI Logic
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const separator = isIOS ? ';' : ',';
     const numbersStr = phoneNumbers.join(separator);
     
-    // Body encoding
     const bodyParam = selectedTemplate ? `${isIOS ? '&' : '?'}body=${encodeURIComponent(selectedTemplate.body)}` : '';
-    
-    // Open system SMS app
     window.location.href = `sms:${numbersStr}${bodyParam}`;
   };
 
@@ -137,7 +136,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   };
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative pb-40">
+    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative pb-52">
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -161,7 +160,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
                   setSelectedTemplate(null);
                 }
               }}
-              className={`shrink-0 p-2.5 rounded-xl transition-all active:scale-95 border ${isSelectionMode ? 'bg-white text-[#d35132] border-white' : 'bg-white/10 text-white border-white/20'}`}
+              className={`shrink-0 p-2.5 rounded-xl transition-all active:scale-95 border ${isSelectionMode ? 'bg-white text-[#d35132] border-white shadow-xl' : 'bg-white/10 text-white border-white/20'}`}
             >
               {isSelectionMode ? <X size={20} /> : <CheckCircle2 size={20} />}
             </button>
@@ -243,31 +242,34 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
         <div className="fixed bottom-24 left-4 right-4 animate-in slide-in-from-bottom-10 z-[70]">
           <div className="bg-white rounded-[2.2rem] p-4 flex flex-col gap-3 shadow-2xl border border-white/20 ring-1 ring-black/5">
             
-            {/* Template Selector for Native SMS */}
             <div className="relative">
               <button 
                 onClick={() => setShowTemplateMenu(!showTemplateMenu)}
-                className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-100 rounded-xl text-slate-700 text-xs font-bold"
+                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-black transition-all ${selectedTemplate ? 'bg-[#d35132]/10 text-[#d35132] border border-[#d35132]/20' : 'bg-slate-100 text-slate-700'}`}
               >
                 <div className="flex items-center gap-2 truncate">
-                  <BookOpen size={14} className="text-[#d35132]" />
+                  <BookOpen size={14} className={selectedTemplate ? 'text-[#d35132]' : 'text-slate-400'} />
                   <span className="truncate">{selectedTemplate ? selectedTemplate.title : (lang === 'bn' ? 'টেমপ্লেট বাছাই করুন' : 'Select Template')}</span>
                 </div>
-                <ChevronDown size={16} className={`transition-transform ${showTemplateMenu ? 'rotate-180' : ''}`} />
+                <ChevronDown size={16} className={`transition-transform duration-300 ${showTemplateMenu ? 'rotate-180' : ''}`} />
               </button>
 
               {showTemplateMenu && (
-                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-2xl shadow-2xl border border-slate-100 max-h-40 overflow-y-auto animate-in slide-in-from-bottom-2">
+                <div className="absolute bottom-full left-0 right-0 mb-3 bg-white rounded-[1.8rem] shadow-2xl border border-slate-100 max-h-60 overflow-y-auto z-[80] animate-in slide-in-from-bottom-2 p-1">
                   {templates.length > 0 ? templates.map(tmp => (
                     <button 
                       key={tmp.id}
                       onClick={() => { setSelectedTemplate(tmp); setShowTemplateMenu(false); }}
-                      className="w-full text-left px-5 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 text-xs font-bold text-slate-600"
+                      className={`w-full text-left px-5 py-4 rounded-2xl flex items-center justify-between transition-colors ${selectedTemplate?.id === tmp.id ? 'bg-[#d35132]/5 text-[#d35132]' : 'hover:bg-slate-50 text-slate-700'}`}
                     >
-                      {tmp.title}
+                      <div className="min-w-0 pr-2">
+                         <p className="text-[10px] font-black uppercase tracking-widest opacity-50 leading-none mb-1">{tmp.id.startsWith('def') ? 'Free' : 'Custom'}</p>
+                         <p className="text-xs font-bold truncate">{tmp.title}</p>
+                      </div>
+                      {selectedTemplate?.id === tmp.id && <Check size={14} strokeWidth={4} />}
                     </button>
                   )) : (
-                    <p className="text-center py-4 text-slate-400 text-[10px]">{lang === 'bn' ? 'কোনো টেমপ্লেট নেই' : 'No templates'}</p>
+                    <p className="text-center py-4 text-slate-400 text-[10px] font-black uppercase tracking-widest">No templates</p>
                   )}
                 </div>
               )}
@@ -275,15 +277,15 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
 
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3 pl-2">
-                <div className="w-10 h-10 bg-[#d35132]/10 rounded-full flex items-center justify-center text-[#d35132]">
+                <div className="w-10 h-10 bg-[#d35132] rounded-full flex items-center justify-center text-white shadow-lg">
                   <span className="text-lg font-black">{selectedIds.size}</span>
                 </div>
-                <p className="text-xs font-black text-slate-800 uppercase tracking-widest">{t('selected', lang)}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Selected</p>
               </div>
               
               <button 
                 onClick={sendNativeSMS}
-                className="bg-[#d35132] text-white px-6 py-3.5 rounded-2xl flex items-center gap-2 font-black text-xs uppercase shadow-xl active:scale-95 transition-all"
+                className="bg-[#d35132] text-white px-8 py-4 rounded-2xl flex items-center gap-2 font-black text-xs uppercase shadow-xl active:scale-95 transition-all"
               >
                 <MessageSquare size={16} fill="white" />
                 {t('native_sms', lang)}

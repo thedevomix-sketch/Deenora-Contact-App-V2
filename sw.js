@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'madrasah-app-v5';
+const CACHE_NAME = 'madrasah-app-v6';
 const ASSETS = [
   './',
   './index.html',
@@ -33,21 +33,12 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // EXCEPTION: Never cache Supabase API calls or external dynamic resources
   if (url.hostname.includes('supabase.co') || url.hostname.includes('google.com')) {
-    event.respondWith(
-      fetch(event.request).catch(err => {
-        console.error('[SW] API Fetch failed:', err);
-        return new Response(JSON.stringify({ error: 'Network failure', details: err.message }), {
-          status: 503,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      })
-    );
+    event.respondWith(fetch(event.request));
     return;
   }
 
-  // Network First strategy for the app shell to ensure updates are seen
+  // Always try network first for the main entry points
   if (ASSETS.includes(url.pathname) || url.pathname === '/' || url.pathname.endsWith('.html')) {
     event.respondWith(
       fetch(event.request)
@@ -58,28 +49,14 @@ self.addEventListener('fetch', (event) => {
           });
           return networkResponse;
         })
-        .catch(() => {
-          return caches.match(event.request);
-        })
+        .catch(() => caches.match(event.request))
     );
     return;
   }
 
-  // Cache First strategy for other static assets
   event.respondWith(
     caches.match(event.request).then((response) => {
-      return response || fetch(event.request).then((networkResponse) => {
-        if (event.request.method === 'GET' && url.origin === self.location.origin) {
-          const responseToCache = networkResponse.clone();
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        }
-        return networkResponse;
-      }).catch(err => {
-        console.error('[SW] Static Fetch failed:', err);
-        throw err;
-      });
+      return response || fetch(event.request);
     })
   );
 });
