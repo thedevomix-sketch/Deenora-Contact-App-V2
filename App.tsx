@@ -13,7 +13,7 @@ import AdminPanel from './pages/AdminPanel';
 import WalletSMS from './pages/WalletSMS';
 import DataManagement from './pages/DataManagement';
 import { View, Class, Student, Language, Madrasah } from './types';
-import { WifiOff, Loader2, CloudSync, AlertCircle, RefreshCw } from 'lucide-react';
+import { WifiOff, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import { t } from './translations';
 
 const App: React.FC = () => {
@@ -184,7 +184,7 @@ const App: React.FC = () => {
     <div className="relative h-full w-full bg-[#d35132]">
       {(!isOnline || syncing) && (
         <div className="absolute top-0 left-0 right-0 bg-black/60 backdrop-blur-md text-white text-[10px] font-black py-1.5 px-4 z-[60] flex items-center justify-center gap-2 uppercase tracking-widest border-b border-white/10">
-          {syncing ? <><CloudSync size={12} className="animate-pulse" /> Syncing...</> : <><WifiOff size={10} /> Offline</>}
+          {syncing ? <><RefreshCw size={12} className="animate-spin" /> Syncing...</> : <><WifiOff size={10} /> Offline</>}
         </div>
       )}
       
