@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 // Added Loader2 to the imports
-import { ArrowLeft, Plus, Phone, Search, CheckCircle2, MessageSquare, X, BookOpen, ChevronDown, Check, PhoneCall, Smartphone, Loader2 } from 'lucide-react';
+import { ArrowLeft, Plus, Phone, Search, CheckCircle2, MessageSquare, X, BookOpen, ChevronDown, Check, PhoneCall, Smartphone, Loader2, ListChecks } from 'lucide-react';
 import { supabase, offlineApi, smsApi } from '../supabase';
 import { Class, Student, Language } from '../types';
 import { t } from '../translations';
@@ -46,6 +46,11 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     return list;
   }, [searchQuery, students]);
 
+  const allFilteredSelected = useMemo(() => {
+    if (filteredStudents.length === 0) return false;
+    return filteredStudents.every(s => selectedIds.has(s.id));
+  }, [filteredStudents, selectedIds]);
+
   const fetchTemplates = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -68,6 +73,18 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   const toggleSelection = (id: string) => {
     const newSelected = new Set(selectedIds);
     if (newSelected.has(id)) newSelected.delete(id); else newSelected.add(id);
+    setSelectedIds(newSelected);
+  };
+
+  const toggleSelectAll = () => {
+    const newSelected = new Set(selectedIds);
+    if (allFilteredSelected) {
+      // Unselect all currently filtered students
+      filteredStudents.forEach(s => newSelected.delete(s.id));
+    } else {
+      // Select all currently filtered students
+      filteredStudents.forEach(s => newSelected.add(s.id));
+    }
     setSelectedIds(newSelected);
   };
 
@@ -119,13 +136,22 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
           </div>
           
           <div className="flex items-center gap-2">
+            {isSelectionMode && (
+              <button onClick={toggleSelectAll}
+                className={`shrink-0 h-10 px-3 rounded-xl transition-all active:scale-95 border flex items-center justify-center gap-2 font-black text-[11px] uppercase tracking-wider ${allFilteredSelected ? 'bg-white text-[#8D30F4] border-white shadow-xl' : 'bg-white/20 text-white border-white/20'}`}>
+                <ListChecks size={18} strokeWidth={3} />
+                {allFilteredSelected ? (lang === 'bn' ? 'সব মুছুন' : 'Clear All') : (lang === 'bn' ? 'সব নির্বাচন' : 'Select All')}
+              </button>
+            )}
             <button onClick={() => { setIsSelectionMode(!isSelectionMode); if (isSelectionMode) setSelectedIds(new Set()); }}
               className={`shrink-0 w-10 h-10 rounded-xl transition-all active:scale-95 border flex items-center justify-center ${isSelectionMode ? 'bg-white text-[#8D30F4] border-white shadow-xl' : 'bg-white/20 text-white border-white/20'}`}>
               {isSelectionMode ? <X size={18} strokeWidth={3} /> : <CheckCircle2 size={18} strokeWidth={2.5} />}
             </button>
-            <button onClick={onAddClick} className="premium-btn text-white px-4 py-2 rounded-xl text-[12px] font-black flex items-center gap-2 shadow-xl active:scale-95 transition-all border border-white/20">
-              <Plus size={14} strokeWidth={3.5} /> {t('add_student', lang)}
-            </button>
+            {!isSelectionMode && (
+              <button onClick={onAddClick} className="premium-btn text-white px-4 py-2 rounded-xl text-[12px] font-black flex items-center gap-2 shadow-xl active:scale-95 transition-all border border-white/20">
+                <Plus size={14} strokeWidth={3.5} /> {t('add_student', lang)}
+              </button>
+            )}
           </div>
         </div>
 
@@ -169,6 +195,11 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
             )}
           </div>
         ))}
+        {filteredStudents.length === 0 && !loading && (
+          <div className="py-20 text-center bg-white/10 rounded-[2rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
+            <p className="text-white font-black text-[11px] uppercase tracking-widest">{t('no_students', lang)}</p>
+          </div>
+        )}
       </div>
 
       {isSelectionMode && selectedIds.size > 0 && (
