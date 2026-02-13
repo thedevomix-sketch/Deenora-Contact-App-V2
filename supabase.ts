@@ -1,3 +1,4 @@
+
 import { createClient } from '@supabase/supabase-js';
 import { Student } from './types';
 
@@ -13,15 +14,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     storage: window.localStorage
   },
   global: {
-    headers: { 'x-application-name': 'madrasah-contact-app' },
-    // Use standard fetch but handle errors specifically
-    // Fix: Explicitly define parameters to avoid spread operator typing issues in fetch override
-    fetch: (input, init) => {
-      return fetch(input, init).catch(err => {
-        console.error("Supabase Network Error (Failed to Fetch):", err);
-        throw new Error("Network connectivity issue. Please check your internet.");
-      });
-    }
+    headers: { 'x-application-name': 'madrasah-contact-app' }
+    // Removed the manual fetch override to let standard Supabase error handling prevail
   }
 });
 
@@ -47,7 +41,6 @@ export const smsApi = {
       return { success: true, count: students.length };
     } catch (err: any) {
       console.error("SMS Sending Error:", err);
-      // Ensure "Failed to fetch" is translated to a user-friendly message
       if (err.message?.includes('Failed to fetch')) {
         throw new Error("Network error: Could not reach SMS server.");
       }

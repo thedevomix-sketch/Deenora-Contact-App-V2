@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'madrasah-app-v3';
+const CACHE_NAME = 'madrasah-app-v4';
 const ASSETS = [
   './',
   './index.html',
@@ -35,14 +35,40 @@ self.addEventListener('fetch', (event) => {
   
   // EXCEPTION: Never cache Supabase API calls or external dynamic resources
   if (url.hostname.includes('supabase.co') || url.hostname.includes('google.com')) {
-    return event.respondWith(fetch(event.request));
+    event.respondWith(
+      fetch(event.request).catch(err => {
+        console.error('[SW] API Fetch failed:', err);
+        return new Response(JSON.stringify({ error: 'Network failure', details: err.message }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    );
+    return;
   }
 
+  // Network First strategy for the app shell to ensure updates are seen
+  if (ASSETS.includes(url.pathname) || url.pathname === '/' || url.pathname.endsWith('.html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          const responseToCache = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        })
+    );
+    return;
+  }
+
+  // Cache First strategy for other static assets
   event.respondWith(
     caches.match(event.request).then((response) => {
-      // Return cached asset or fetch from network
       return response || fetch(event.request).then((networkResponse) => {
-        // Only cache static assets from our own domain
         if (event.request.method === 'GET' && url.origin === self.location.origin) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
@@ -50,6 +76,9 @@ self.addEventListener('fetch', (event) => {
           });
         }
         return networkResponse;
+      }).catch(err => {
+        console.error('[SW] Static Fetch failed:', err);
+        throw err;
       });
     })
   );

@@ -45,6 +45,20 @@ const App: React.FC = () => {
     }
   };
 
+  const forceUpdate = async () => {
+    if ('serviceWorker' in navigator) {
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (let registration of registrations) {
+        await registration.unregister();
+      }
+    }
+    // Clear all localStorage caches
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('cache_')) localStorage.removeItem(key);
+    });
+    window.location.reload();
+  };
+
   useEffect(() => {
     const handleOnline = () => { setIsOnline(true); handleSync(); };
     const handleOffline = () => setIsOnline(false);
@@ -54,7 +68,7 @@ const App: React.FC = () => {
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       if (currentSession) {
-        fetchMadrasahProfile(currentSession.user.id);
+        fetchMadrasahProfileWithRetry(currentSession.user.id);
       } else {
         setLoading(false);
       }
@@ -63,7 +77,7 @@ const App: React.FC = () => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) {
-        fetchMadrasahProfile(session.user.id);
+        fetchMadrasahProfileWithRetry(session.user.id);
       } else {
         setMadrasah(null);
         setLoading(false);
@@ -78,36 +92,44 @@ const App: React.FC = () => {
     };
   }, []);
 
+  const fetchMadrasahProfileWithRetry = async (userId: string, retries = 2) => {
+    try {
+      await fetchMadrasahProfile(userId);
+    } catch (err) {
+      if (retries > 0) {
+        console.log(`Retrying profile fetch... (${retries} left)`);
+        setTimeout(() => fetchMadrasahProfileWithRetry(userId, retries - 1), 1000);
+      } else {
+        setError("Network connectivity issue. Please check your internet.");
+        setLoading(false);
+      }
+    }
+  };
+
   const fetchMadrasahProfile = async (userId: string) => {
     setError(null);
-    try {
-      const { data, error: fetchError } = await supabase
-        .from('madrasahs')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-      
-      if (fetchError) throw fetchError;
+    const { data, error: fetchError } = await supabase
+      .from('madrasahs')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+    
+    if (fetchError) throw fetchError;
 
-      if (data) {
-        setMadrasah(data);
-        offlineApi.setCache('profile', data);
-      } else {
-        // Create profile if not found
-        const { data: newData, error: insertError } = await supabase
-          .from('madrasahs')
-          .insert({ id: userId, name: 'নতুন মাদরাসা', is_active: true, balance: 0 })
-          .select()
-          .single();
-        if (insertError) throw insertError;
-        setMadrasah(newData);
-      }
-    } catch (e: any) {
-      console.error("Profile fetch error:", e);
-      setError(e.message || "Failed to load profile.");
-    } finally {
-      setLoading(false);
+    if (data) {
+      setMadrasah(data);
+      offlineApi.setCache('profile', data);
+    } else {
+      // Create profile if not found
+      const { data: newData, error: insertError } = await supabase
+        .from('madrasahs')
+        .insert({ id: userId, name: 'নতুন মাদরাসা', is_active: true, balance: 0 })
+        .select()
+        .single();
+      if (insertError) throw insertError;
+      setMadrasah(newData);
     }
+    setLoading(false);
   };
 
   const navigateTo = (newView: View) => {
@@ -130,11 +152,18 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#d35132] p-8 text-center">
         <AlertCircle size={60} className="text-white/40 mb-6" />
-        <h2 className="text-white text-xl font-black mb-2">Profile Error</h2>
-        <p className="text-white/60 text-sm mb-8 leading-relaxed max-w-sm mx-auto">{error}</p>
-        <button onClick={() => window.location.reload()} className="bg-white text-[#d35132] px-8 py-4 rounded-full font-black">
-          Reload App
-        </button>
+        <h2 className="text-white text-xl font-black mb-2">Connection Error</h2>
+        <p className="text-white/60 text-sm mb-8 leading-relaxed max-w-sm mx-auto">
+          {error.includes('fetch') || error.includes('internet') ? t('login_error', lang) : error}
+        </p>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          <button onClick={() => window.location.reload()} className="bg-white text-[#d35132] px-8 py-4 rounded-full font-black flex items-center justify-center gap-2">
+            <RefreshCw size={18} /> Retry Connection
+          </button>
+          <button onClick={forceUpdate} className="bg-black/20 text-white/70 px-8 py-3 rounded-full font-bold text-xs uppercase tracking-widest">
+            Force Update & Clear Cache
+          </button>
+        </div>
       </div>
     );
   }
@@ -189,14 +218,13 @@ const App: React.FC = () => {
           <Account 
             lang={lang} 
             setLang={(l) => { setLang(l); localStorage.setItem('app_lang', l); }} 
-            onProfileUpdate={() => fetchMadrasahProfile(session.user.id)}
+            onProfileUpdate={() => fetchMadrasahProfileWithRetry(session.user.id)}
             setView={setView}
             isSuperAdmin={isSuperAdmin}
             initialMadrasah={madrasah}
           />
         )}
 
-        {/* Existing sub-views (students, details, forms) remain identical but are conditionally rendered based on !isSuperAdmin */}
         {view === 'students' && selectedClass && !isSuperAdmin && (
           <Students 
             selectedClass={selectedClass} 
