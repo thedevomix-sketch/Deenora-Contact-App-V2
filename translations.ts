@@ -94,7 +94,10 @@ export const translations = {
     deselect_all: 'সবাইকে আনসিলেক্ট করুন',
     selected: 'জন নির্বাচিত',
     dashboard: 'ড্যাশবোর্ড',
-    approvals: 'পেমেন্ট'
+    approvals: 'পেমেন্ট',
+    native_sms: 'সিম থেকে এসএমএস (Free)',
+    multi_select: 'সিলেক্ট করুন',
+    stop_select: 'সিলেকশন বন্ধ করুন'
   },
   en: {
     home: 'Home',
@@ -188,7 +191,10 @@ export const translations = {
     deselect_all: 'Deselect All',
     selected: 'Selected',
     dashboard: 'Dashboard',
-    approvals: 'Payments'
+    approvals: 'Payments',
+    native_sms: 'SIM SMS (Free)',
+    multi_select: 'Select Multiple',
+    stop_select: 'Stop Selection'
   }
 };
 

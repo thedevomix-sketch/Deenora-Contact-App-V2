@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash } from 'lucide-react';
+import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash, CheckCircle2, MessageSquare, Send, X } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Class, Student, Language } from '../types';
 import { t } from '../translations';
@@ -19,6 +19,8 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const cacheKey = `students_list_${selectedClass.id}`;
 
@@ -27,9 +29,12 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   }, [selectedClass.id, dataVersion]);
 
   const filteredStudents = useMemo(() => {
-    if (!searchQuery.trim()) return students;
-    const lowerQuery = searchQuery.toLowerCase();
-    return students.filter(s => s.student_name.toLowerCase().includes(lowerQuery));
+    let list = students;
+    if (searchQuery.trim()) {
+      const lowerQuery = searchQuery.toLowerCase();
+      list = list.filter(s => s.student_name.toLowerCase().includes(lowerQuery));
+    }
+    return list;
   }, [searchQuery, students]);
 
   const fetchStudents = async () => {
@@ -64,6 +69,32 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     }
   };
 
+  const toggleSelection = (id: string) => {
+    const newSelected = new Set(selectedIds);
+    if (newSelected.has(id)) {
+      newSelected.delete(id);
+    } else {
+      newSelected.add(id);
+    }
+    setSelectedIds(newSelected);
+  };
+
+  const sendNativeSMS = () => {
+    const selectedStudents = students.filter(s => selectedIds.has(s.id));
+    if (selectedStudents.length === 0) return;
+    
+    const phoneNumbers = selectedStudents.map(s => s.guardian_phone);
+    
+    // Multi-recipient SMS URI Logic
+    // iOS uses ; as separator, Android uses , as separator
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const separator = isIOS ? ';' : ',';
+    const numbersStr = phoneNumbers.join(separator);
+    
+    // Open system SMS app
+    window.location.href = `sms:${numbersStr}`;
+  };
+
   const recordCall = async (student: Student) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
@@ -80,7 +111,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   };
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative pb-10">
+    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative pb-32">
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -95,12 +126,23 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
             </div>
           </div>
           
-          <button 
-            onClick={onAddClick} 
-            className="shrink-0 bg-white text-[#d35132] px-4 py-2.5 rounded-xl text-[13px] font-black flex items-center gap-2 shadow-xl active:scale-95 transition-all"
-          >
-            <Plus size={16} strokeWidth={3.5} /> {t('add_student', lang)}
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => {
+                setIsSelectionMode(!isSelectionMode);
+                if (isSelectionMode) setSelectedIds(new Set());
+              }}
+              className={`shrink-0 p-2.5 rounded-xl transition-all active:scale-95 border ${isSelectionMode ? 'bg-white text-[#d35132] border-white' : 'bg-white/10 text-white border-white/20'}`}
+            >
+              {isSelectionMode ? <X size={20} /> : <CheckCircle2 size={20} />}
+            </button>
+            <button 
+              onClick={onAddClick} 
+              className="shrink-0 bg-white text-[#d35132] px-4 py-2.5 rounded-xl text-[13px] font-black flex items-center gap-2 shadow-xl active:scale-95 transition-all"
+            >
+              <Plus size={16} strokeWidth={3.5} /> {t('add_student', lang)}
+            </button>
+          </div>
         </div>
 
         <div className="relative">
@@ -124,14 +166,20 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
           {filteredStudents.map(student => (
             <div 
               key={student.id} 
-              onClick={() => onStudentClick(student)}
-              className="p-4 rounded-[2rem] bg-white/10 backdrop-blur-md border border-white/15 active:bg-white/20 transition-all animate-in slide-in-from-bottom-2 flex items-center justify-between shadow-lg relative overflow-hidden"
+              onClick={() => isSelectionMode ? toggleSelection(student.id) : onStudentClick(student)}
+              className={`p-4 rounded-[2rem] backdrop-blur-md border transition-all animate-in slide-in-from-bottom-2 flex items-center justify-between shadow-lg relative overflow-hidden ${isSelectionMode && selectedIds.has(student.id) ? 'bg-white/30 border-white shadow-white/10' : 'bg-white/10 border-white/15 active:bg-white/20'}`}
             >
               <div className="flex items-center gap-4 flex-1 min-w-0">
-                <div className="w-12 h-12 rounded-xl flex flex-col items-center justify-center border shrink-0 bg-white/10 border-white/10 shadow-inner text-white">
-                  <span className="text-[7px] font-black opacity-40 uppercase leading-none">Roll</span>
-                  <span className="text-lg font-black leading-tight">{student.roll || '-'}</span>
-                </div>
+                {isSelectionMode ? (
+                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center border shrink-0 transition-all ${selectedIds.has(student.id) ? 'bg-white text-[#d35132] border-white' : 'bg-white/5 border-white/20 text-white/20'}`}>
+                    <CheckCircle2 size={24} fill={selectedIds.has(student.id) ? "currentColor" : "none"} />
+                  </div>
+                ) : (
+                  <div className="w-12 h-12 rounded-xl flex flex-col items-center justify-center border shrink-0 bg-white/10 border-white/10 shadow-inner text-white">
+                    <span className="text-[7px] font-black opacity-40 uppercase leading-none">Roll</span>
+                    <span className="text-lg font-black leading-tight">{student.roll || '-'}</span>
+                  </div>
+                )}
                 
                 <div className="min-w-0 flex-1">
                   <h3 className="font-black text-white text-base font-noto truncate pr-1 leading-normal">
@@ -141,21 +189,45 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
                 </div>
               </div>
               
-              <div className="flex items-center gap-2 shrink-0">
-                <button 
-                  onClick={(e) => initiateCall(e, student)}
-                  className="bg-white text-[#d35132] p-2.5 rounded-xl shadow-xl active:scale-90 transition-all"
-                >
-                  <Phone size={18} strokeWidth={3} fill="currentColor" />
-                </button>
-                <ChevronRight size={18} className="text-white/20" />
-              </div>
+              {!isSelectionMode && (
+                <div className="flex items-center gap-2 shrink-0">
+                  <button 
+                    onClick={(e) => initiateCall(e, student)}
+                    className="bg-white text-[#d35132] p-2.5 rounded-xl shadow-xl active:scale-90 transition-all"
+                  >
+                    <Phone size={18} strokeWidth={3} fill="currentColor" />
+                  </button>
+                  <ChevronRight size={18} className="text-white/20" />
+                </div>
+              )}
             </div>
           ))}
         </div>
       ) : (
         <div className="text-center py-20 bg-white/5 rounded-[3rem] border border-dashed border-white/20">
           <p className="text-white/40 font-black uppercase tracking-widest text-[10px]">{t('no_students', lang)}</p>
+        </div>
+      )}
+
+      {/* Multi-Selection Footer Action Bar */}
+      {isSelectionMode && selectedIds.size > 0 && (
+        <div className="fixed bottom-24 left-4 right-4 animate-in slide-in-from-bottom-10 z-[70]">
+          <div className="bg-white rounded-[2.2rem] p-4 flex items-center justify-between shadow-2xl border border-white/20 ring-1 ring-black/5">
+            <div className="flex items-center gap-3 pl-2">
+              <div className="w-10 h-10 bg-[#d35132]/10 rounded-full flex items-center justify-center text-[#d35132]">
+                <span className="text-lg font-black">{selectedIds.size}</span>
+              </div>
+              <p className="text-xs font-black text-slate-800 uppercase tracking-widest">{t('selected', lang)}</p>
+            </div>
+            
+            <button 
+              onClick={sendNativeSMS}
+              className="bg-[#d35132] text-white px-6 py-3.5 rounded-2xl flex items-center gap-2 font-black text-xs uppercase shadow-xl active:scale-95 transition-all"
+            >
+              <MessageSquare size={16} fill="white" />
+              {t('native_sms', lang)}
+            </button>
+          </div>
         </div>
       )}
     </div>
