@@ -246,19 +246,23 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
               </div>
               
               {!isSelectionMode && (
-                <div className="flex items-center gap-2 shrink-0">
-                  <button 
-                    onClick={(e) => initiateCall(e, student)}
-                    className="bg-white text-[#d35132] p-2.5 rounded-xl shadow-xl active:scale-90 transition-all"
-                  >
-                    <Phone size={18} strokeWidth={3} fill="currentColor" />
-                  </button>
-                  <button 
-                    onClick={(e) => openWhatsApp(e, student.guardian_phone)}
-                    className="bg-[#25D366] text-white p-2.5 rounded-xl shadow-xl active:scale-90 transition-all"
-                  >
-                    <PhoneCall size={18} strokeWidth={3} fill="currentColor" />
-                  </button>
+                <div className="flex items-center gap-4 shrink-0 pr-1">
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={(e) => initiateCall(e, student)}
+                      className="bg-white text-[#d35132] p-2.5 rounded-xl shadow-xl active:scale-90 transition-all"
+                      title="Regular Call"
+                    >
+                      <Phone size={18} strokeWidth={3} fill="currentColor" />
+                    </button>
+                    <button 
+                      onClick={(e) => openWhatsApp(e, student.guardian_phone)}
+                      className="bg-[#25D366] text-white p-2.5 rounded-xl shadow-xl active:scale-90 transition-all"
+                      title="WhatsApp Call"
+                    >
+                      <PhoneCall size={18} strokeWidth={3} fill="currentColor" />
+                    </button>
+                  </div>
                   <ChevronRight size={18} className="text-white/20" />
                 </div>
               )}
