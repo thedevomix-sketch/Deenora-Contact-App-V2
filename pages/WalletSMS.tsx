@@ -416,8 +416,8 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
 
       {/* Template Modal */}
       {showTemplateModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div className="bg-[#e57d4a] w-full max-w-sm rounded-[3rem] shadow-2xl p-8 border border-white/30 animate-in zoom-in-95 relative overflow-hidden">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[200] flex items-end sm:items-center justify-center p-0 sm:p-6 animate-in fade-in duration-300">
+          <div className="bg-[#e57d4a] w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] shadow-2xl p-8 border-t sm:border border-white/30 animate-in slide-in-from-bottom-10 sm:zoom-in-95 relative overflow-y-auto max-h-[90vh]">
             <button onClick={() => setShowTemplateModal(false)} className="absolute top-6 right-6 text-white/60 hover:text-white transition-colors"><Plus className="rotate-45" size={24} /></button>
             <h2 className="text-2xl font-black text-white mb-6 font-noto">{editingTemplate ? t('edit_class', lang) : t('new_template', lang)}</h2>
             <form onSubmit={handleSaveTemplate} className="space-y-5">
