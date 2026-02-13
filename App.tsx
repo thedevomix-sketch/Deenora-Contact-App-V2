@@ -152,8 +152,8 @@ const App: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F2F5FF] text-slate-800">
-        <Loader2 className="animate-spin mb-4 text-[#8D30F4]" size={40} />
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#9D50FF] text-white">
+        <Loader2 className="animate-spin mb-4 text-white" size={40} />
         <p className="font-black text-[10px] uppercase tracking-[0.2em] opacity-40">Initializing App...</p>
       </div>
     );
@@ -163,14 +163,14 @@ const App: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#F2F5FF] p-8 text-center">
-        <AlertCircle size={60} className="text-red-500/20 mb-6" />
-        <h2 className="text-slate-800 text-xl font-black mb-2">Connection Error</h2>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#9D50FF] p-8 text-center">
+        <AlertCircle size={60} className="text-white/20 mb-6" />
+        <h2 className="text-white text-xl font-black mb-2">Connection Error</h2>
         <div className="flex flex-col gap-3 w-full max-w-xs">
-          <button onClick={() => window.location.reload()} className="bg-white text-slate-800 px-8 py-4 rounded-full font-black border border-slate-100 shadow-xl flex items-center justify-center gap-2">
+          <button onClick={() => window.location.reload()} className="bg-white text-[#8D30F4] px-8 py-4 rounded-full font-black border border-slate-100 shadow-xl flex items-center justify-center gap-2">
             <RefreshCw size={18} /> Retry Connection
           </button>
-          <button onClick={forceUpdate} className="text-slate-400 px-8 py-3 rounded-full font-bold text-xs uppercase tracking-widest">
+          <button onClick={forceUpdate} className="text-white/60 px-8 py-3 rounded-full font-bold text-xs uppercase tracking-widest">
             Force Update & Clear Cache
           </button>
         </div>
@@ -181,9 +181,9 @@ const App: React.FC = () => {
   const isSuperAdmin = madrasah?.is_super_admin === true;
 
   return (
-    <div className="relative h-full w-full bg-[#F2F5FF]">
+    <div className="relative h-full w-full bg-transparent">
       {(!isOnline || syncing) && (
-        <div className="absolute top-0 left-0 right-0 bg-white/60 backdrop-blur-md text-slate-600 text-[10px] font-black py-1.5 px-4 z-[60] flex items-center justify-center gap-2 uppercase tracking-widest border-b border-[#8D30F4]/10">
+        <div className="absolute top-0 left-0 right-0 bg-white/60 backdrop-blur-md text-[#2E0B5E] text-[10px] font-black py-1.5 px-4 z-[60] flex items-center justify-center gap-2 uppercase tracking-widest border-b border-[#8D30F4]/10">
           {syncing ? <><RefreshCw size={12} className="animate-spin text-[#8D30F4]" /> Syncing...</> : <><WifiOff size={10} className="text-red-400" /> Offline Mode</>}
         </div>
       )}
@@ -208,11 +208,11 @@ const App: React.FC = () => {
         {view === 'students' && selectedClass && !isSuperAdmin && (
           <Students selectedClass={selectedClass} onStudentClick={(s) => { setSelectedStudent(s); setView('student-details'); }} onAddClick={() => { setSelectedStudent(null); setIsEditing(false); setView('student-form'); }} onBack={() => setView('classes')} lang={lang} dataVersion={dataVersion} triggerRefresh={triggerRefresh} />
         )}
-        {view === 'student-details' && selectedStudent && !isSuperAdmin && <StudentDetails student={selectedStudent} onEdit={() => { setIsEditing(true); setView('student-form'); }} onBack={() => setView(selectedClass ? 'students' : 'home')} lang={lang} triggerRefresh={triggerRefresh} />}
+        {view === 'student-details' && selectedStudent && !isSuperAdmin && <StudentDetails student={selectedStudent} onEdit={() => { setIsEditing(true); setView('student-form'); }} onBack={() => setView(selectedClass ? 'students' : 'home')} lang={lang} />}
         {view === 'student-form' && !isSuperAdmin && <StudentForm student={selectedStudent} defaultClassId={selectedClass?.id} isEditing={isEditing} onSuccess={() => { triggerRefresh(); setView(selectedClass ? 'students' : 'home'); }} onCancel={() => setView(selectedStudent ? 'student-details' : (selectedClass ? 'students' : 'home'))} lang={lang} />}
         
-        <div className="mt-8 mb-4 text-center opacity-20 select-none">
-           <span className="text-[9px] font-black text-slate-800 uppercase tracking-widest">{APP_VERSION}</span>
+        <div className="mt-8 mb-4 text-center opacity-30 select-none">
+           <span className="text-[9px] font-black text-white uppercase tracking-widest">{APP_VERSION}</span>
         </div>
       </Layout>
     </div>
