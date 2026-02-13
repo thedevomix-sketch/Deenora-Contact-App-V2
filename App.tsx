@@ -49,7 +49,6 @@ const App: React.FC = () => {
 
   const forceUpdate = async () => {
     try {
-      // Unregister all service workers
       if ('serviceWorker' in navigator) {
         const registrations = await navigator.serviceWorker.getRegistrations();
         for (let registration of registrations) {
@@ -57,23 +56,20 @@ const App: React.FC = () => {
         }
       }
       
-      // Clear all caches
       if ('caches' in window) {
         const cacheNames = await caches.keys();
         await Promise.all(cacheNames.map(name => caches.delete(name)));
       }
       
-      // Clear relevant localStorage items
       Object.keys(localStorage).forEach(key => {
         if (key.startsWith('cache_') || key === 'sync_queue') {
           localStorage.removeItem(key);
         }
       });
       
-      // Clean reload from server
       window.location.replace(window.location.origin + window.location.pathname + '?v=' + Date.now());
     } catch (err) {
-      console.warn("Update logic encountered minor issues, performing standard reload.", err);
+      console.warn("Update attempt failed, reloading.", err);
       window.location.reload();
     }
   };

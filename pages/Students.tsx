@@ -261,7 +261,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
               </button>
 
               {showTemplateMenu && (
-                <div className="absolute bottom-full left-0 right-0 mb-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 max-h-64 overflow-y-auto z-[160] animate-in slide-in-from-bottom-4 p-2 ring-1 ring-black/5">
+                <div className="absolute bottom-full left-0 right-0 mb-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 max-h-64 overflow-y-auto z-160 animate-in slide-in-from-bottom-4 p-2 ring-1 ring-black/5">
                   <div className="px-4 py-3 border-b border-slate-50 mb-1 flex items-center gap-2">
                     <LayoutGrid size={14} className="text-slate-400" />
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Available Templates</p>
