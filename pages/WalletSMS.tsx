@@ -1,6 +1,5 @@
-
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Loader2, Send, ChevronDown, BookOpen, Users, CheckCircle2, MessageSquare, Plus, Edit3, Trash2, Smartphone, X, Check, AlertCircle } from 'lucide-react';
+import { CreditCard, Loader2, Send, ChevronDown, BookOpen, Users, CheckCircle2, MessageSquare, Plus, Edit3, Trash2, Smartphone, X, Check, AlertCircle, Sparkles, LayoutList } from 'lucide-react';
 import { supabase, offlineApi, smsApi } from '../supabase';
 import { SMSTemplate, Language, Madrasah, Transaction, Class, Student } from '../types';
 import { t } from '../translations';
@@ -25,6 +24,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
   const [classStudents, setClassStudents] = useState<Student[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
   const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
+  const [showClassDropdown, setShowClassDropdown] = useState(false);
   
   // New Template States
   const [showAddModal, setShowAddModal] = useState(false);
@@ -136,77 +136,147 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
     } finally { setSendingBulk(false); }
   };
 
+  const getSelectedClassName = () => {
+    const cls = classes.find(c => c.id === selectedClassId);
+    return cls ? cls.class_name : (lang === 'bn' ? 'ক্লাস বেছে নিন' : 'Choose Class');
+  };
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 pb-24">
-      <div className="flex bg-white/20 backdrop-blur-md p-2 rounded-[2.5rem] shadow-xl border border-white/20">
+      {/* Dynamic Tab Switcher */}
+      <div className="flex bg-white/10 backdrop-blur-xl p-1.5 rounded-[2.5rem] shadow-[0_15px_40px_rgba(46,11,94,0.15)] border border-white/20">
         {(['bulk-sms', 'templates', 'recharge'] as const).map(tab => (
           <button key={tab} onClick={() => setActiveTab(tab)} 
-            className={`flex-1 py-4 rounded-[1.8rem] font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${activeTab === tab ? 'bg-white text-[#8D30F4] shadow-2xl scale-105' : 'text-white/80'}`}>
-            {tab === 'bulk-sms' && <Send size={16} />}
-            {tab === 'templates' && <MessageSquare size={16} />}
-            {tab === 'recharge' && <CreditCard size={16} />}
+            className={`flex-1 py-4 rounded-[1.8rem] font-black text-[10px] uppercase tracking-[0.15em] flex items-center justify-center gap-2.5 transition-all duration-300 ${activeTab === tab ? 'bg-white text-[#8D30F4] shadow-2xl scale-102' : 'text-white/80 hover:text-white'}`}>
+            {tab === 'bulk-sms' && <Send size={15} />}
+            {tab === 'templates' && <MessageSquare size={15} />}
+            {tab === 'recharge' && <CreditCard size={15} />}
             {tab === 'bulk-sms' ? t('bulk_sms', lang) : tab === 'templates' ? t('templates', lang) : t('recharge', lang)}
           </button>
         ))}
       </div>
 
       {activeTab === 'bulk-sms' && (
-        <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] shadow-[0_30px_80px_rgba(46,11,94,0.3)] border border-white/50 space-y-8 animate-in slide-in-from-bottom-5">
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[11px] font-black text-[#4B168A] uppercase tracking-widest px-2">ক্লাস নির্বাচন করুন</label>
+        <div className="space-y-6 animate-in slide-in-from-bottom-5">
+          {/* Enhanced Selection Group */}
+          <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] shadow-[0_40px_100px_rgba(46,11,94,0.35)] border border-white/50 space-y-7">
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-1 opacity-60">১. টার্গেট অডিয়েন্স (Targeting)</label>
               <div className="relative">
-                <select className="w-full px-6 py-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.5rem] text-[#2D3142] font-black text-lg outline-none focus:border-[#8D30F4] transition-all appearance-none"
-                  value={selectedClassId} onChange={(e) => setSelectedClassId(e.target.value)}>
-                  <option value="">ক্লাস বেছে নিন</option>
-                  {classes.map(cls => <option key={cls.id} value={cls.id}>{cls.class_name}</option>)}
-                </select>
-                <ChevronDown className="absolute right-6 top-1/2 -translate-y-1/2 text-[#8D30F4] pointer-events-none" size={24} />
-              </div>
-            </div>
+                <button 
+                  onClick={() => setShowClassDropdown(!showClassDropdown)}
+                  className={`w-full px-6 py-5 rounded-[1.8rem] border-2 transition-all flex items-center justify-between group ${selectedClassId ? 'bg-[#8D30F4]/5 border-[#8D30F4]/20' : 'bg-slate-50 border-slate-100'}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${selectedClassId ? 'bg-[#8D30F4] text-white shadow-lg' : 'bg-white text-[#8D30F4] shadow-sm'}`}>
+                      <LayoutList size={22} />
+                    </div>
+                    <span className={`text-lg font-black transition-colors ${selectedClassId ? 'text-[#2E0B5E]' : 'text-slate-400'}`}>
+                      {getSelectedClassName()}
+                    </span>
+                  </div>
+                  <ChevronDown className={`text-[#8D30F4]/40 group-hover:text-[#8D30F4] transition-all duration-300 ${showClassDropdown ? 'rotate-180' : ''}`} size={24} />
+                </button>
 
-            {selectedClassId && (
-              <div className="flex items-center gap-5 bg-[#8D30F4]/5 p-5 rounded-2xl border-2 border-[#8D30F4]/10 animate-in zoom-in-95">
-                <div className="w-14 h-14 bg-[#8D30F4] rounded-[1.2rem] flex items-center justify-center text-white shadow-xl"><Users size={28} /></div>
-                <div>
-                  <p className="text-[11px] font-black text-[#A179FF] uppercase tracking-widest leading-none">Target Audience</p>
-                  <p className="text-2xl font-black text-[#2E0B5E] mt-1.5">{loadingStudents ? '...' : classStudents.length} Students</p>
-                </div>
+                {showClassDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.2)] border border-slate-100 z-[70] p-3 animate-in slide-in-from-top-2 max-h-64 overflow-y-auto custom-scrollbar">
+                    {classes.map(cls => (
+                      <button 
+                        key={cls.id} 
+                        onClick={() => { setSelectedClassId(cls.id); setShowClassDropdown(false); }} 
+                        className={`w-full text-left px-6 py-4.5 rounded-2xl flex items-center justify-between transition-all mb-1 ${selectedClassId === cls.id ? 'bg-[#8D30F4] text-white shadow-xl' : 'hover:bg-[#F2EBFF] text-[#2E0B5E]'}`}
+                      >
+                        <span className="font-black font-noto text-lg">{cls.class_name}</span>
+                        {selectedClassId === cls.id && <Check size={20} strokeWidth={4} />}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
-            )}
 
-            <div className="space-y-2 relative">
-              <label className="text-[11px] font-black text-[#4B168A] uppercase tracking-widest px-2">টেমপ্লেট বাছাই করুন</label>
-              <button onClick={() => setShowTemplateDropdown(!showTemplateDropdown)} className="w-full flex items-center justify-between px-6 py-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.5rem] text-[#2D3142] font-black text-lg active:scale-[0.98] transition-all">
-                <div className="flex items-center gap-4"><BookOpen size={24} className="text-[#8D30F4]" /><span>Select Template</span></div>
-                <ChevronDown size={24} className={`text-[#8D30F4] transition-transform ${showTemplateDropdown ? 'rotate-180' : ''}`} />
-              </button>
-              {showTemplateDropdown && (
-                <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 z-[60] p-3 animate-in slide-in-from-top-4">
-                  {templates.map(tmp => (
-                    <button key={tmp.id} onClick={() => { setBulkMessage(tmp.body); setShowTemplateDropdown(false); }} className="w-full text-left px-6 py-5 rounded-2xl border-b border-slate-50 last:border-0 hover:bg-[#F2EBFF] transition-colors">
-                      <p className="text-[11px] font-black text-[#8D30F4] uppercase mb-1">{tmp.title}</p>
-                      <p className="text-sm font-bold text-slate-500 truncate">{tmp.body}</p>
-                    </button>
-                  ))}
-                  {templates.length === 0 && (
-                    <div className="p-8 text-center text-slate-400 font-bold text-sm">কোনো টেমপ্লেট নেই</div>
-                  )}
+              {selectedClassId && (
+                <div className="flex items-center gap-5 bg-[#8D30F4]/5 p-5 rounded-[2rem] border-2 border-[#8D30F4]/10 animate-in zoom-in-95">
+                  <div className="w-14 h-14 bg-white rounded-[1.2rem] flex items-center justify-center text-[#8D30F4] shadow-inner border border-[#8D30F4]/5">
+                    <div className="relative">
+                      <Users size={28} />
+                      <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full border-2 border-white animate-pulse" />
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black text-[#A179FF] uppercase tracking-widest leading-none">Selected Volume</p>
+                    <p className="text-2xl font-black text-[#2E0B5E] mt-1.5 flex items-center gap-2">
+                      {loadingStudents ? <Loader2 className="animate-spin" size={20} /> : classStudents.length} 
+                      <span className="text-xs text-[#8D30F4]/60">{lang === 'bn' ? 'জন ছাত্র' : 'Students'}</span>
+                    </p>
+                  </div>
                 </div>
               )}
             </div>
 
-            <div className="space-y-3">
-              <div className="flex justify-between px-2"><label className="text-[11px] font-black text-[#4B168A] uppercase tracking-widest">মেসেজ বক্স</label><span className="text-[11px] font-black text-[#8D30F4] uppercase">{bulkMessage.length}/160</span></div>
-              <textarea className="w-full h-44 px-6 py-6 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[2.2rem] text-[#2D3142] font-black outline-none focus:border-[#8D30F4] transition-all resize-none shadow-inner leading-relaxed" placeholder="এখানে মেসেজ লিখুন..." value={bulkMessage} onChange={(e) => setBulkMessage(e.target.value)} maxLength={160} />
+            <div className="space-y-4">
+              <label className="text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-1 opacity-60">২. বার্তা কম্পোজিশন (Composition)</label>
+              
+              <div className="relative">
+                <button 
+                  onClick={() => setShowTemplateDropdown(!showTemplateDropdown)} 
+                  className={`w-full flex items-center justify-between px-6 py-5 rounded-[1.8rem] text-sm font-black active:scale-[0.99] transition-all border-2 ${bulkMessage ? 'bg-[#F2EBFF] border-[#8D30F4]/20 text-[#2E0B5E]' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+                >
+                  <div className="flex items-center gap-4">
+                    <BookOpen size={22} className="text-[#8D30F4]" />
+                    <span>{bulkMessage ? (lang === 'bn' ? 'অন্য টেমপ্লেট বেছে নিন' : 'Choose Template') : (lang === 'bn' ? 'টেমপ্লেট বাছাই করুন' : 'Pick a Template')}</span>
+                  </div>
+                  <ChevronDown size={22} className={`text-[#8D30F4]/40 transition-transform ${showTemplateDropdown ? 'rotate-180' : ''}`} />
+                </button>
+                {showTemplateDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[2.5rem] shadow-[0_25px_60px_rgba(0,0,0,0.2)] border border-slate-100 z-[60] p-3 animate-in slide-in-from-top-2 max-h-60 overflow-y-auto">
+                    {templates.map(tmp => (
+                      <button key={tmp.id} onClick={() => { setBulkMessage(tmp.body); setShowTemplateDropdown(false); }} className="w-full text-left px-6 py-4.5 rounded-2xl border-b border-slate-50 last:border-0 hover:bg-[#F2EBFF] transition-colors mb-1">
+                        <p className="text-[10px] font-black text-[#8D30F4] uppercase mb-1">{tmp.title}</p>
+                        <p className="text-sm font-bold text-slate-500 truncate font-noto">{tmp.body}</p>
+                      </button>
+                    ))}
+                    {templates.length === 0 && (
+                      <div className="p-8 text-center text-slate-400 font-bold text-sm">কোনো টেমপ্লেট নেই</div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2.5">
+                <div className="flex justify-between items-end px-2">
+                  <div className="flex items-center gap-2">
+                    <Sparkles size={14} className="text-[#8D30F4]" />
+                    <span className="text-[10px] font-black text-[#4B168A] uppercase tracking-widest">Message Text</span>
+                  </div>
+                  <div className="flex items-center gap-1.5 bg-[#8D30F4]/10 px-3 py-1 rounded-full">
+                    <span className={`text-[10px] font-black ${bulkMessage.length > 150 ? 'text-orange-500' : 'text-[#8D30F4]'}`}>{bulkMessage.length}</span>
+                    <span className="text-[10px] font-black text-slate-400">/ 160</span>
+                  </div>
+                </div>
+                <textarea 
+                  className="w-full h-44 px-7 py-7 bg-[#F2EBFF]/50 border-2 border-[#8D30F4]/5 rounded-[2.5rem] text-[#2E0B5E] font-bold outline-none focus:border-[#8D30F4]/30 focus:bg-white transition-all resize-none shadow-inner leading-relaxed font-noto text-[16px]" 
+                  placeholder="এখানে মেসেজ লিখুন..." 
+                  value={bulkMessage} 
+                  onChange={(e) => setBulkMessage(e.target.value)} 
+                  maxLength={160} 
+                />
+              </div>
             </div>
 
-            <div className="flex flex-col gap-4">
-              <button onClick={handleSendBulk} disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId} className="w-full py-6 premium-btn text-white font-black rounded-[2.2rem] shadow-[0_20px_50px_rgba(141,48,244,0.4)] active:scale-[0.98] transition-all flex items-center justify-center gap-4 text-xl font-noto disabled:opacity-30">
+            <div className="flex flex-col gap-4 pt-4">
+              <button 
+                onClick={handleSendBulk} 
+                disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId} 
+                className="w-full py-6 premium-btn text-white font-black rounded-[2.2rem] shadow-[0_25px_60px_rgba(141,48,244,0.4)] active:scale-[0.98] transition-all flex items-center justify-center gap-4 text-xl font-noto disabled:opacity-30"
+              >
                 {sendingBulk ? <Loader2 className="animate-spin" size={28} /> : bulkSuccess ? <><CheckCircle2 size={28} /> Sent Successfully</> : <><Send size={26} /> {t('send_sms', lang)}</>}
               </button>
               
-              <button onClick={handleSendNativeBulk} disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId} className="w-full py-5 bg-green-500 text-white font-black rounded-[2.2rem] shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-4 text-lg font-noto disabled:opacity-30">
+              <button 
+                onClick={handleSendNativeBulk} 
+                disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId} 
+                className="w-full py-5 bg-[#2E0B5E] text-white font-black rounded-[2.2rem] shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-4 text-lg font-noto disabled:opacity-30 border border-white/10"
+              >
                 <Smartphone size={24} /> {t('native_sms', lang)}
               </button>
             </div>

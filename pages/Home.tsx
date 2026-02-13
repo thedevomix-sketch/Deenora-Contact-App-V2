@@ -69,50 +69,45 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Premium Search Input - Improved with Clear Button */}
+    <div className="space-y-5 animate-in fade-in duration-500">
+      {/* Premium Search Input */}
       <div className="relative group flex items-center">
         <div className="absolute left-5 text-[#4B168A] group-focus-within:scale-110 transition-transform z-10 pointer-events-none">
-          <Search size={20} strokeWidth={3} />
+          <Search size={18} strokeWidth={3} />
         </div>
         <input
           type="text"
           placeholder={t('search_placeholder', lang)}
-          className="w-full pl-14 pr-12 py-4 bg-white/95 border-2 border-white/20 rounded-[1.5rem] outline-none text-[#2D3142] placeholder:text-[#9B6DFF] font-black text-sm focus:border-[#8D30F4] focus:ring-4 focus:ring-[#8D30F4]/10 shadow-xl transition-all backdrop-blur-md"
+          className="w-full pl-12 pr-10 py-3.5 bg-white/95 border-2 border-white/20 rounded-[1.2rem] outline-none text-[#2D3142] placeholder:text-[#9B6DFF] font-black text-sm focus:border-[#8D30F4] focus:ring-4 focus:ring-[#8D30F4]/10 shadow-lg transition-all backdrop-blur-md"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
         {searchQuery && (
-          <button 
-            onClick={() => setSearchQuery('')}
-            className="absolute right-4 p-2 text-[#A179FF] hover:text-[#8D30F4] active:scale-90 transition-all z-10"
-          >
-            <X size={20} strokeWidth={3} />
+          <button onClick={() => setSearchQuery('')} className="absolute right-3.5 p-1.5 text-[#A179FF] active:scale-90 transition-all z-10">
+            <X size={18} strokeWidth={3} />
           </button>
         )}
       </div>
 
       {searchQuery.length > 0 && (
-        <div className="space-y-2 animate-in slide-in-from-top-4">
-          <h2 className="text-[10px] font-black text-white uppercase tracking-[0.2em] px-4 drop-shadow-md">
+        <div className="space-y-2 animate-in slide-in-from-top-3">
+          <h2 className="text-[9px] font-black text-white uppercase tracking-[0.2em] px-3 drop-shadow-md">
             {loadingSearch ? (lang === 'bn' ? 'খোঁজা হচ্ছে...' : 'Searching...') : (lang === 'bn' ? 'সার্চ ফলাফল' : 'Search Results')}
           </h2>
           {searchResults.map(student => (
-            <div key={student.id} onClick={() => onStudentClick(student)} className="bg-white/95 p-3 rounded-2xl border-l-4 border-l-[#8D30F4] border border-white/20 flex items-center justify-between shadow-md active:scale-[0.98] transition-all">
+            <div key={student.id} onClick={() => onStudentClick(student)} className="bg-white/95 p-2.5 rounded-[1.2rem] border-l-4 border-l-[#8D30F4] border border-white/20 flex items-center justify-between shadow-md active:scale-[0.98] transition-all">
               <div className="min-w-0 flex-1">
-                <h3 className="font-black text-[#4B168A] text-[15px] font-noto truncate leading-tight">{student.student_name}</h3>
-                <p className="text-[9px] text-[#A179FF] font-black uppercase mt-0.5 tracking-widest">{student.classes?.class_name || 'N/A'}</p>
+                <h3 className="font-black text-[#4B168A] text-[14px] font-noto truncate leading-tight">{student.student_name}</h3>
+                <p className="text-[8px] text-[#A179FF] font-black uppercase mt-0.5 tracking-widest">{student.classes?.class_name || 'N/A'}</p>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 bg-[#F2EBFF] text-[#8D30F4] rounded-xl flex items-center justify-center shadow-sm">
-                  <Phone size={16} fill="currentColor" />
-                </div>
+              <div className="w-8 h-8 bg-[#F2EBFF] text-[#8D30F4] rounded-lg flex items-center justify-center shadow-sm shrink-0 ml-2">
+                <Phone size={14} fill="currentColor" />
               </div>
             </div>
           ))}
           {!loadingSearch && searchResults.length === 0 && (
-            <div className="text-center py-4 bg-white/10 rounded-2xl border border-dashed border-white/20">
-              <p className="text-white font-black text-[10px] uppercase tracking-widest opacity-60">
+            <div className="text-center py-4 bg-white/10 rounded-[1.2rem] border border-dashed border-white/20">
+              <p className="text-white font-black text-[9px] uppercase tracking-widest opacity-60">
                 {lang === 'bn' ? 'কিছু পাওয়া যায়নি' : 'No matches found'}
               </p>
             </div>
@@ -121,53 +116,51 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
       )}
 
       {/* Recent Activity */}
-      <div className="space-y-4">
+      <div className="space-y-3">
         <div className="flex items-center justify-between px-3">
-          <h2 className="text-[10px] font-black text-white uppercase tracking-[0.3em] drop-shadow-md">{t('recent_calls', lang)}</h2>
-          <button onClick={() => fetchRecentCalls(true)} className="p-2 bg-white/20 rounded-lg text-white backdrop-blur-md active:scale-95 transition-all">
-            <RefreshCw size={14} strokeWidth={3} className={loadingRecent ? 'animate-spin' : ''} />
+          <h2 className="text-[9px] font-black text-white uppercase tracking-[0.3em] drop-shadow-md">{t('recent_calls', lang)}</h2>
+          <button onClick={() => fetchRecentCalls(true)} className="p-1.5 bg-white/20 rounded-lg text-white backdrop-blur-md active:scale-95 transition-all">
+            <RefreshCw size={12} strokeWidth={3} className={loadingRecent ? 'animate-spin' : ''} />
           </button>
         </div>
         
         {loadingRecent && recentCalls.length === 0 ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-16 bg-white/30 animate-pulse rounded-2xl border border-white/10"></div>)}
+          <div className="space-y-2">
+            {[1, 2, 3].map(i => <div key={i} className="h-14 bg-white/30 animate-pulse rounded-[1.2rem]"></div>)}
           </div>
         ) : recentCalls.length > 0 ? (
-          <div className="space-y-2.5">
+          <div className="space-y-2">
             {recentCalls.map(call => (
-              <div key={call.id} onClick={() => call.students && onStudentClick(call.students)} className="bg-white/95 p-3.5 rounded-2xl border border-white/40 flex items-center justify-between shadow-md active:scale-[0.98] transition-all group backdrop-blur-lg">
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  <div className="w-10 h-10 bg-[#F2EBFF] rounded-xl flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
-                    <UserIcon size={20} strokeWidth={2.5} />
+              <div key={call.id} onClick={() => call.students && onStudentClick(call.students)} className="bg-white/95 p-2.5 rounded-[1.2rem] border border-white/40 flex items-center justify-between shadow-md active:scale-[0.98] transition-all group backdrop-blur-lg">
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className="w-9 h-9 bg-[#F2EBFF] rounded-xl flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
+                    <UserIcon size={18} strokeWidth={2.5} />
                   </div>
                   <div className="min-w-0">
-                    <h3 className="font-black text-[#4B168A] text-[15px] font-noto truncate leading-tight tracking-tight">{call.students?.student_name || 'অজানা'}</h3>
-                    <div className="flex items-center gap-1.5 mt-0.5">
-                       <Clock size={10} className="text-[#A179FF]" />
-                       <span className="text-[9px] font-black text-[#A179FF] uppercase tracking-[0.1em]">
+                    <h3 className="font-black text-[#4B168A] text-[14px] font-noto truncate leading-tight">{call.students?.student_name || 'অজানা'}</h3>
+                    <div className="flex items-center gap-1 mt-0.5">
+                       <Clock size={9} className="text-[#A179FF]" />
+                       <span className="text-[8px] font-black text-[#A179FF] uppercase tracking-[0.1em]">
                          {new Date(call.called_at).toLocaleTimeString(lang === 'bn' ? 'bn-BD' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                        </span>
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-3 shrink-0 ml-2">
-                   {/* Normal Call - Small Gap Added via gap-3 */}
-                   <div onClick={(e) => { e.stopPropagation(); call.students && initiateCall(call.students.guardian_phone) }} className="w-10 h-10 premium-btn text-white rounded-xl flex items-center justify-center shadow-md active:scale-90 transition-all border border-white/10">
-                     <Phone size={18} fill="currentColor" />
+                <div className="flex items-center gap-2 shrink-0 ml-2">
+                   <div onClick={(e) => { e.stopPropagation(); call.students && initiateCall(call.students.guardian_phone) }} className="w-9 h-9 premium-btn text-white rounded-xl flex items-center justify-center shadow-md active:scale-90 transition-all border border-white/10">
+                     <Phone size={16} fill="currentColor" />
                    </div>
-                   {/* WhatsApp Call */}
-                   <div onClick={(e) => { e.stopPropagation(); call.students && initiateWhatsAppCall(call.students.guardian_phone) }} className="w-10 h-10 bg-[#25d366] text-white rounded-xl flex items-center justify-center shadow-md active:scale-90 transition-all border border-white/10">
-                     <PhoneCall size={18} fill="currentColor" />
+                   <div onClick={(e) => { e.stopPropagation(); call.students && initiateWhatsAppCall(call.students.guardian_phone) }} className="w-9 h-9 bg-[#25d366] text-white rounded-xl flex items-center justify-center shadow-md active:scale-90 transition-all border border-white/10">
+                     <PhoneCall size={16} fill="currentColor" />
                    </div>
                 </div>
               </div>
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 bg-white/10 rounded-[2rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
-            <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] leading-relaxed drop-shadow-sm">
-              No History<br/>Found
+          <div className="text-center py-12 bg-white/10 rounded-[2rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
+            <p className="text-white/60 text-[9px] font-black uppercase tracking-[0.2em] leading-relaxed drop-shadow-sm">
+              No History Found
             </p>
           </div>
         )}
