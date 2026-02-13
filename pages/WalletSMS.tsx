@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Loader2, Send, ChevronDown, BookOpen, Users, CheckCircle2, MessageSquare, Plus, Edit3, Trash2, Smartphone, X, Check, AlertCircle, Sparkles, LayoutList } from 'lucide-react';
+import { CreditCard, Loader2, Send, ChevronDown, BookOpen, Users, CheckCircle2, MessageSquare, Plus, Edit3, Trash2, Smartphone, X, Check, Sparkles, LayoutList, History, Zap } from 'lucide-react';
 import { supabase, offlineApi, smsApi } from '../supabase';
 import { SMSTemplate, Language, Madrasah, Transaction, Class, Student } from '../types';
 import { t } from '../translations';
@@ -141,16 +141,27 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
   };
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500 pb-24">
-      {/* Enlarged Premium Dynamic Tab Switcher */}
-      <div className="flex bg-white/10 backdrop-blur-xl p-2.5 rounded-[3rem] shadow-[0_20px_60px_rgba(46,11,94,0.3)] border border-white/25">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-24">
+      {/* Premium Sliding Tab Navigation */}
+      <div className="relative p-1.5 bg-white/10 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 shadow-2xl flex items-center">
+        <div 
+          className="absolute h-[calc(100%-12px)] rounded-[2rem] bg-white shadow-lg transition-all duration-500 ease-out z-0"
+          style={{ 
+            width: 'calc(33.33% - 8px)',
+            left: activeTab === 'bulk-sms' ? '6px' : activeTab === 'templates' ? '33.33%' : '66.66%',
+            marginLeft: activeTab === 'bulk-sms' ? '0px' : activeTab === 'templates' ? '4px' : '2px'
+          }}
+        />
         {(['bulk-sms', 'templates', 'recharge'] as const).map(tab => (
-          <button key={tab} onClick={() => setActiveTab(tab)} 
-            className={`flex-1 py-5.5 rounded-[2.5rem] font-black text-[13px] uppercase tracking-[0.15em] flex items-center justify-center gap-3 transition-all duration-300 ${activeTab === tab ? 'bg-white text-[#8D30F4] shadow-2xl scale-[1.03]' : 'text-white/80 hover:text-white hover:bg-white/10'}`}>
-            {tab === 'bulk-sms' && <Send size={20} />}
-            {tab === 'templates' && <MessageSquare size={20} />}
-            {tab === 'recharge' && <CreditCard size={20} />}
-            <span className="hidden sm:inline">
+          <button 
+            key={tab} 
+            onClick={() => setActiveTab(tab)} 
+            className={`relative flex-1 py-4.5 rounded-[2rem] font-black text-[12px] uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all duration-300 z-10 ${activeTab === tab ? 'text-[#8D30F4]' : 'text-white/70 hover:text-white'}`}
+          >
+            {tab === 'bulk-sms' && <Send size={18} className={activeTab === tab ? 'animate-bounce' : ''} />}
+            {tab === 'templates' && <MessageSquare size={18} />}
+            {tab === 'recharge' && <CreditCard size={18} />}
+            <span className="truncate">
               {tab === 'bulk-sms' ? t('bulk_sms', lang) : tab === 'templates' ? t('templates', lang) : t('recharge', lang)}
             </span>
           </button>
@@ -158,39 +169,56 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
       </div>
 
       {activeTab === 'bulk-sms' && (
-        <div className="space-y-6 animate-in slide-in-from-bottom-5">
-          <div className="bg-white/95 backdrop-blur-xl p-8 sm:p-10 rounded-[3rem] shadow-[0_50px_120px_rgba(46,11,94,0.3)] border border-white/50 space-y-8 sm:space-y-10">
-            {/* Step 1: Target Audience */}
-            <div className="space-y-5">
-              <label className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.25em] px-1 opacity-80 flex items-center gap-2">
-                <Users size={14} /> ১. অডিয়েন্স (Target Audience)
-              </label>
+        <div className="space-y-5 animate-in slide-in-from-bottom-5">
+          {/* Wallet Header Card */}
+          <div className="bg-gradient-to-br from-[#8D30F4] to-[#A179FF] p-6 rounded-[2.2rem] shadow-xl border border-white/20 flex items-center justify-between text-white relative overflow-hidden">
+             <div className="absolute -right-6 -top-6 w-32 h-32 bg-white/10 rounded-full blur-3xl"></div>
+             <div className="relative z-10">
+               <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-70 mb-1">Available SMS Balance</p>
+               <h3 className="text-4xl font-black flex items-baseline gap-2">
+                 {madrasah?.sms_balance || 0}
+                 <span className="text-xs opacity-60 font-noto tracking-normal">টি এসএমএস</span>
+               </h3>
+             </div>
+             <div className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30">
+               <Zap size={28} className="text-white fill-white/20" />
+             </div>
+          </div>
+
+          <div className="bg-white/95 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-2xl border border-white/50 space-y-7">
+            {/* Step 1: Target Audience Selection */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-1 px-1">
+                <div className="w-8 h-8 bg-[#8D30F4]/10 rounded-xl flex items-center justify-center text-[#8D30F4]">
+                   <Users size={16} />
+                </div>
+                <h4 className="text-[11px] font-black text-[#2E0B5E] uppercase tracking-widest">১. অডিয়েন্স নির্বাচন</h4>
+              </div>
+              
               <div className="relative">
                 <button 
                   onClick={() => setShowClassDropdown(!showClassDropdown)}
-                  className={`w-full px-6 py-5.5 rounded-[2rem] border-2 transition-all flex items-center justify-between group ${selectedClassId ? 'bg-[#8D30F4]/5 border-[#8D30F4]/30 shadow-inner' : 'bg-slate-50 border-slate-200'}`}
+                  className={`w-full px-6 py-4.5 rounded-[1.5rem] border-2 transition-all flex items-center justify-between group ${selectedClassId ? 'bg-[#8D30F4]/5 border-[#8D30F4]/30' : 'bg-slate-50 border-slate-100'}`}
                 >
                   <div className="flex items-center gap-4">
-                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${selectedClassId ? 'bg-[#8D30F4] text-white shadow-xl' : 'bg-white text-[#8D30F4] shadow-md border border-slate-100'}`}>
-                      <LayoutList size={22} />
-                    </div>
-                    <span className={`text-lg font-black transition-colors ${selectedClassId ? 'text-[#2E0B5E]' : 'text-slate-400'}`}>
+                    <LayoutList size={20} className={selectedClassId ? 'text-[#8D30F4]' : 'text-slate-300'} />
+                    <span className={`text-base font-black font-noto ${selectedClassId ? 'text-[#2E0B5E]' : 'text-slate-400'}`}>
                       {getSelectedClassName()}
                     </span>
                   </div>
-                  <ChevronDown className={`text-[#8D30F4]/40 group-hover:text-[#8D30F4] transition-all duration-300 ${showClassDropdown ? 'rotate-180' : ''}`} size={24} />
+                  <ChevronDown className={`text-slate-300 group-hover:text-[#8D30F4] transition-all duration-300 ${showClassDropdown ? 'rotate-180' : ''}`} size={20} />
                 </button>
 
                 {showClassDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[2.5rem] shadow-[0_30px_80px_rgba(0,0,0,0.2)] border border-slate-100 z-[100] p-3 animate-in slide-in-from-top-4 max-h-72 overflow-y-auto custom-scrollbar">
+                  <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[2rem] shadow-[0_30px_80px_rgba(0,0,0,0.15)] border border-slate-100 z-[100] p-2 animate-in slide-in-from-top-4 max-h-60 overflow-y-auto">
                     {classes.map(cls => (
                       <button 
                         key={cls.id} 
                         onClick={() => { setSelectedClassId(cls.id); setShowClassDropdown(false); }} 
-                        className={`w-full text-left px-6 py-4.5 rounded-2xl flex items-center justify-between transition-all mb-1.5 ${selectedClassId === cls.id ? 'bg-[#8D30F4] text-white shadow-xl scale-[1.01]' : 'hover:bg-[#F2EBFF] text-[#2E0B5E]'}`}
+                        className={`w-full text-left px-5 py-3.5 rounded-xl flex items-center justify-between transition-all mb-1 ${selectedClassId === cls.id ? 'bg-[#8D30F4] text-white shadow-md' : 'hover:bg-slate-50 text-[#2E0B5E]'}`}
                       >
-                        <span className="font-black font-noto text-lg">{cls.class_name}</span>
-                        {selectedClassId === cls.id && <Check size={20} strokeWidth={4} />}
+                        <span className="font-black font-noto text-md">{cls.class_name}</span>
+                        {selectedClassId === cls.id && <Check size={18} strokeWidth={4} />}
                       </button>
                     ))}
                   </div>
@@ -198,45 +226,46 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
               </div>
 
               {selectedClassId && (
-                <div className="flex items-center gap-5 bg-gradient-to-r from-[#8D30F4]/10 to-transparent p-6 rounded-[2rem] border-2 border-[#8D30F4]/15 animate-in zoom-in-95">
-                  <div className="w-14 h-14 bg-white rounded-[1.2rem] flex items-center justify-center text-[#8D30F4] shadow-lg border border-[#8D30F4]/5 relative">
-                      <Users size={28} />
-                      <div className="absolute -top-1 -right-1 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white animate-pulse" />
+                <div className="bg-[#8D30F4]/5 p-4 rounded-2xl border border-[#8D30F4]/10 flex items-center gap-4 animate-in zoom-in-95">
+                  <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-[#8D30F4] shadow-sm">
+                      <Users size={20} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-[#A179FF] uppercase tracking-[0.15em] leading-none mb-1.5">Batch Population</p>
-                    <p className="text-2xl font-black text-[#2E0B5E] flex items-center gap-2">
-                      {loadingStudents ? <Loader2 className="animate-spin" size={20} /> : classStudents.length} 
-                      <span className="text-xs text-[#8D30F4]/60 font-noto uppercase tracking-widest">{lang === 'bn' ? 'জন ছাত্র' : 'Students'}</span>
+                    <p className="text-[14px] font-black text-[#2E0B5E]">
+                      {loadingStudents ? <Loader2 className="animate-spin" size={16} /> : classStudents.length} 
+                      <span className="text-[10px] text-[#8D30F4]/60 font-noto uppercase tracking-widest ml-1">{lang === 'bn' ? 'জন ছাত্র সিলেক্টেড' : 'Students Selected'}</span>
                     </p>
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Step 2: Composition */}
-            <div className="space-y-6">
-              <label className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.25em] px-1 opacity-80 flex items-center gap-2">
-                <MessageSquare size={14} /> ২. মেসেজ কম্পোজিশন (Composition)
-              </label>
+            {/* Step 2: Message Composition */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 mb-1 px-1">
+                <div className="w-8 h-8 bg-[#8D30F4]/10 rounded-xl flex items-center justify-center text-[#8D30F4]">
+                   <MessageSquare size={16} />
+                </div>
+                <h4 className="text-[11px] font-black text-[#2E0B5E] uppercase tracking-widest">২. মেসেজ কম্পোজ করুন</h4>
+              </div>
               
               <div className="relative">
                 <button 
                   onClick={() => setShowTemplateDropdown(!showTemplateDropdown)} 
-                  className={`w-full flex items-center justify-between px-7 py-5.5 rounded-[2rem] text-sm font-black active:scale-[0.99] transition-all border-2 ${bulkMessage ? 'bg-[#F2EBFF] border-[#8D30F4]/30 text-[#2E0B5E]' : 'bg-slate-50 border-slate-200 text-slate-400'}`}
+                  className={`w-full flex items-center justify-between px-6 py-4 rounded-[1.2rem] text-sm font-black transition-all border-2 ${bulkMessage ? 'bg-[#F2EBFF] border-[#8D30F4]/20 text-[#2E0B5E]' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
                 >
-                  <div className="flex items-center gap-4">
-                    <BookOpen size={20} className="text-[#8D30F4]" />
-                    <span>{bulkMessage ? (lang === 'bn' ? 'টেমপ্লেট পরিবর্তন' : 'Change Template') : (lang === 'bn' ? 'টেমপ্লেট বাছাই করুন' : 'Pick a Template')}</span>
+                  <div className="flex items-center gap-3">
+                    <BookOpen size={18} className="text-[#8D30F4]" />
+                    <span className="truncate">{bulkMessage ? 'টেমপ্লেট লোড হয়েছে' : 'টেমপ্লেট থেকে বাছাই করুন'}</span>
                   </div>
-                  <ChevronDown size={20} className={`text-[#8D30F4]/40 transition-transform ${showTemplateDropdown ? 'rotate-180' : ''}`} />
+                  <ChevronDown size={18} className={`text-slate-300 transition-transform ${showTemplateDropdown ? 'rotate-180' : ''}`} />
                 </button>
                 {showTemplateDropdown && (
-                  <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[2.5rem] shadow-[0_25px_70px_rgba(0,0,0,0.2)] border border-slate-100 z-[90] p-3 animate-in slide-in-from-top-4 max-h-64 overflow-y-auto">
+                  <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 z-[90] p-2 animate-in slide-in-from-top-4 max-h-52 overflow-y-auto">
                     {templates.map(tmp => (
-                      <button key={tmp.id} onClick={() => { setBulkMessage(tmp.body); setShowTemplateDropdown(false); }} className="w-full text-left px-6 py-5 rounded-[1.5rem] border-b border-slate-50 last:border-0 hover:bg-[#F2EBFF] transition-all mb-1.5">
-                        <p className="text-[10px] font-black text-[#8D30F4] uppercase mb-1 tracking-wider">{tmp.title}</p>
-                        <p className="text-sm font-bold text-slate-500 truncate font-noto">{tmp.body}</p>
+                      <button key={tmp.id} onClick={() => { setBulkMessage(tmp.body); setShowTemplateDropdown(false); }} className="w-full text-left px-5 py-3 rounded-xl hover:bg-slate-50 transition-all mb-1">
+                        <p className="text-[9px] font-black text-[#8D30F4] uppercase tracking-wider mb-0.5">{tmp.title}</p>
+                        <p className="text-xs font-bold text-slate-500 truncate font-noto">{tmp.body}</p>
                       </button>
                     ))}
                   </div>
@@ -244,18 +273,18 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
               </div>
 
               <div className="space-y-3">
-                <div className="flex justify-between items-end px-2">
-                  <div className="flex items-center gap-2">
-                    <Sparkles size={14} className="text-[#8D30F4]" />
-                    <span className="text-[10px] font-black text-[#2E0B5E] uppercase tracking-widest">Compose SMS</span>
+                <div className="flex justify-between items-center px-2">
+                  <div className="flex items-center gap-1.5 opacity-40">
+                    <Sparkles size={12} className="text-[#8D30F4]" />
+                    <span className="text-[9px] font-black text-[#2E0B5E] uppercase tracking-widest">Composer</span>
                   </div>
-                  <div className="flex items-center gap-2 bg-[#8D30F4]/10 px-3.5 py-1 rounded-full border border-[#8D30F4]/5">
+                  <div className="bg-[#F2EBFF] px-3 py-0.5 rounded-full">
                     <span className={`text-[10px] font-black ${bulkMessage.length > 150 ? 'text-orange-500' : 'text-[#8D30F4]'}`}>{bulkMessage.length}</span>
-                    <span className="text-[10px] font-black text-[#A179FF]/50">/ 160</span>
+                    <span className="text-[10px] font-black text-[#A179FF]/40"> / 160</span>
                   </div>
                 </div>
                 <textarea 
-                  className="w-full h-40 px-6 py-6 bg-[#F2EBFF]/40 border-2 border-transparent rounded-[2.2rem] text-[#2E0B5E] font-bold outline-none focus:border-[#8D30F4]/20 focus:bg-white transition-all shadow-inner leading-relaxed font-noto text-md" 
+                  className="w-full h-32 px-5 py-5 bg-slate-50/50 border-2 border-slate-100 rounded-[1.8rem] text-[#2E0B5E] font-bold outline-none focus:border-[#8D30F4]/20 focus:bg-white transition-all shadow-inner leading-relaxed font-noto text-md resize-none" 
                   placeholder="আপনার মেসেজ এখানে লিখুন..." 
                   value={bulkMessage} 
                   onChange={(e) => setBulkMessage(e.target.value)} 
@@ -264,121 +293,166 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
               </div>
             </div>
 
-            <div className="flex flex-col gap-4 pt-4">
+            <div className="flex flex-col gap-3.5 pt-2">
               <button 
                 onClick={handleSendBulk} 
                 disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId} 
-                className="w-full py-6 premium-btn text-white font-black rounded-[2.2rem] shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-4 text-xl disabled:opacity-30"
+                className="w-full py-5 premium-btn text-white font-black rounded-[1.8rem] shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-40"
               >
-                {sendingBulk ? <Loader2 className="animate-spin" size={26} /> : bulkSuccess ? <><CheckCircle2 size={26} /> Sent Successfully</> : <><Send size={24} /> {t('send_sms', lang)}</>}
+                {sendingBulk ? <Loader2 className="animate-spin" size={24} /> : bulkSuccess ? <><CheckCircle2 size={24} /> পাঠানো হয়েছে</> : <><Send size={20} /> বাল্ক এসএমএস পাঠান</>}
               </button>
               
               <button 
                 onClick={handleSendNativeBulk} 
                 disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId} 
-                className="w-full py-5.5 bg-[#2E0B5E] text-white font-black rounded-[2.2rem] shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-4 text-lg border border-white/10 disabled:opacity-30"
+                className="w-full py-4.5 bg-[#2E0B5E] text-white font-black rounded-[1.8rem] active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-base border border-white/10 disabled:opacity-40"
               >
-                <Smartphone size={24} /> {t('native_sms', lang)}
+                <Smartphone size={20} /> {t('native_sms', lang)}
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Templates Tab with enlarged actions */}
       {activeTab === 'templates' && (
         <div className="space-y-6 animate-in slide-in-from-bottom-5">
-          <div className="flex items-center justify-between px-4">
-            <h2 className="text-2xl font-black text-white font-noto drop-shadow-md">{t('templates', lang)}</h2>
-            <button onClick={() => { setEditingId(null); setTempTitle(''); setTempBody(''); setShowAddModal(true); }} className="premium-btn text-white p-4.5 rounded-2xl shadow-xl border border-white/20 active:scale-95 transition-all">
-              <Plus size={24} strokeWidth={4} />
+          <div className="flex items-center justify-between px-3">
+            <div>
+              <h2 className="text-2xl font-black text-white font-noto drop-shadow-md">মেসেজ টেমপ্লেট</h2>
+              <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mt-1">Manage saved responses</p>
+            </div>
+            <button onClick={() => { setEditingId(null); setTempTitle(''); setTempBody(''); setShowAddModal(true); }} className="w-14 h-14 bg-white text-[#8D30F4] rounded-[1.5rem] shadow-2xl flex items-center justify-center active:scale-90 transition-all border-4 border-[#8D30F4]/10">
+              <Plus size={28} strokeWidth={3} />
             </button>
           </div>
           
           {loading ? (
-             <div className="space-y-5">
-               {[1, 2].map(i => <div key={i} className="h-32 bg-white/20 animate-pulse rounded-[2.5rem]"></div>)}
+             <div className="space-y-4">
+               {[1, 2, 3].map(i => <div key={i} className="h-24 bg-white/20 animate-pulse rounded-[2rem]"></div>)}
              </div>
-          ) : templates.map(tmp => (
-            <div key={tmp.id} className="bg-white/95 backdrop-blur-md p-6 rounded-[2.5rem] border border-white shadow-xl space-y-4 relative overflow-hidden">
-              <div className="flex items-center justify-between border-b border-slate-50 pb-4">
-                 <h3 className="font-black text-[#2E0B5E] text-lg font-noto truncate pr-4">{tmp.title}</h3>
-                 <div className="flex gap-2">
-                   <button onClick={() => { setEditingId(tmp.id); setTempTitle(tmp.title); setTempBody(tmp.body); setShowAddModal(true); }} className="w-10 h-10 bg-[#F2EBFF] text-[#8D30F4] rounded-xl flex items-center justify-center border border-[#8D30F4]/10 active:scale-90 transition-all shadow-sm">
-                     <Edit3 size={18} />
-                   </button>
-                   <button onClick={() => handleDeleteTemplate(tmp.id)} className="w-10 h-10 bg-red-50 text-red-400 rounded-xl flex items-center justify-center border border-red-100 active:scale-90 transition-all shadow-sm">
-                     <Trash2 size={18} />
-                   </button>
+          ) : templates.length > 0 ? (
+            <div className="space-y-4">
+              {templates.map(tmp => (
+                <div key={tmp.id} className="bg-white/95 backdrop-blur-md p-5 rounded-[2rem] border border-white shadow-xl flex flex-col gap-3 group">
+                  <div className="flex items-center justify-between">
+                     <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 bg-[#F2EBFF] rounded-lg flex items-center justify-center text-[#8D30F4]">
+                           <MessageSquare size={16} />
+                        </div>
+                        <h3 className="font-black text-[#2E0B5E] text-[16px] font-noto truncate max-w-[180px]">{tmp.title}</h3>
+                     </div>
+                     <div className="flex gap-2">
+                       <button onClick={() => { setEditingId(tmp.id); setTempTitle(tmp.title); setTempBody(tmp.body); setShowAddModal(true); }} className="w-9 h-9 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center border border-slate-100 active:scale-90 transition-all hover:bg-[#8D30F4] hover:text-white hover:border-[#8D30F4]">
+                         <Edit3 size={16} />
+                       </button>
+                       <button onClick={() => handleDeleteTemplate(tmp.id)} className="w-9 h-9 bg-slate-50 text-red-300 rounded-xl flex items-center justify-center border border-slate-100 active:scale-90 transition-all hover:bg-red-500 hover:text-white hover:border-red-500">
+                         <Trash2 size={16} />
+                       </button>
+                     </div>
+                  </div>
+                  <p className="text-sm text-slate-500 leading-relaxed font-bold font-noto px-1">{tmp.body}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-20 bg-white/10 rounded-[3rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
+              <p className="text-white/60 font-black text-[11px] uppercase tracking-widest">No templates found</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {activeTab === 'recharge' && (
+        <div className="space-y-6 animate-in slide-in-from-bottom-5">
+           <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] shadow-2xl border border-white space-y-8">
+              <div className="text-center space-y-4">
+                <div className="inline-flex p-3.5 bg-[#8D30F4]/5 rounded-[1.8rem] border border-[#8D30F4]/10">
+                   <Smartphone size={32} className="text-[#8D30F4]" />
+                </div>
+                <div>
+                   <h3 className="text-xl font-black text-[#2E0B5E]">রিচার্জ করুন</h3>
+                   <p className="text-xs font-bold text-slate-400 font-noto mt-1">নিচের নম্বরে সেন্ড মানি করে রিকোয়েস্ট পাঠান</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                 <div className="p-5 rounded-[1.8rem] bg-gradient-to-br from-[#E2136E] to-[#D12053] text-white flex flex-col items-center justify-center gap-2 shadow-lg relative overflow-hidden group">
+                    <span className="text-[10px] font-black uppercase tracking-widest opacity-70">bKash</span>
+                    <span className="text-sm font-black">Personal</span>
+                    <div className="absolute -right-4 -bottom-4 w-12 h-12 bg-white/10 rounded-full"></div>
+                 </div>
+                 <div className="p-5 rounded-[1.8rem] bg-gradient-to-br from-[#F49124] to-[#E86D23] text-white flex flex-col items-center justify-center gap-2 shadow-lg relative overflow-hidden group">
+                    <span className="text-[10px] font-black uppercase tracking-widest opacity-70">Nagad</span>
+                    <span className="text-sm font-black">Personal</span>
+                    <div className="absolute -right-4 -bottom-4 w-12 h-12 bg-white/10 rounded-full"></div>
                  </div>
               </div>
-              <p className="text-md text-slate-500 leading-relaxed font-bold font-noto line-clamp-2">{tmp.body}</p>
-            </div>
-          ))}
+
+              <div className="bg-[#F2EBFF]/60 p-5 rounded-[2rem] border border-[#8D30F4]/10 text-center space-y-1">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Target Number</p>
+                <h3 className="text-2xl font-black text-[#8D30F4] tracking-tighter">০১৭৫৬৬৭৭৮৮৯</h3>
+              </div>
+
+              <div className="space-y-5">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3">টাকার পরিমাণ</label>
+                  <div className="relative">
+                    <input type="number" className="w-full px-6 py-4.5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] text-[#2D3142] font-black text-xl outline-none focus:border-[#8D30F4]/20 transition-all pl-12" placeholder="000" />
+                    <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-[#8D30F4] text-xl">৳</span>
+                  </div>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3">ট্রানজ্যাকশন আইডি (TrxID)</label>
+                  <input type="text" className="w-full px-6 py-4.5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] text-[#2D3142] font-black text-lg outline-none focus:border-[#8D30F4]/20 transition-all uppercase placeholder:normal-case" placeholder="যেমন: 8X23M1..." />
+                </div>
+                <button className="w-full py-5.5 premium-btn text-white font-black rounded-[1.8rem] shadow-2xl active:scale-[0.98] transition-all text-xl mt-2">রিচার্জ রিকোয়েস্ট পাঠান</button>
+              </div>
+
+              <div className="flex items-center justify-center gap-2.5 pt-4">
+                 <History size={16} className="text-[#8D30F4]" />
+                 <span className="text-[11px] font-black text-[#8D30F4] uppercase tracking-widest">View History</span>
+              </div>
+           </div>
         </div>
       )}
 
-      {/* Recharge Tab with enlarged inputs */}
-      {activeTab === 'recharge' && (
-        <div className="bg-white/95 backdrop-blur-xl p-8 sm:p-10 rounded-[3rem] shadow-2xl border border-white space-y-8 text-center animate-in slide-in-from-bottom-5">
-          <div className="bg-[#8D30F4]/5 p-8 rounded-[2.5rem] border-2 border-dashed border-[#8D30F4]/20 flex flex-col items-center">
-            <div className="w-16 h-16 bg-white rounded-2xl shadow-xl flex items-center justify-center text-[#8D30F4] mb-4">
-               <Smartphone size={32} />
-            </div>
-            <p className="text-[12px] font-black text-slate-400 uppercase tracking-widest mb-2">Send Money (bKash/Nagad)</p>
-            <h3 className="text-2xl font-black text-[#2E0B5E] tracking-tighter bg-white px-6 py-2 rounded-xl shadow-sm border border-slate-100">017XXXXXXXX</h3>
-          </div>
-          <div className="space-y-6 text-left">
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2 opacity-60">টাকার পরিমাণ (Amount)</label>
-              <input type="number" className="w-full px-6 py-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.5rem] text-[#2D3142] font-black text-xl outline-none focus:border-[#8D30F4] shadow-inner" placeholder="Amount (৳)" />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2 opacity-60">TrxID (ট্রানজ্যাকশন আইডি)</label>
-              <input type="text" className="w-full px-6 py-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.5rem] text-[#2D3142] font-black text-xl outline-none focus:border-[#8D30F4] uppercase shadow-inner" placeholder="8X23M1..." />
-            </div>
-            <button className="w-full py-6 premium-btn text-white font-black rounded-[2.2rem] shadow-2xl active:scale-[0.98] transition-all text-xl mt-4">রিচার্জ রিকোয়েস্ট পাঠান</button>
-          </div>
-        </div>
-      )}
-
-      {/* Template Modal */}
+      {/* Template Modal - Kept consistent with new style */}
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[500] flex items-center justify-center p-8 animate-in fade-in duration-300">
-           <div className="bg-white w-full max-w-md rounded-[3rem] p-10 shadow-[0_40px_100px_rgba(0,0,0,0.4)] border border-[#8D30F4]/10 relative animate-in zoom-in-95">
-              <button onClick={() => setShowAddModal(false)} className="absolute top-8 right-8 text-slate-300 hover:text-[#8D30F4] transition-all p-2"><X size={28} strokeWidth={3} /></button>
-              <h2 className="text-2xl font-black text-[#2E0B5E] mb-8 font-noto tracking-tight flex items-center gap-3">
-                <Edit3 className="text-[#8D30F4]" size={24} />
-                {editingId ? 'টেমপ্লেট এডিট' : 'নতুন টেমপ্লেট'}
+           <div className="bg-white w-full max-w-md rounded-[2.8rem] p-8 shadow-[0_40px_100px_rgba(0,0,0,0.4)] border border-[#8D30F4]/10 relative animate-in zoom-in-95">
+              <button onClick={() => setShowAddModal(false)} className="absolute top-8 right-8 text-slate-300 hover:text-[#8D30F4] transition-all p-2"><X size={26} strokeWidth={3} /></button>
+              <h2 className="text-xl font-black text-[#2E0B5E] mb-8 font-noto tracking-tight flex items-center gap-3">
+                <Edit3 className="text-[#8D30F4]" size={22} />
+                {editingId ? 'টেমপ্লেট সংশোধন' : 'নতুন টেমপ্লেট'}
               </h2>
               
               <div className="space-y-6">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Template Title</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">টেমপ্লেট নাম</label>
                   <input 
                     type="text" 
-                    className="w-full px-6 py-4.5 bg-[#F2EBFF] border-2 border-[#8D30F4]/5 rounded-2xl text-[#2E0B5E] font-black text-lg outline-none focus:border-[#8D30F4] transition-all shadow-inner" 
+                    className="w-full px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-[#2E0B5E] font-black text-lg outline-none focus:border-[#8D30F4]/20 transition-all shadow-inner" 
                     value={tempTitle} 
                     onChange={(e) => setTempTitle(e.target.value)}
-                    placeholder="e.g. Attendance"
+                    placeholder="যেমন: উপস্থিতি"
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">Message Content</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-2">মেসেজ টেক্সট</label>
                   <textarea 
-                    className="w-full h-36 px-6 py-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/5 rounded-2xl text-[#2E0B5E] font-bold text-md outline-none focus:border-[#8D30F4] transition-all resize-none leading-relaxed font-noto shadow-inner" 
+                    className="w-full h-32 px-5 py-4 bg-slate-50 border-2 border-slate-100 rounded-2xl text-[#2E0B5E] font-bold text-md outline-none focus:border-[#8D30F4]/20 transition-all resize-none leading-relaxed font-noto shadow-inner" 
                     value={tempBody} 
                     onChange={(e) => setTempBody(e.target.value)}
-                    placeholder="Enter message body..."
+                    placeholder="মেসেজ লিখুন..."
                   />
                 </div>
                 
                 <button 
                   onClick={handleSaveTemplate} 
                   disabled={isSaving || !tempTitle.trim() || !tempBody.trim()} 
-                  className="w-full py-5.5 premium-btn text-white font-black rounded-[1.8rem] shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-4 text-xl disabled:opacity-40 mt-4"
+                  className="w-full py-5 premium-btn text-white font-black rounded-[1.5rem] shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-40"
                 >
-                  {isSaving ? <Loader2 className="animate-spin" size={24} /> : <><Check size={24} strokeWidth={4} /> {t('save', lang)}</>}
+                  {isSaving ? <Loader2 className="animate-spin" size={24} /> : <><Check size={22} strokeWidth={4} /> টেমপ্লেট সেভ করুন</>}
                 </button>
               </div>
            </div>
