@@ -1,13 +1,13 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { ArrowLeft, Save, User as UserIcon, Phone, List, Hash, Loader2, ChevronDown, Camera, X, Check, UserCheck } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
-import { Student, Class, Language } from '../types';
+import { Student, Class, Language, Madrasah } from '../types';
 import { t } from '../translations';
 import { sortMadrasahClasses } from './Classes';
 
 interface StudentFormProps {
   student?: Student | null;
+  madrasah: Madrasah | null;
   defaultClassId?: string;
   isEditing: boolean;
   onSuccess: () => void;
@@ -15,7 +15,7 @@ interface StudentFormProps {
   lang: Language;
 }
 
-const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEditing, onSuccess, onCancel, lang }) => {
+const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultClassId, isEditing, onSuccess, onCancel, lang }) => {
   const [name, setName] = useState(student?.student_name || '');
   const [guardianName, setGuardianName] = useState(student?.guardian_name || '');
   const [roll, setRoll] = useState(student?.roll?.toString() || '');
@@ -36,11 +36,12 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
   }, []);
 
   const fetchClasses = async () => {
+    // Check cache first
     const cached = offlineApi.getCache('classes');
     if (cached) setClasses(sortMadrasahClasses(cached));
 
-    if (navigator.onLine) {
-      const { data } = await supabase.from('classes').select('*');
+    if (navigator.onLine && madrasah) {
+      const { data } = await supabase.from('classes').select('*').eq('madrasah_id', madrasah.id);
       if (data) {
         const sorted = sortMadrasahClasses(data);
         setClasses(sorted);
@@ -51,7 +52,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file || !madrasah) return;
 
     if (!navigator.onLine) {
       setErrorModal({ show: true, message: lang === 'bn' ? 'ছবি আপলোড করতে ইন্টারনেটে যুক্ত থাকুন' : 'Stay online to upload photo' });
@@ -60,11 +61,8 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
 
     setUploading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Session expired. Please login again.");
-
       const fileExt = file.name.split('.').pop();
-      const fileName = `std_${user.id}_${Date.now()}.${fileExt}`;
+      const fileName = `std_${madrasah.id}_${Date.now()}.${fileExt}`;
       const filePath = `students/${fileName}`;
 
       const { error: uploadError } = await supabase.storage
@@ -92,16 +90,13 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !phone.trim() || !classId) {
+    if (!name.trim() || !phone.trim() || !classId || !madrasah) {
       setErrorModal({ show: true, message: lang === 'bn' ? 'সব তথ্য পূরণ করুন' : 'Fill required fields' });
       return;
     }
 
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Session expired");
-
       const payload = {
         student_name: name.trim(),
         guardian_name: guardianName.trim(),
@@ -110,27 +105,34 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
         guardian_phone_2: phone2.trim() || null,
         photo_url: photoUrl || null,
         class_id: classId,
-        madrasah_id: user.id
+        madrasah_id: madrasah.id
       };
 
       if (navigator.onLine) {
         if (isEditing && student) {
-          await supabase.from('students').update(payload).eq('id', student.id);
+          const { error } = await supabase.from('students').update(payload).eq('id', student.id);
+          if (error) throw error;
         } else {
-          await supabase.from('students').insert(payload);
+          const { error } = await supabase.from('students').insert(payload);
+          if (error) throw error;
         }
       } else {
         offlineApi.queueAction('students', isEditing ? 'UPDATE' : 'INSERT', isEditing ? { ...payload, id: student?.id } : payload);
       }
       onSuccess();
     } catch (err: any) { 
-      setErrorModal({ show: true, message: err.message });
+      let msg = err.message;
+      if (err.code === '23505') {
+        msg = lang === 'bn' ? 'এই রোল নম্বরটি এই ক্লাসে ইতিমধ্যে ব্যবহৃত হয়েছে' : 'This roll number is already used in this class';
+      }
+      setErrorModal({ show: true, message: msg });
     } finally { setLoading(false); }
   };
 
   return (
     <div className="animate-in slide-in-from-bottom-6 duration-500 pb-24 space-y-8">
       <div className="flex items-center gap-5">
+        {/* Fix: removed non-existent 'onBack' and used 'onCancel' instead */}
         <button onClick={onCancel} className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white active:scale-95 transition-all border border-white/20 shadow-xl">
           <ArrowLeft size={28} strokeWidth={3} />
         </button>

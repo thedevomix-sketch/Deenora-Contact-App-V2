@@ -1,9 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-// Added AlertTriangle to the imports from lucide-react
 import { Plus, ChevronRight, BookOpen, Users, Edit3, Trash2, X, Check, Loader2, AlertCircle, AlertTriangle } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
-import { Class, Language } from '../types';
+import { Class, Language, Madrasah } from '../types';
 import { t } from '../translations';
 
 export const sortMadrasahClasses = (classes: any[]) => {
@@ -16,11 +15,12 @@ export const sortMadrasahClasses = (classes: any[]) => {
 interface ClassesProps {
   onClassClick: (cls: Class) => void;
   lang: Language;
+  madrasah: Madrasah | null;
   dataVersion: number;
   triggerRefresh: () => void;
 }
 
-const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, triggerRefresh }) => {
+const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVersion, triggerRefresh }) => {
   const [classes, setClasses] = useState<(Class & { student_count?: number })[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -33,44 +33,79 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
 
   const fetchClasses = async () => {
     setLoading(true);
-    const { data: classesData } = await supabase.from('classes').select('*');
-    if (classesData) {
-      const withCounts = await Promise.all(classesData.map(async (cls) => {
-        const { count } = await supabase.from('students').select('*', { count: 'exact', head: true }).eq('class_id', cls.id);
-        return { ...cls, student_count: count || 0 };
-      }));
-      setClasses(sortMadrasahClasses(withCounts));
+    
+    // Check cache first
+    const cached = offlineApi.getCache('classes');
+    if (cached) {
+      setClasses(sortMadrasahClasses(cached));
     }
-    setLoading(false);
+
+    if (navigator.onLine && madrasah) {
+      try {
+        const { data: classesData, error } = await supabase
+          .from('classes')
+          .select('*')
+          .eq('madrasah_id', madrasah.id);
+        
+        if (error) throw error;
+
+        if (classesData) {
+          const withCounts = await Promise.all(classesData.map(async (cls) => {
+            const { count } = await supabase
+              .from('students')
+              .select('*', { count: 'exact', head: true })
+              .eq('class_id', cls.id);
+            return { ...cls, student_count: count || 0 };
+          }));
+          
+          const sorted = sortMadrasahClasses(withCounts);
+          setClasses(sorted);
+          offlineApi.setCache('classes', sorted);
+        }
+      } catch (err) {
+        console.error("Fetch classes failed", err);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setLoading(false);
+    }
   };
 
   const handleSaveClass = async () => {
-    if (!newClassName.trim()) return;
+    if (!newClassName.trim() || !madrasah) return;
     setModalLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Session expired");
-
       if (editingClass) {
         if (navigator.onLine) {
-          await supabase.from('classes').update({ class_name: newClassName.trim() }).eq('id', editingClass.id);
+          const { error } = await supabase
+            .from('classes')
+            .update({ class_name: newClassName.trim() })
+            .eq('id', editingClass.id);
+          if (error) throw error;
         } else {
           offlineApi.queueAction('classes', 'UPDATE', { id: editingClass.id, class_name: newClassName.trim() });
         }
       } else {
-        const payload = { class_name: newClassName.trim(), madrasah_id: user.id };
+        const payload = { 
+          class_name: newClassName.trim(), 
+          madrasah_id: madrasah.id 
+        };
+        
         if (navigator.onLine) {
-          await supabase.from('classes').insert(payload);
+          const { error } = await supabase.from('classes').insert(payload);
+          if (error) throw error;
         } else {
           offlineApi.queueAction('classes', 'INSERT', payload);
         }
       }
+      
       setShowModal(false);
       setNewClassName('');
       setEditingClass(null);
       triggerRefresh();
     } catch (err: any) {
-      alert(err.message);
+      alert(lang === 'bn' ? `ব্যর্থ হয়েছে: ${err.message}` : `Failed: ${err.message}`);
     } finally {
       setModalLoading(false);
     }
@@ -81,7 +116,11 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
     setModalLoading(true);
     try {
       if (navigator.onLine) {
-        await supabase.from('classes').delete().eq('id', showDeleteConfirm.id);
+        const { error } = await supabase
+          .from('classes')
+          .delete()
+          .eq('id', showDeleteConfirm.id);
+        if (error) throw error;
       } else {
         offlineApi.queueAction('classes', 'DELETE', { id: showDeleteConfirm.id });
       }
@@ -103,7 +142,7 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
         </button>
       </div>
 
-      {loading ? (
+      {loading && classes.length === 0 ? (
         <div className="space-y-4">
           {[1, 2, 3].map(i => <div key={i} className="h-28 bg-white/20 animate-pulse rounded-[2.2rem] border border-white/10"></div>)}
         </div>
@@ -138,7 +177,7 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
             </div>
           ))}
 
-          {classes.length === 0 && (
+          {classes.length === 0 && !loading && (
             <div className="py-24 text-center bg-white/10 rounded-[3rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
               <p className="text-white font-black text-sm uppercase tracking-widest">{t('no_classes', lang)}</p>
             </div>
@@ -179,7 +218,6 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
         <div className="fixed inset-0 bg-red-900/40 backdrop-blur-xl z-[600] flex items-center justify-center p-8 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[3rem] p-10 shadow-2xl border-2 border-red-50 text-center space-y-6 animate-in zoom-in-95">
              <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                {/* Fixed: AlertTriangle was not imported from lucide-react */}
                 <AlertTriangle size={40} />
              </div>
              <div>

@@ -32,7 +32,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.2.0-LAVENDER";
+  const APP_VERSION = "2.2.2-STABLE";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -201,7 +201,7 @@ const App: React.FC = () => {
         )}
         {view === 'admin-dashboard' && isSuperAdmin && <AdminPanel lang={lang} currentView="dashboard" />}
         {view === 'admin-approvals' && isSuperAdmin && <AdminPanel lang={lang} currentView="approvals" />}
-        {view === 'classes' && !isSuperAdmin && <Classes onClassClick={(cls) => { setSelectedClass(cls); setView('students'); }} lang={lang} dataVersion={dataVersion} triggerRefresh={triggerRefresh} />}
+        {view === 'classes' && !isSuperAdmin && <Classes onClassClick={(cls) => { setSelectedClass(cls); setView('students'); }} lang={lang} madrasah={madrasah} dataVersion={dataVersion} triggerRefresh={triggerRefresh} />}
         {view === 'wallet-sms' && !isSuperAdmin && <WalletSMS lang={lang} madrasah={madrasah} triggerRefresh={triggerRefresh} dataVersion={dataVersion} />}
         {view === 'data-management' && !isSuperAdmin && <DataManagement lang={lang} madrasah={madrasah} onBack={() => setView('account')} triggerRefresh={triggerRefresh} />}
         {view === 'account' && <Account lang={lang} setLang={(l) => { setLang(l); localStorage.setItem('app_lang', l); }} onProfileUpdate={() => fetchMadrasahProfileWithRetry(session.user.id)} setView={setView} isSuperAdmin={isSuperAdmin} initialMadrasah={madrasah} />}
@@ -209,7 +209,7 @@ const App: React.FC = () => {
           <Students selectedClass={selectedClass} onStudentClick={(s) => { setSelectedStudent(s); setView('student-details'); }} onAddClick={() => { setSelectedStudent(null); setIsEditing(false); setView('student-form'); }} onBack={() => setView('classes')} lang={lang} dataVersion={dataVersion} triggerRefresh={triggerRefresh} />
         )}
         {view === 'student-details' && selectedStudent && !isSuperAdmin && <StudentDetails student={selectedStudent} onEdit={() => { setIsEditing(true); setView('student-form'); }} onBack={() => setView(selectedClass ? 'students' : 'home')} lang={lang} />}
-        {view === 'student-form' && !isSuperAdmin && <StudentForm student={selectedStudent} defaultClassId={selectedClass?.id} isEditing={isEditing} onSuccess={() => { triggerRefresh(); setView(selectedClass ? 'students' : 'home'); }} onCancel={() => setView(selectedStudent ? 'student-details' : (selectedClass ? 'students' : 'home'))} lang={lang} />}
+        {view === 'student-form' && !isSuperAdmin && <StudentForm student={selectedStudent} madrasah={madrasah} defaultClassId={selectedClass?.id} isEditing={isEditing} onSuccess={() => { triggerRefresh(); setView(selectedClass ? 'students' : 'home'); }} onCancel={() => setView(selectedStudent ? 'student-details' : (selectedClass ? 'students' : 'home'))} lang={lang} />}
         
         <div className="mt-8 mb-4 text-center opacity-30 select-none">
            <span className="text-[9px] font-black text-white uppercase tracking-widest">{APP_VERSION}</span>
