@@ -131,7 +131,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   };
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative min-h-[85vh] pb-72">
+    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative min-h-[85vh] pb-80">
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -242,9 +242,9 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
         </div>
       )}
 
-      {/* Floating Action Menu - Adjusted positioning to clear Nav Bar */}
+      {/* Floating Action Menu - Adjusted bottom to 90px to ensure clearance */}
       {isSelectionMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+86px)] left-4 right-4 z-[150] animate-in slide-in-from-bottom-10">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+90px)] left-4 right-4 z-[150] animate-in slide-in-from-bottom-10">
           <div className="bg-white rounded-[2.5rem] p-4 shadow-[0_25px_60px_rgba(0,0,0,0.4)] border border-white/20 ring-4 ring-black/5 flex flex-col gap-3">
             
             {/* Template Selector */}

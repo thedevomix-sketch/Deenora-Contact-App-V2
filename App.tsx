@@ -32,7 +32,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.1.3-STABLE";
+  const APP_VERSION = "2.1.4-STABLE";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -48,30 +48,34 @@ const App: React.FC = () => {
   };
 
   const forceUpdate = async () => {
-    if ('serviceWorker' in navigator) {
-      try {
+    try {
+      // Unregister all service workers
+      if ('serviceWorker' in navigator) {
         const registrations = await navigator.serviceWorker.getRegistrations();
         for (let registration of registrations) {
           await registration.unregister();
         }
-      } catch (e) {
-        console.warn("Service worker unregistration failed", e);
       }
+      
+      // Clear all caches
+      if ('caches' in window) {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      }
+      
+      // Clear relevant localStorage items
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith('cache_') || key === 'sync_queue') {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Clean reload from server
+      window.location.replace(window.location.origin + window.location.pathname + '?v=' + Date.now());
+    } catch (err) {
+      console.warn("Update logic encountered minor issues, performing standard reload.", err);
+      window.location.reload();
     }
-    
-    try {
-      const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map(name => caches.delete(name)));
-    } catch (e) {
-      console.warn("Cache clearing failed", e);
-    }
-    
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('cache_')) localStorage.removeItem(key);
-    });
-    
-    // Using replace to ensure we don't carry over any old state/parameters
-    window.location.replace(window.location.origin + window.location.pathname);
   };
 
   useEffect(() => {

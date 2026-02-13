@@ -37,24 +37,26 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const forceUpdate = async () => {
     const confirmed = confirm(lang === 'bn' ? 'অ্যাপ আপডেট করতে ক্যাশ ক্লিয়ার হবে। নিশ্চিত?' : 'Clear cache and update app to the latest version?');
     if (confirmed) {
-      if ('serviceWorker' in navigator) {
-        try {
+      try {
+        if ('serviceWorker' in navigator) {
           const registrations = await navigator.serviceWorker.getRegistrations();
           for (let reg of registrations) await reg.unregister();
-        } catch (e) {
-          console.warn("SW unregistration failed", e);
         }
+        
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+        }
+        
+        Object.keys(localStorage).forEach(k => { 
+          if(k.startsWith('cache_') || k === 'sync_queue') localStorage.removeItem(k); 
+        });
+        
+        window.location.replace(window.location.origin + window.location.pathname + '?v=' + Date.now());
+      } catch (err) {
+        console.warn("Update attempt had errors, falling back to reload.", err);
+        window.location.reload();
       }
-      
-      try {
-        const cacheNames = await caches.keys();
-        await Promise.all(cacheNames.map(name => caches.delete(name)));
-      } catch (e) {
-        console.warn("Cache clearing failed", e);
-      }
-      
-      Object.keys(localStorage).forEach(k => { if(k.startsWith('cache_')) localStorage.removeItem(k); });
-      window.location.replace(window.location.origin + window.location.pathname);
     }
   };
 
@@ -218,7 +220,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
           <button 
             onClick={forceUpdate}
-            className="w-full flex items-center justify-between p-4 bg-white/10 border border-white/20 rounded-2xl hover:bg-white/25 transition-all group relative overflow-hidden active:bg-white/30"
+            className="w-full flex items-center justify-between p-4 bg-white/10 border border-white/20 rounded-2xl hover:bg-white/25 transition-all group relative overflow-hidden active:bg-white/30 shadow-inner"
           >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-yellow-400/20 rounded-xl text-yellow-400 group-hover:scale-110 transition-transform relative">
@@ -231,7 +233,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
               </div>
             </div>
             <RefreshCw size={18} className="text-white/30 active:rotate-180 transition-transform" />
-            <div className="absolute top-0 right-0 h-full w-1.5 bg-yellow-400/20"></div>
+            <div className="absolute top-0 right-0 h-full w-1.5 bg-yellow-400/30"></div>
           </button>
         </div>
 
