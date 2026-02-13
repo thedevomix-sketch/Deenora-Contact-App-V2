@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Plus, Phone, Search, CheckCircle2, MessageSquare, X, BookOpen, ChevronDown, Check, PhoneCall } from 'lucide-react';
-import { supabase, offlineApi } from '../supabase';
+// Added Loader2 to the imports
+import { ArrowLeft, Plus, Phone, Search, CheckCircle2, MessageSquare, X, BookOpen, ChevronDown, Check, PhoneCall, Smartphone, Loader2 } from 'lucide-react';
+import { supabase, offlineApi, smsApi } from '../supabase';
 import { Class, Student, Language } from '../types';
 import { t } from '../translations';
 
@@ -29,6 +30,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     fetchStudents();
@@ -67,6 +69,37 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     const newSelected = new Set(selectedIds);
     if (newSelected.has(id)) newSelected.delete(id); else newSelected.add(id);
     setSelectedIds(newSelected);
+  };
+
+  const handleNativeSMS = () => {
+    if (!selectedTemplate || selectedIds.size === 0) return;
+    const selectedStudents = students.filter(s => selectedIds.has(s.id));
+    const phones = selectedStudents.map(s => s.guardian_phone).join(',');
+    const message = encodeURIComponent(selectedTemplate.body);
+    
+    // Check if it's iOS or Android/Web
+    const separator = /iPad|iPhone|iPod/.test(navigator.userAgent) ? '&' : '?';
+    window.location.href = `sms:${phones}${separator}body=${message}`;
+  };
+
+  const handlePremiumSMS = async () => {
+    if (!selectedTemplate || selectedIds.size === 0) return;
+    setSending(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not logged in");
+      
+      const selectedStudents = students.filter(s => selectedIds.has(s.id));
+      await smsApi.sendBulk(user.id, selectedStudents, selectedTemplate.body);
+      
+      alert(lang === 'bn' ? 'এসএমএস সফলভাবে পাঠানো হয়েছে' : 'SMS sent successfully');
+      setIsSelectionMode(false);
+      setSelectedIds(new Set());
+    } catch (err: any) {
+      alert(lang === 'bn' ? 'ব্যর্থ হয়েছে: ' + err.message : 'Failed: ' + err.message);
+    } finally {
+      setSending(false);
+    }
   };
 
   return (
@@ -144,7 +177,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
             <button onClick={() => setShowTemplateMenu(!showTemplateMenu)} className={`w-full flex items-center justify-between p-5 rounded-[1.8rem] text-[15px] font-black transition-all border-2 ${selectedTemplate ? 'bg-[#8D30F4]/5 border-[#8D30F4] text-[#8D30F4]' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
               <div className="flex items-center gap-4 truncate">
                 <BookOpen size={24} className="text-[#8D30F4]" />
-                <span className="truncate">{selectedTemplate ? selectedTemplate.title : 'মেসেজ টেমপ্লেট বেছে নিন'}</span>
+                <span className="truncate">{selectedTemplate ? selectedTemplate.title : (lang === 'bn' ? 'মেসেজ টেমপ্লেট বেছে নিন' : 'Choose Template')}</span>
               </div>
               <ChevronDown size={24} className={`transition-transform duration-300 ${showTemplateMenu ? 'rotate-180' : ''}`} />
             </button>
@@ -160,14 +193,29 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
               </div>
             )}
 
-            <div className="flex items-center gap-4">
-              <div className="bg-[#F2EBFF] px-6 py-4 rounded-[1.8rem] flex items-center gap-4 border border-[#8D30F4]/10">
-                <div className="w-10 h-10 bg-[#8D30F4] rounded-full flex items-center justify-center text-white shadow-lg text-[15px] font-black">{selectedIds.size}</div>
-                <p className="text-[11px] font-black text-[#8D30F4] uppercase tracking-widest">জন</p>
-              </div>
-              <button className={`flex-1 py-5 rounded-[1.8rem] flex items-center justify-center gap-4 font-black text-sm uppercase shadow-2xl transition-all ${selectedTemplate ? 'premium-btn text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}>
-                <MessageSquare size={22} fill={selectedTemplate ? "white" : "none"} /> মেসেজ পাঠান
+            <div className="grid grid-cols-2 gap-3">
+              <button 
+                onClick={handlePremiumSMS}
+                disabled={sending || !selectedTemplate}
+                className={`py-5 rounded-[1.8rem] flex items-center justify-center gap-3 font-black text-xs uppercase shadow-xl transition-all ${selectedTemplate ? 'premium-btn text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}
+              >
+                {sending ? <Loader2 className="animate-spin" size={18} /> : <MessageSquare size={18} fill="currentColor" />} 
+                {lang === 'bn' ? 'সিস্টেম SMS' : 'Premium SMS'}
               </button>
+              
+              <button 
+                onClick={handleNativeSMS}
+                disabled={!selectedTemplate}
+                className={`py-5 rounded-[1.8rem] flex items-center justify-center gap-3 font-black text-xs uppercase shadow-xl transition-all ${selectedTemplate ? 'bg-green-500 text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}
+              >
+                <Smartphone size={18} /> 
+                {t('native_sms', lang)}
+              </button>
+            </div>
+            
+            <div className="flex items-center justify-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#8D30F4]"></div>
+                <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest">{selectedIds.size} {t('selected', lang)}</p>
             </div>
           </div>
         </div>

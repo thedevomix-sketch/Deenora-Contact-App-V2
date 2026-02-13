@@ -113,6 +113,14 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
     } catch (err: any) { alert(err.message); }
   };
 
+  const handleSendNativeBulk = () => {
+    if (!bulkMessage.trim() || classStudents.length === 0) return;
+    const phones = classStudents.map(s => s.guardian_phone).join(',');
+    const message = encodeURIComponent(bulkMessage);
+    const separator = /iPad|iPhone|iPod/.test(navigator.userAgent) ? '&' : '?';
+    window.location.href = `sms:${phones}${separator}body=${message}`;
+  };
+
   const handleSendBulk = async () => {
     if (!bulkMessage.trim() || !selectedClassId || classStudents.length === 0 || !madrasah) return;
     setSendingBulk(true);
@@ -193,9 +201,15 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
               <textarea className="w-full h-44 px-6 py-6 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[2.2rem] text-[#2D3142] font-black outline-none focus:border-[#8D30F4] transition-all resize-none shadow-inner leading-relaxed" placeholder="এখানে মেসেজ লিখুন..." value={bulkMessage} onChange={(e) => setBulkMessage(e.target.value)} maxLength={160} />
             </div>
 
-            <button onClick={handleSendBulk} disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId} className="w-full py-6 premium-btn text-white font-black rounded-[2.2rem] shadow-[0_20px_50px_rgba(141,48,244,0.4)] active:scale-[0.98] transition-all flex items-center justify-center gap-4 text-xl font-noto disabled:opacity-30">
-              {sendingBulk ? <Loader2 className="animate-spin" size={28} /> : bulkSuccess ? <><CheckCircle2 size={28} /> Sent Successfully</> : <><Send size={26} /> {t('send_sms', lang)}</>}
-            </button>
+            <div className="flex flex-col gap-4">
+              <button onClick={handleSendBulk} disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId} className="w-full py-6 premium-btn text-white font-black rounded-[2.2rem] shadow-[0_20px_50px_rgba(141,48,244,0.4)] active:scale-[0.98] transition-all flex items-center justify-center gap-4 text-xl font-noto disabled:opacity-30">
+                {sendingBulk ? <Loader2 className="animate-spin" size={28} /> : bulkSuccess ? <><CheckCircle2 size={28} /> Sent Successfully</> : <><Send size={26} /> {t('send_sms', lang)}</>}
+              </button>
+              
+              <button onClick={handleSendNativeBulk} disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId} className="w-full py-5 bg-green-500 text-white font-black rounded-[2.2rem] shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-4 text-lg font-noto disabled:opacity-30">
+                <Smartphone size={24} /> {t('native_sms', lang)}
+              </button>
+            </div>
           </div>
         </div>
       )}
