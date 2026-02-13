@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Phone, Edit3, Trash2, User as UserIcon, Smartphone, ShieldCheck, Loader2, AlertTriangle, MessageCircle, PhoneCall, UserCheck } from 'lucide-react';
+import { ArrowLeft, Phone, Edit3, Trash2, User as UserIcon, Smartphone, ShieldCheck, Loader2, AlertTriangle, MessageCircle, PhoneCall, UserCheck, MessageSquare } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Student, Language, Madrasah } from '../types';
 import { t } from '../translations';
@@ -36,12 +36,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
     if (navigator.onLine) await supabase.from('recent_calls').insert(payload);
     else offlineApi.queueAction('recent_calls', 'INSERT', payload);
     triggerRefresh();
-  };
-
-  const initiateCall = async (phoneNumber: string) => {
-    await recordCall(phoneNumber);
-    const cleanPhone = phoneNumber.replace(/\D/g, '');
-    window.location.href = `tel:${cleanPhone}`;
   };
 
   const formatWhatsAppNumber = (phone: string) => {
@@ -81,6 +75,43 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
     }
   };
 
+  const PhoneRow = ({ label, phone }: { label: string, phone: string }) => (
+    <div className="space-y-3">
+      <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] px-1">
+        {label}
+      </label>
+      
+      <div className="bg-white p-4 rounded-3xl flex items-center justify-between shadow-xl border-b-4 border-slate-200">
+        <div className="flex items-center gap-4 min-w-0 flex-1">
+          <div className="w-10 h-10 bg-[#d35132]/10 rounded-xl flex items-center justify-center text-[#d35132] shrink-0">
+            <Smartphone size={20} />
+          </div>
+          <span className="text-base font-black text-slate-800 tracking-wider truncate">{phone}</span>
+        </div>
+        
+        <div className="flex items-center gap-2 shrink-0 ml-2">
+          {/* WhatsApp Message Button */}
+          <button 
+            onClick={() => openWhatsApp(phone)}
+            className="p-3 bg-gradient-to-br from-[#25d366] to-[#128c7e] text-white rounded-2xl active:scale-90 transition-all shadow-md border border-white/20"
+            title="WhatsApp Message"
+          >
+            <MessageSquare size={18} fill="currentColor" />
+          </button>
+          
+          {/* WhatsApp Call Button */}
+          <button 
+            onClick={() => openWhatsApp(phone)}
+            className="p-3 bg-gradient-to-br from-[#075E54] to-[#128c7e] text-white rounded-2xl active:scale-90 transition-all shadow-md border border-white/20"
+            title="WhatsApp Call"
+          >
+            <PhoneCall size={18} fill="currentColor" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <div className="animate-in slide-in-from-right-4 duration-500 pb-10">
       <div className="flex items-center justify-between mb-6">
@@ -119,7 +150,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
           </div>
         </div>
 
-        <div className="p-5 space-y-4">
+        <div className="p-5 space-y-6">
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex flex-col items-center text-center">
               <span className="text-[9px] text-white/50 font-black uppercase tracking-widest mb-1">{t('roll', lang)}</span>
@@ -146,66 +177,17 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
             </div>
           </div>
 
-          <div className="space-y-6 pt-2">
-            <div className="space-y-3">
-              <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] px-1">
-                {t('guardian_phone', lang)}
-              </label>
-              
-              <div className="space-y-2">
-                <button 
-                  onClick={() => initiateCall(student.guardian_phone)}
-                  className="w-full bg-white p-4 rounded-2xl flex items-center justify-between active:scale-[0.98] transition-all shadow-xl group border-b-4 border-slate-200"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-[#d35132]/10 rounded-xl flex items-center justify-center text-[#d35132]"><Smartphone size={20} /></div>
-                    <span className="text-base font-black text-slate-800 tracking-wider">{student.guardian_phone}</span>
-                  </div>
-                  <div className="bg-[#d35132] text-white p-2.5 rounded-xl transition-transform">
-                    <Phone size={18} fill="currentColor" />
-                  </div>
-                </button>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <button 
-                    onClick={() => openWhatsApp(student.guardian_phone)}
-                    className="bg-gradient-to-br from-[#128c7e] to-[#25d366] py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[0_8px_20px_-4px_rgba(37,211,102,0.3)] text-white font-black text-[10px] uppercase border border-white/20"
-                  >
-                    <MessageCircle size={16} /> {lang === 'bn' ? 'WhatsApp' : 'WA Message'}
-                  </button>
-                  <button 
-                    onClick={() => openWhatsApp(student.guardian_phone)}
-                    className="bg-gradient-to-br from-[#075E54] to-[#128c7e] py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[0_8px_20px_-4px_rgba(37,211,102,0.3)] text-white font-black text-[10px] uppercase border border-white/20"
-                  >
-                    <PhoneCall size={16} /> {lang === 'bn' ? 'WA কল' : 'WA Call'}
-                  </button>
-                </div>
-              </div>
-            </div>
-
+          <div className="space-y-6">
+            <PhoneRow label={t('guardian_phone', lang)} phone={student.guardian_phone} />
             {student.guardian_phone_2 && (
-              <div className="space-y-3">
-                <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] px-1">{t('guardian_phone_2', lang)}</label>
-                <button 
-                  onClick={() => initiateCall(student.guardian_phone_2!)}
-                  className="w-full bg-white/10 backdrop-blur-md p-4 rounded-2xl flex items-center justify-between active:scale-[0.98] transition-all border border-white/20 group shadow-lg"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white"><Smartphone size={20} /></div>
-                    <span className="text-base font-black text-white tracking-wider">{student.guardian_phone_2}</span>
-                  </div>
-                  <div className="bg-white text-[#d35132] p-2.5 rounded-xl group-active:rotate-12 transition-transform">
-                    <Phone size={18} fill="currentColor" />
-                  </div>
-                </button>
-              </div>
+              <PhoneRow label={t('guardian_phone_2', lang)} phone={student.guardian_phone_2} />
             )}
           </div>
         </div>
       </div>
 
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-[#d35132]/95 z-[110] flex items-center justify-center p-6 animate-in fade-in zoom-in-95">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xl z-[110] flex items-center justify-center p-6 animate-in fade-in zoom-in-95">
           <div className="bg-white w-full max-w-[340px] rounded-[3rem] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.5)] p-8 text-center relative border border-white/20 flex flex-col items-center">
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6 text-red-500 shadow-inner">
               <AlertTriangle size={40} />
