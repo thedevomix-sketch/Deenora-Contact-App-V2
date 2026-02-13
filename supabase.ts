@@ -1,28 +1,33 @@
-
 import { createClient } from '@supabase/supabase-js';
 import { Student } from './types';
 
 const supabaseUrl = 'https://lowaqxzwjlewnkqjpeoz.supabase.co';
 const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imxvd2FxeHp3amxld25rcWpwZW96Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA3NTU2NzYsImV4cCI6MjA4NjMzMTY3Nn0.O4Q0pfol014_k-IrmAZjPBRUii4oSL4OphOIzKldeoM';
 
+// Improved client configuration for performance and reliability
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: false,
     storage: window.localStorage
+  },
+  global: {
+    headers: { 'x-application-name': 'madrasah-contact-app' },
+    // Use standard fetch but handle errors specifically
+    // Fix: Explicitly define parameters to avoid spread operator typing issues in fetch override
+    fetch: (input, init) => {
+      return fetch(input, init).catch(err => {
+        console.error("Supabase Network Error (Failed to Fetch):", err);
+        throw new Error("Network connectivity issue. Please check your internet.");
+      });
+    }
   }
 });
 
 /**
  * SMS GATEWAY CONFIGURATION
  */
-const SMS_CONFIG = {
-  API_URL: 'https://bulksmsbd.net/api/smsapi',
-  API_KEY: 'YOUR_API_KEY_HERE',
-  SENDER_ID: '88018XXXXXXXX',
-};
-
 export const smsApi = {
   sendBulk: async (madrasahId: string, students: Student[], message: string) => {
     const phoneNumbers = students.map(s => s.guardian_phone).join(',');
@@ -42,6 +47,10 @@ export const smsApi = {
       return { success: true, count: students.length };
     } catch (err: any) {
       console.error("SMS Sending Error:", err);
+      // Ensure "Failed to fetch" is translated to a user-friendly message
+      if (err.message?.includes('Failed to fetch')) {
+        throw new Error("Network error: Could not reach SMS server.");
+      }
       throw err;
     }
   }
@@ -60,11 +69,19 @@ interface PendingAction {
 
 export const offlineApi = {
   setCache: (key: string, data: any) => {
-    localStorage.setItem(`cache_${key}`, JSON.stringify(data));
+    try {
+      localStorage.setItem(`cache_${key}`, JSON.stringify(data));
+    } catch (e) {
+      console.warn("LocalStorage set failed", e);
+    }
   },
   getCache: (key: string) => {
-    const cached = localStorage.getItem(`cache_${key}`);
-    return cached ? JSON.parse(cached) : null;
+    try {
+      const cached = localStorage.getItem(`cache_${key}`);
+      return cached ? JSON.parse(cached) : null;
+    } catch (e) {
+      return null;
+    }
   },
   removeCache: (key: string) => {
     localStorage.removeItem(`cache_${key}`);
@@ -109,7 +126,11 @@ export const offlineApi = {
     }
   },
   getQueue: (): PendingAction[] => {
-    return JSON.parse(localStorage.getItem('sync_queue') || '[]');
+    try {
+      return JSON.parse(localStorage.getItem('sync_queue') || '[]');
+    } catch (e) {
+      return [];
+    }
   },
   removeFromQueue: (id: string) => {
     const queue: PendingAction[] = JSON.parse(localStorage.getItem('sync_queue') || '[]');

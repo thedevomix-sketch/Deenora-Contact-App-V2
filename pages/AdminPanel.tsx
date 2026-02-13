@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Search, Shield, ShieldOff, ChevronRight, User as UserIcon, Users, Wallet, CheckCircle, XCircle, PlusCircle, MinusCircle, RefreshCw, AlertTriangle, Bug, Check, Phone, Hash, MessageSquare, Database, Layers, BarChart3, TrendingUp, Activity, Mail, Lock, Copy, Power, History, Clock } from 'lucide-react';
+import { Loader2, Search, Shield, ShieldOff, ChevronRight, User as UserIcon, Users, Wallet, CheckCircle, XCircle, PlusCircle, MinusCircle, RefreshCw, AlertTriangle, Bug, Check, Phone, Hash, MessageSquare, Database, Layers, BarChart3, TrendingUp, Activity, Mail, Lock, Copy, Power, History, Clock, Smartphone, Info } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Madrasah, Language, Transaction, AdminSMSStock } from '../types';
 import { t } from '../translations';
@@ -32,7 +32,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   
   const [view, setView] = useState<'list' | 'details' | 'approvals' | 'stock' | 'dashboard'>(currentView === 'dashboard' ? 'dashboard' : currentView === 'approvals' ? 'approvals' : 'list');
   const [selectedMadrasah, setSelectedMadrasah] = useState<Madrasah | null>(null);
-  const [selectedMadrasahTrans, setSelectedMadrasahTrans] = useState<Transaction[]>([]);
   const [loadingDetails, setLoadingDetails] = useState(false);
   
   // Stock Update State
@@ -63,15 +62,22 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     setError(null);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      const { data: profile } = await supabase.from('madrasahs').select('*').eq('id', user?.id).single();
+      if (!user) {
+        setLoading(false);
+        setIsRefreshing(false);
+        return;
+      }
+
+      const { data: profile, error: profileError } = await supabase.from('madrasahs').select('*').eq('id', user.id).single();
       
-      if (!profile?.is_super_admin) {
+      if (profileError || !profile?.is_super_admin) {
          setError("You do not have Super Admin permissions.");
          setLoading(false);
          setIsRefreshing(false);
          return;
       }
 
+      // Fetch essential data for Admin Panel
       await Promise.all([
         fetchAllMadrasahs(), 
         fetchPendingTransactions(), 
@@ -80,7 +86,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       ]);
     } catch (err: any) {
       console.error("Admin init error:", err);
-      setError(err.message);
+      setError(err.message || "Failed to load admin data.");
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -88,41 +94,56 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   };
 
   const fetchSystemStats = async () => {
-    const { data: mData } = await supabase.from('madrasahs').select('balance, sms_balance, is_active').neq('is_super_admin', true);
-    const { count: sCount } = await supabase.from('students').select('*', { count: 'exact', head: true });
-    
-    if (mData) {
-      const activeCount = mData.filter(m => m.is_active !== false).length;
-      const totalWallet = mData.reduce((acc, curr) => acc + (curr.balance || 0), 0);
-      const totalSms = mData.reduce((acc, curr) => acc + (curr.sms_balance || 0), 0);
+    try {
+      const { data: mData } = await supabase.from('madrasahs').select('balance, sms_balance, is_active, is_super_admin');
+      const { count: sCount } = await supabase.from('students').select('*', { count: 'exact', head: true });
       
-      setStats({
-        totalMadrasahs: mData.length,
-        activeMadrasahs: activeCount,
-        totalStudents: sCount || 0,
-        totalWalletBalance: totalWallet,
-        totalSmsBalance: totalSms
-      });
+      if (mData) {
+        const filteredMadrasahs = mData.filter(m => !m.is_super_admin);
+        const activeCount = filteredMadrasahs.filter(m => m.is_active !== false).length;
+        const totalWallet = filteredMadrasahs.reduce((acc, curr) => acc + (curr.balance || 0), 0);
+        const totalSms = filteredMadrasahs.reduce((acc, curr) => acc + (curr.sms_balance || 0), 0);
+        
+        setStats({
+          totalMadrasahs: filteredMadrasahs.length,
+          activeMadrasahs: activeCount,
+          totalStudents: sCount || 0,
+          totalWalletBalance: totalWallet,
+          totalSmsBalance: totalSms
+        });
+      }
+    } catch (err) {
+      console.error("Stats error:", err);
     }
   };
 
   const fetchAdminStock = async () => {
-    const { data, error } = await supabase.from('admin_sms_stock').select('*').limit(1).maybeSingle();
-    if (data) {
-      setAdminStock(data);
-    } else {
-      const { data: newData } = await supabase.from('admin_sms_stock').insert({ remaining_sms: 0 }).select().single();
-      if (newData) setAdminStock(newData);
+    try {
+      const { data, error } = await supabase.from('admin_sms_stock').select('*').limit(1).maybeSingle();
+      if (data) {
+        setAdminStock(data);
+      } else {
+        const { data: newData } = await supabase.from('admin_sms_stock').insert({ remaining_sms: 0 }).select().single();
+        if (newData) setAdminStock(newData);
+      }
+    } catch (err) {
+      console.error("Stock error:", err);
     }
   };
 
   const fetchAllMadrasahs = async () => {
-    const { data } = await supabase.from('madrasahs').select('*').neq('is_super_admin', true).order('created_at', { ascending: false });
-    setMadrasahs(data || []);
+    try {
+      const { data, error } = await supabase.from('madrasahs').select('*').neq('is_super_admin', true).order('created_at', { ascending: false });
+      if (error) throw error;
+      setMadrasahs(data || []);
+    } catch (err) {
+      console.error("Madrasahs fetch error:", err);
+    }
   };
 
   const fetchPendingTransactions = async () => {
     try {
+      // Use try-catch for relation names which might not be strictly defined in some envs
       const { data, error } = await supabase
         .from('transactions')
         .select('*, madrasahs(name)')
@@ -133,13 +154,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       setPendingTrans(data || []);
     } catch (err) {
       console.error("Pending trans fetch error:", err);
-      // Fallback: try without join if RLS blocks it
-      const { data } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
-      setPendingTrans(data || []);
+      // Fallback if relation select fails
+      try {
+        const { data } = await supabase
+          .from('transactions')
+          .select('*')
+          .eq('status', 'pending')
+          .order('created_at', { ascending: false });
+        setPendingTrans(data || []);
+      } catch (e) {
+        console.error("Critical pending trans error", e);
+      }
     }
   };
 
@@ -147,24 +172,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     setLoadingDetails(true);
     setSelectedMadrasah(madrasah);
     setView('details');
-    try {
-      const { data: trans } = await supabase
-        .from('transactions')
-        .select('*')
-        .eq('madrasah_id', madrasah.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      setSelectedMadrasahTrans(trans || []);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoadingDetails(false);
-    }
+    setLoadingDetails(false);
   };
 
   const toggleMadrasahStatus = async () => {
     if (!selectedMadrasah) return;
-    const newStatus = selectedMadrasah.is_active === false; // Toggle
+    const newStatus = selectedMadrasah.is_active === false; 
     setUpdatingId(selectedMadrasah.id);
     try {
       const { error } = await supabase.from('madrasahs').update({ is_active: newStatus }).eq('id', selectedMadrasah.id);
@@ -263,6 +276,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     return madrasahs.filter(m => (m.name || '').toLowerCase().includes(searchQuery.toLowerCase()));
   }, [madrasahs, searchQuery]);
 
+  const copyToClipboard = (text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    alert(lang === 'bn' ? 'কপি করা হয়েছে!' : 'Copied to clipboard!');
+  };
+
   if (loading) return (
     <div className="py-20 flex flex-col items-center justify-center gap-4 text-white">
       <Loader2 className="animate-spin" size={40} />
@@ -274,7 +293,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     <div className="py-20 flex flex-col items-center justify-center gap-4 text-white px-8 text-center">
       <AlertTriangle size={48} className="text-yellow-400 opacity-50" />
       <p className="text-sm font-bold opacity-70">{error}</p>
-      <button onClick={() => initData()} className="mt-4 px-6 py-2 bg-white text-[#d35132] font-black rounded-xl">Retry</button>
+      <button onClick={() => initData(true)} className="mt-4 px-6 py-2 bg-white text-[#d35132] font-black rounded-xl">Retry</button>
     </div>
   );
 
@@ -313,16 +332,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                 <div className="w-14 h-14 bg-white/10 rounded-2xl flex items-center justify-center shrink-0 border border-white/10 overflow-hidden shadow-inner">
                    {m.logo_url ? <img src={m.logo_url} className="w-full h-full object-cover" /> : <UserIcon size={24} className="text-white/30" />}
                 </div>
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <h3 className="font-black text-white truncate text-base font-noto leading-tight group-hover:text-yellow-400 transition-colors">{m.name}</h3>
-                  <div className="flex items-center gap-3 mt-1.5">
-                    <div className="flex items-center gap-1.5">
-                      <MessageSquare size={12} className="text-white/30" />
-                      <span className="text-[10px] text-white/60 font-black">{m.sms_balance || 0}</span>
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">
+                      <MessageSquare size={10} className="text-white/30" />
+                      <span className="text-[9px] text-white/60 font-black">{m.sms_balance || 0}</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <Wallet size={12} className="text-white/30" />
-                      <span className="text-[10px] text-white/60 font-black">{m.balance || 0}৳</span>
+                    <div className="flex items-center gap-1.5 bg-white/5 px-2 py-0.5 rounded-lg border border-white/5">
+                      <Wallet size={10} className="text-white/30" />
+                      <span className="text-[9px] text-white/60 font-black">{m.balance || 0}৳</span>
                     </div>
                     <span className={`text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full ${m.is_active !== false ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}`}>
                       {m.is_active !== false ? t('status_active', lang) : t('status_inactive', lang)}
@@ -333,6 +352,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
               <ChevronRight size={20} className="text-white/20 group-hover:text-white/50 transition-colors" />
             </div>
           ))}
+          {filtered.length === 0 && (
+             <div className="text-center py-10 opacity-30">
+               <p className="text-xs font-black uppercase tracking-widest text-white">No schools found</p>
+             </div>
+          )}
         </div>
       </div>
     );
@@ -355,7 +379,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
               </div>
               <div>
                 <h2 className="text-xl font-black text-white font-noto leading-tight">{selectedMadrasah.name}</h2>
-                <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] mt-1">UUID: {selectedMadrasah.id}</p>
               </div>
 
               <div className="flex items-center gap-3 w-full">
@@ -386,58 +409,44 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
            </div>
 
            <div className="space-y-3 pt-2">
-              <h3 className="text-[10px] font-black text-white/30 uppercase tracking-widest px-2">Account Credentials</h3>
+              <h3 className="text-[10px] font-black text-white/30 uppercase tracking-widest px-2">School Information</h3>
               <div className="space-y-2">
-                 <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                       <Mail size={16} className="text-white/30" />
-                       <span className="text-sm font-bold text-white truncate">{selectedMadrasah.email || 'N/A'}</span>
+                 {/* School UID */}
+                 <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between group">
+                    <div className="min-w-0 flex-1">
+                       <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">School UID</p>
+                       <span className="text-xs font-mono font-bold text-white/70 truncate block">{selectedMadrasah.id}</span>
                     </div>
+                    <button onClick={() => copyToClipboard(selectedMadrasah.id)} className="p-2 bg-white/10 text-white/60 rounded-xl active:scale-90"><Copy size={14} /></button>
                  </div>
-                 <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between">
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                       <Lock size={16} className="text-white/30" />
-                       <span className="text-sm font-black text-white tracking-[0.3em]">{selectedMadrasah.login_code || '******'}</span>
+                 
+                 {/* School Code */}
+                 <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between group">
+                    <div className="min-w-0 flex-1">
+                       <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">School Login Code</p>
+                       <span className="text-sm font-black text-white tracking-[0.3em]">{selectedMadrasah.login_code || '---'}</span>
                     </div>
-                    <button 
-                      onClick={() => {
-                        navigator.clipboard.writeText(selectedMadrasah.login_code || '');
-                        alert(lang === 'bn' ? 'লগইন কোড কপি করা হয়েছে' : 'Login code copied!');
-                      }}
-                      className="p-2 bg-white/10 text-white/60 rounded-xl active:scale-90"
-                    >
-                      <Copy size={16} />
-                    </button>
+                    <button onClick={() => copyToClipboard(selectedMadrasah.login_code || '')} className="p-2 bg-white/10 text-white/60 rounded-xl active:scale-90"><Copy size={14} /></button>
+                 </div>
+
+                 {/* School Mobile */}
+                 <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between group">
+                    <div className="min-w-0 flex-1">
+                       <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">School Mobile</p>
+                       <span className="text-sm font-bold text-white">{selectedMadrasah.phone || 'N/A'}</span>
+                    </div>
+                    <button onClick={() => copyToClipboard(selectedMadrasah.phone || '')} className="p-2 bg-white/10 text-white/60 rounded-xl active:scale-90"><Copy size={14} /></button>
+                 </div>
+
+                 {/* Email Address */}
+                 <div className="bg-white/5 p-4 rounded-2xl border border-white/10 flex items-center justify-between group">
+                    <div className="min-w-0 flex-1">
+                       <p className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">Email Address</p>
+                       <span className="text-sm font-bold text-white truncate block">{selectedMadrasah.email || 'N/A'}</span>
+                    </div>
+                    <button onClick={() => copyToClipboard(selectedMadrasah.email || '')} className="p-2 bg-white/10 text-white/60 rounded-xl active:scale-90"><Copy size={14} /></button>
                  </div>
               </div>
-           </div>
-
-           <div className="space-y-3 pt-2">
-              <h3 className="text-[10px] font-black text-white/30 uppercase tracking-widest px-2 flex items-center gap-2">
-                <History size={14} /> Recent Transactions
-              </h3>
-              {loadingDetails ? (
-                <div className="flex justify-center py-4 text-white/20"><Loader2 className="animate-spin" /></div>
-              ) : selectedMadrasahTrans.length > 0 ? (
-                <div className="space-y-2">
-                   {selectedMadrasahTrans.map(tr => (
-                      <div key={tr.id} className="bg-white/5 p-3 rounded-xl border border-white/5 flex items-center justify-between">
-                         <div className="min-w-0 pr-2">
-                            <p className="text-[11px] font-bold text-white truncate font-noto">{tr.description}</p>
-                            <p className="text-[9px] text-white/30 font-black">{new Date(tr.created_at).toLocaleDateString()}</p>
-                         </div>
-                         <div className="text-right shrink-0">
-                            <p className={`text-xs font-black ${tr.type === 'credit' ? 'text-green-400' : 'text-red-400'}`}>
-                               {tr.type === 'credit' ? '+' : '-'}{tr.amount} ৳
-                            </p>
-                            {tr.sms_count ? <p className="text-[8px] text-white/40 font-black">({tr.sms_count} SMS)</p> : null}
-                         </div>
-                      </div>
-                   ))}
-                </div>
-              ) : (
-                <p className="text-center py-4 text-white/20 text-[10px] font-black uppercase">No transaction history found</p>
-              )}
            </div>
         </div>
       </div>
@@ -600,7 +609,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
            </div>
         </div>
 
-        <div className="bg-white/5 rounded-3xl p-6 border border-white/5 flex items-start gap-4">
+        <div className="bg-white/5 rounded-3xl p-6 border border-white/10 flex items-start gap-4">
            <AlertTriangle className="text-yellow-400/40 shrink-0" size={24} />
            <div className="space-y-1">
               <h4 className="text-[10px] font-black text-white/60 uppercase tracking-widest">Administrator Note</h4>
