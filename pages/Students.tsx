@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash, CheckCircle2, MessageSquare, Send, X, BookOpen, ChevronDown, Check } from 'lucide-react';
+import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash, CheckCircle2, MessageSquare, Send, X, BookOpen, ChevronDown, Check, Trash2 } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Class, Student, Language, SMSTemplate } from '../types';
 import { t } from '../translations';
@@ -50,7 +50,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
 
   const fetchTemplates = async () => {
     const { data: { user } } = await supabase.auth.getUser();
-    
     let dbTemplates: any[] = [];
     if (navigator.onLine && user) {
       const { data } = await supabase
@@ -60,8 +59,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
         .order('created_at', { ascending: false });
       if (data) dbTemplates = data;
     }
-    
-    // Combine defaults with DB templates
     setTemplates([...DEFAULT_TEMPLATES, ...dbTemplates]);
   };
 
@@ -120,23 +117,21 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     window.location.href = `sms:${numbersStr}${bodyParam}`;
   };
 
-  const recordCall = async (student: Student) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    const payload = { student_id: student.id, guardian_phone: student.guardian_phone, madrasah_id: user.id };
-    if (navigator.onLine) await supabase.from('recent_calls').insert(payload);
-    else offlineApi.queueAction('recent_calls', 'INSERT', payload);
-    triggerRefresh();
-  };
-
   const initiateCall = async (e: React.MouseEvent, student: Student) => {
     e.stopPropagation();
-    await recordCall(student);
     window.location.href = `tel:${student.guardian_phone}`;
   };
 
+  const selectAll = () => {
+    if (selectedIds.size === filteredStudents.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredStudents.map(s => s.id)));
+    }
+  };
+
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative pb-52">
+    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative min-h-[80vh] pb-60">
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -158,6 +153,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
                 if (isSelectionMode) {
                   setSelectedIds(new Set());
                   setSelectedTemplate(null);
+                  setShowTemplateMenu(false);
                 }
               }}
               className={`shrink-0 p-2.5 rounded-xl transition-all active:scale-95 border ${isSelectionMode ? 'bg-white text-[#d35132] border-white shadow-xl' : 'bg-white/10 text-white border-white/20'}`}
@@ -183,6 +179,15 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+
+        {isSelectionMode && filteredStudents.length > 0 && (
+          <div className="flex items-center justify-between bg-black/20 p-3 rounded-2xl animate-in fade-in slide-in-from-top-2 border border-white/5">
+             <p className="text-[10px] font-black text-white/60 uppercase tracking-widest pl-2">Selection Actions</p>
+             <button onClick={selectAll} className="text-[10px] font-black text-white uppercase tracking-widest bg-white/10 px-4 py-2 rounded-lg active:bg-white/20">
+               {selectedIds.size === filteredStudents.length ? 'Deselect All' : 'Select All'}
+             </button>
+          </div>
+        )}
       </div>
 
       {loading && students.length === 0 ? (
@@ -237,57 +242,73 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
         </div>
       )}
 
-      {/* Multi-Selection Footer Action Bar */}
+      {/* FIXED Multi-Selection Footer Action Bar */}
       {isSelectionMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-24 left-4 right-4 animate-in slide-in-from-bottom-10 z-[70]">
-          <div className="bg-white rounded-[2.2rem] p-4 flex flex-col gap-3 shadow-2xl border border-white/20 ring-1 ring-black/5">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+90px)] left-4 right-4 z-[100] animate-in slide-in-from-bottom-10">
+          <div className="bg-white rounded-[2.5rem] p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border border-slate-100 flex flex-col gap-4 ring-1 ring-black/5">
             
+            {/* Step 1: Template Selection Row */}
             <div className="relative">
+              <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-3 mb-2 block">
+                {lang === 'bn' ? '১. টেমপ্লেট বাছাই করুন' : '1. Select Template'}
+              </label>
               <button 
                 onClick={() => setShowTemplateMenu(!showTemplateMenu)}
-                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-xs font-black transition-all ${selectedTemplate ? 'bg-[#d35132]/10 text-[#d35132] border border-[#d35132]/20' : 'bg-slate-100 text-slate-700'}`}
+                className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl text-[13px] font-black transition-all border-2 ${selectedTemplate ? 'bg-[#d35132]/5 border-[#d35132] text-[#d35132]' : 'bg-slate-100 border-slate-100 text-slate-500'}`}
               >
-                <div className="flex items-center gap-2 truncate">
-                  <BookOpen size={14} className={selectedTemplate ? 'text-[#d35132]' : 'text-slate-400'} />
-                  <span className="truncate">{selectedTemplate ? selectedTemplate.title : (lang === 'bn' ? 'টেমপ্লেট বাছাই করুন' : 'Select Template')}</span>
+                <div className="flex items-center gap-3 truncate">
+                  <BookOpen size={18} className={selectedTemplate ? 'text-[#d35132]' : 'text-slate-400'} />
+                  <span className="truncate">{selectedTemplate ? selectedTemplate.title : (lang === 'bn' ? 'টেমপ্লেট সিলেক্ট করুন' : 'Choose a template')}</span>
                 </div>
-                <ChevronDown size={16} className={`transition-transform duration-300 ${showTemplateMenu ? 'rotate-180' : ''}`} />
+                <ChevronDown size={20} className={`transition-transform duration-300 ${showTemplateMenu ? 'rotate-180' : ''} ${selectedTemplate ? 'text-[#d35132]' : 'text-slate-400'}`} />
               </button>
 
               {showTemplateMenu && (
-                <div className="absolute bottom-full left-0 right-0 mb-3 bg-white rounded-[1.8rem] shadow-2xl border border-slate-100 max-h-60 overflow-y-auto z-[80] animate-in slide-in-from-bottom-2 p-1">
+                <div className="absolute bottom-full left-0 right-0 mb-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 max-h-64 overflow-y-auto z-[110] animate-in slide-in-from-bottom-4 p-2 ring-1 ring-black/5">
+                  <div className="px-4 py-2 border-b border-slate-50 mb-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Available Templates</p>
+                  </div>
                   {templates.length > 0 ? templates.map(tmp => (
                     <button 
                       key={tmp.id}
                       onClick={() => { setSelectedTemplate(tmp); setShowTemplateMenu(false); }}
-                      className={`w-full text-left px-5 py-4 rounded-2xl flex items-center justify-between transition-colors ${selectedTemplate?.id === tmp.id ? 'bg-[#d35132]/5 text-[#d35132]' : 'hover:bg-slate-50 text-slate-700'}`}
+                      className={`w-full text-left px-4 py-4 rounded-xl flex items-center justify-between transition-all ${selectedTemplate?.id === tmp.id ? 'bg-[#d35132] text-white shadow-lg' : 'hover:bg-slate-50 text-slate-700'}`}
                     >
-                      <div className="min-w-0 pr-2">
-                         <p className="text-[10px] font-black uppercase tracking-widest opacity-50 leading-none mb-1">{tmp.id.startsWith('def') ? 'Free' : 'Custom'}</p>
-                         <p className="text-xs font-bold truncate">{tmp.title}</p>
+                      <div className="min-w-0 pr-4">
+                         <div className="flex items-center gap-2 mb-1">
+                            <span className={`text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${selectedTemplate?.id === tmp.id ? 'bg-white/20' : 'bg-slate-100'}`}>
+                              {tmp.id.startsWith('def') ? 'Free' : 'Custom'}
+                            </span>
+                            <p className="text-xs font-black truncate">{tmp.title}</p>
+                         </div>
+                         <p className={`text-[10px] truncate opacity-60 font-medium ${selectedTemplate?.id === tmp.id ? 'text-white' : 'text-slate-500'}`}>{tmp.body}</p>
                       </div>
-                      {selectedTemplate?.id === tmp.id && <Check size={14} strokeWidth={4} />}
+                      {selectedTemplate?.id === tmp.id && <Check size={16} strokeWidth={4} />}
                     </button>
                   )) : (
-                    <p className="text-center py-4 text-slate-400 text-[10px] font-black uppercase tracking-widest">No templates</p>
+                    <div className="text-center py-8 text-slate-300 flex flex-col items-center gap-2">
+                       <BookOpen size={24} className="opacity-20" />
+                       <p className="text-[10px] font-black uppercase tracking-widest">No templates found</p>
+                    </div>
                   )}
                 </div>
               )}
             </div>
 
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 pl-2">
-                <div className="w-10 h-10 bg-[#d35132] rounded-full flex items-center justify-center text-white shadow-lg">
-                  <span className="text-lg font-black">{selectedIds.size}</span>
+            {/* Step 2: Action Row */}
+            <div className="flex items-center gap-3">
+              <div className="bg-slate-100 px-4 py-3 rounded-2xl flex items-center gap-3">
+                <div className="w-8 h-8 bg-[#d35132] rounded-full flex items-center justify-center text-white shadow-md">
+                  <span className="text-sm font-black">{selectedIds.size}</span>
                 </div>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Selected</p>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Selected</p>
               </div>
               
               <button 
                 onClick={sendNativeSMS}
-                className="bg-[#d35132] text-white px-8 py-4 rounded-2xl flex items-center gap-2 font-black text-xs uppercase shadow-xl active:scale-95 transition-all"
+                className={`flex-1 py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-xs uppercase shadow-xl active:scale-95 transition-all ${selectedTemplate ? 'bg-[#d35132] text-white' : 'bg-slate-200 text-slate-400 pointer-events-none'}`}
               >
-                <MessageSquare size={16} fill="white" />
+                <MessageSquare size={18} fill={selectedTemplate ? "white" : "none"} strokeWidth={selectedTemplate ? 1 : 3} />
                 {t('native_sms', lang)}
               </button>
             </div>
