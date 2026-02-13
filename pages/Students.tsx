@@ -247,17 +247,17 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
               
               {!isSelectionMode && (
                 <div className="flex items-center gap-4 shrink-0 pr-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <button 
                       onClick={(e) => initiateCall(e, student)}
-                      className="bg-white text-[#d35132] p-2.5 rounded-xl shadow-xl active:scale-90 transition-all"
+                      className="bg-white text-[#d35132] p-2.5 rounded-xl shadow-[0_8px_20px_-4px_rgba(255,255,255,0.3)] active:scale-90 transition-all border border-slate-100"
                       title="Regular Call"
                     >
                       <Phone size={18} strokeWidth={3} fill="currentColor" />
                     </button>
                     <button 
                       onClick={(e) => openWhatsApp(e, student.guardian_phone)}
-                      className="bg-[#25D366] text-white p-2.5 rounded-xl shadow-xl active:scale-90 transition-all"
+                      className="bg-gradient-to-br from-[#128c7e] to-[#25d366] text-white p-2.5 rounded-xl shadow-[0_8px_20px_-4px_rgba(37,211,102,0.4)] active:scale-90 transition-all border border-white/20 ring-1 ring-white/10"
                       title="WhatsApp Call"
                     >
                       <PhoneCall size={18} strokeWidth={3} fill="currentColor" />

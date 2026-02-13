@@ -165,16 +165,16 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
                   </div>
                 </button>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-2 gap-3">
                   <button 
                     onClick={() => openWhatsApp(student.guardian_phone)}
-                    className="bg-[#25D366] py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md text-white font-black text-[10px] uppercase"
+                    className="bg-gradient-to-br from-[#128c7e] to-[#25d366] py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[0_8px_20px_-4px_rgba(37,211,102,0.3)] text-white font-black text-[10px] uppercase border border-white/20"
                   >
                     <MessageCircle size={16} /> {lang === 'bn' ? 'WhatsApp' : 'WA Message'}
                   </button>
                   <button 
                     onClick={() => openWhatsApp(student.guardian_phone)}
-                    className="bg-[#128C7E] py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md text-white font-black text-[10px] uppercase"
+                    className="bg-gradient-to-br from-[#075E54] to-[#128c7e] py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-[0_8px_20px_-4px_rgba(37,211,102,0.3)] text-white font-black text-[10px] uppercase border border-white/20"
                   >
                     <PhoneCall size={16} /> {lang === 'bn' ? 'WA কল' : 'WA Call'}
                   </button>

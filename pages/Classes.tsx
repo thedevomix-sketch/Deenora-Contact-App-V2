@@ -156,7 +156,7 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[100] flex items-center justify-center p-6">
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-6">
           <div className="bg-[#e57d4a] w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 border border-white/30 animate-in zoom-in-95 relative">
             <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 text-white/60 hover:text-white"><X size={24} /></button>
             <h2 className="text-2xl font-black text-white mb-6 text-center font-noto">{editingClass ? t('edit_class', lang) : t('new_class', lang)}</h2>
