@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Phone, Clock, User as UserIcon, RefreshCw, PhoneCall } from 'lucide-react';
+import { Search, Phone, Clock, User as UserIcon, RefreshCw } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Student, RecentCall, Language } from '../types';
 import { t } from '../translations';
@@ -21,7 +21,6 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
 
   const fetchRecentCalls = async (isManual = false) => {
     if (isManual) setLoadingRecent(true);
-    
     const cached = offlineApi.getCache('recent_calls');
     if (cached) setRecentCalls(cached);
 
@@ -32,220 +31,116 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
           .select('*, students(*, classes(*))')
           .order('called_at', { ascending: false })
           .limit(10);
-        
         if (!error && data) {
           setRecentCalls(data);
           offlineApi.setCache('recent_calls', data);
         }
-      } catch (err) {
-        console.error("Recent calls fetch error:", err);
-      } finally {
-        setLoadingRecent(false);
-      }
-    } else {
-      setLoadingRecent(false);
-    }
+      } catch (err) { console.error(err); } finally { setLoadingRecent(false); }
+    } else { setLoadingRecent(false); }
   };
 
-  useEffect(() => {
-    fetchRecentCalls();
-  }, [dataVersion]);
+  useEffect(() => { fetchRecentCalls(); }, [dataVersion]);
 
   const handleSearch = useCallback(async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
-    
-    const allStudents = offlineApi.getCache('all_students_search') || [];
+    if (!query.trim()) { setSearchResults([]); return; }
     if (!navigator.onLine) {
-      setSearchResults(allStudents.filter((s: Student) => 
-        s.student_name.toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 10));
+      const all = offlineApi.getCache('all_students_search') || [];
+      setSearchResults(all.filter((s: Student) => s.student_name.toLowerCase().includes(query.toLowerCase())).slice(0, 10));
       return;
     }
-
     setLoadingSearch(true);
     try {
-      const { data, error } = await supabase
-        .from('students')
-        .select('*, classes(*)')
-        .ilike('student_name', `%${query}%`)
-        .limit(10);
-      
-      if (!error && data) {
-        setSearchResults(data);
-        const currentMaster = offlineApi.getCache('all_students_search') || [];
-        const newIds = new Set(data.map(s => s.id));
-        const filteredMaster = currentMaster.filter((s: Student) => !newIds.has(s.id));
-        offlineApi.setCache('all_students_search', [...filteredMaster, ...data].slice(0, 500));
-      }
-    } catch (err) {
-      console.error("Search error:", err);
-    } finally {
-      setLoadingSearch(false);
-    }
+      const { data } = await supabase.from('students').select('*, classes(*)').ilike('student_name', `%${query}%`).limit(10);
+      if (data) setSearchResults(data);
+    } catch (err) { console.error(err); } finally { setLoadingSearch(false); }
   }, []);
 
   useEffect(() => {
-    const timer = setTimeout(() => {
-      handleSearch(searchQuery);
-    }, 250); // Faster search response
+    const timer = setTimeout(() => handleSearch(searchQuery), 300);
     return () => clearTimeout(timer);
   }, [searchQuery, handleSearch]);
 
-  const recordCall = async (student: Student) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-    
-    const payload = {
-      student_id: student.id,
-      guardian_phone: student.guardian_phone,
-      madrasah_id: user.id
-    };
-
-    if (navigator.onLine) {
-      await supabase.from('recent_calls').insert(payload);
-      triggerRefresh();
-    } else {
-      offlineApi.queueAction('recent_calls', 'INSERT', payload);
-      const newCall: RecentCall = {
-        id: 'temp_' + Date.now(),
-        student_id: student.id,
-        guardian_phone: student.guardian_phone,
-        madrasah_id: user.id,
-        called_at: new Date().toISOString(),
-        students: student
-      };
-      setRecentCalls(prev => [newCall, ...prev.slice(0, 9)]);
-      offlineApi.setCache('recent_calls', [newCall, ...recentCalls.slice(0, 9)]);
-    }
-  };
-
-  const initiateCall = async (student: Student) => {
-    await recordCall(student);
-    // Clean the phone number for standard tel: protocol
-    const cleanPhone = student.guardian_phone.replace(/\D/g, '');
-    window.location.href = `tel:${cleanPhone}`;
-  };
-
-  const formatWhatsAppNumber = (phone: string) => {
-    let cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length === 11 && cleaned.startsWith('0')) {
-      return '88' + cleaned;
-    }
-    return cleaned;
-  };
-
-  const openWhatsApp = async (e: React.MouseEvent, student: Student) => {
-    e.stopPropagation();
-    await recordCall(student);
-    const waNumber = formatWhatsAppNumber(student.guardian_phone);
-    // WebViews often block window.open, using window.location.href is more reliable
-    window.location.href = `https://wa.me/${waNumber}`;
-  };
+  const initiateCall = (phone: string) => {
+     window.location.href = `tel:${phone.replace(/\D/g, '')}`;
+  }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
-      <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={18} />
+    <div className="space-y-10 animate-in fade-in duration-500">
+      {/* Premium Search Input - Vibrant Theme */}
+      <div className="relative group">
+        <div className="absolute left-6 top-1/2 -translate-y-1/2 text-[#4B168A] group-focus-within:scale-110 transition-transform">
+          <Search size={22} strokeWidth={3} />
+        </div>
         <input
           type="text"
           placeholder={t('search_placeholder', lang)}
-          className="w-full pl-11 pr-5 py-3.5 bg-white/15 backdrop-blur-xl border border-white/20 rounded-2xl focus:bg-white/25 outline-none text-white placeholder:text-white/40 font-bold text-base transition-all"
+          className="w-full pl-16 pr-6 py-5 bg-white/90 border-2 border-[#8D30F4]/20 rounded-[2.2rem] outline-none text-[#2D3142] placeholder:text-[#9B6DFF] font-black text-base focus:border-[#8D30F4] shadow-xl transition-all backdrop-blur-md"
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
       </div>
 
       {searchQuery.length > 0 && (
-        <div className="space-y-3">
-          <h2 className="text-[11px] font-black text-white/60 uppercase tracking-widest px-2">{lang === 'bn' ? 'অনুসন্ধান ফলাফল' : 'Search Results'}</h2>
-          {loadingSearch ? (
-            <div className="text-center py-4 text-white/40 text-sm italic">{lang === 'bn' ? 'খোঁজা হচ্ছে...' : 'Searching...'}</div>
-          ) : searchResults.length > 0 ? (
-            searchResults.map(student => (
-              <div 
-                key={student.id} 
-                className="bg-white/10 backdrop-blur-md p-4 rounded-3xl border border-white/15 flex items-center justify-between animate-in slide-in-from-bottom-1"
-              >
-                <div onClick={() => onStudentClick(student)} className="flex-1 pr-3 min-w-0 cursor-pointer">
-                  <h3 className="font-black text-white text-base font-noto truncate pr-1 leading-normal">
-                    {student.student_name}
-                  </h3>
-                  <p className="text-[10px] text-white/60 font-black uppercase mt-0.5">{student.classes?.class_name || 'N/A'}</p>
-                </div>
-                <div className="flex items-center gap-3 shrink-0">
-                  <button 
-                    onClick={() => initiateCall(student)} 
-                    className="bg-white text-[#d35132] p-2.5 rounded-xl active:scale-90 transition-all shadow-lg border border-slate-100"
-                  >
-                    <Phone size={18} strokeWidth={3} fill="currentColor" />
-                  </button>
-                  <button 
-                    onClick={(e) => openWhatsApp(e, student)} 
-                    className="bg-gradient-to-br from-[#128c7e] to-[#25d366] text-white p-2.5 rounded-xl shadow-[0_8px_20px_-4px_rgba(37,211,102,0.4)] active:scale-90 transition-all border border-white/20"
-                  >
-                    <PhoneCall size={18} strokeWidth={3} fill="currentColor" />
-                  </button>
-                </div>
+        <div className="space-y-4 animate-in slide-in-from-top-4">
+          <h2 className="text-[12px] font-black text-white uppercase tracking-[0.2em] px-4 drop-shadow-md">সার্চ ফলাফল</h2>
+          {searchResults.map(student => (
+            <div key={student.id} onClick={() => onStudentClick(student)} className="bg-white/95 p-6 rounded-[2.2rem] border-l-8 border-l-[#8D30F4] border border-white/20 flex items-center justify-between shadow-xl active:scale-[0.98] transition-transform">
+              <div className="min-w-0 flex-1">
+                <h3 className="font-black text-[#4B168A] text-[20px] font-noto truncate leading-tight">{student.student_name}</h3>
+                <p className="text-[11px] text-[#A179FF] font-black uppercase mt-1 tracking-widest">{student.classes?.class_name || 'N/A'}</p>
               </div>
-            ))
-          ) : (
-            <div className="text-center py-4 text-white/40 text-sm">{t('no_students', lang)}</div>
-          )}
+              <div className="w-12 h-12 bg-[#8D30F4] rounded-2xl flex items-center justify-center text-white shadow-lg">
+                <Phone size={22} fill="currentColor" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      <div className="space-y-4">
-        <div className="flex items-center justify-between px-2">
-          <h2 className="text-[11px] font-black text-white/60 uppercase tracking-widest">{t('recent_calls', lang)}</h2>
-          <button onClick={() => fetchRecentCalls(true)} className="text-white/40 active:rotate-180 transition-transform p-1">
-             <RefreshCw size={14} />
+      {/* Recent Activity */}
+      <div className="space-y-6">
+        <div className="flex items-center justify-between px-4">
+          <h2 className="text-[12px] font-black text-white uppercase tracking-[0.3em] drop-shadow-md">{t('recent_calls', lang)}</h2>
+          <button onClick={() => fetchRecentCalls(true)} className="p-2.5 bg-white/20 rounded-xl text-white backdrop-blur-md active:scale-95 transition-all">
+            <RefreshCw size={18} strokeWidth={3} className={loadingRecent ? 'animate-spin' : ''} />
           </button>
         </div>
         
         {loadingRecent && recentCalls.length === 0 ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-20 bg-white/5 animate-pulse rounded-[1.8rem]"></div>)}
+          <div className="space-y-4">
+            {[1, 2, 3].map(i => <div key={i} className="h-28 bg-white/30 animate-pulse rounded-[2.5rem] border border-white/10"></div>)}
           </div>
         ) : recentCalls.length > 0 ? (
-          recentCalls.map(call => (
-            <div 
-              key={call.id} 
-              className="bg-white/10 backdrop-blur-md p-3.5 rounded-3xl border border-white/15 flex items-center justify-between active:bg-white/20 transition-all animate-in slide-in-from-bottom-2"
-            >
-              <div onClick={() => call.students && onStudentClick(call.students)} className="flex items-center gap-3.5 cursor-pointer flex-1 min-w-0 pr-2">
-                <div className="bg-white/10 p-2.5 rounded-xl text-white/80 shrink-0"><UserIcon size={20} /></div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-black text-white text-[16px] font-noto truncate leading-normal pr-1 block">
-                    {call.students?.student_name || 'Unknown'}
-                  </h3>
-                  <div className="flex items-center gap-1 text-[9px] text-white/50 mt-1 font-black uppercase">
-                    <Clock size={11} />
-                    {new Date(call.called_at).toLocaleTimeString(lang === 'bn' ? 'bn-BD' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+          <div className="space-y-4">
+            {recentCalls.map(call => (
+              <div key={call.id} onClick={() => call.students && onStudentClick(call.students)} className="bg-white/95 p-6 rounded-[2.5rem] border border-white/40 flex items-center justify-between shadow-xl active:scale-[0.98] transition-all group backdrop-blur-lg">
+                <div className="flex items-center gap-5 min-w-0 flex-1">
+                  <div className="w-16 h-16 bg-[#F2EBFF] rounded-[1.5rem] flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
+                    <UserIcon size={30} strokeWidth={2.5} />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-black text-[#4B168A] text-[19px] font-noto truncate leading-tight tracking-tight">{call.students?.student_name || 'অজানা'}</h3>
+                    <div className="flex items-center gap-2 mt-2">
+                       <Clock size={14} className="text-[#A179FF]" />
+                       <span className="text-[11px] font-black text-[#A179FF] uppercase tracking-[0.1em]">
+                         {new Date(call.called_at).toLocaleTimeString(lang === 'bn' ? 'bn-BD' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                       </span>
+                    </div>
                   </div>
                 </div>
+                <div className="flex items-center gap-3 shrink-0">
+                   <div onClick={(e) => { e.stopPropagation(); call.students && initiateCall(call.students.guardian_phone) }} className="w-14 h-14 premium-btn text-white rounded-[1.2rem] flex items-center justify-center shadow-lg active:scale-90 transition-all">
+                     <Phone size={24} fill="currentColor" />
+                   </div>
+                </div>
               </div>
-              <div className="flex items-center gap-4 shrink-0 px-1">
-                <button 
-                  onClick={() => call.students && initiateCall(call.students)} 
-                  className="bg-white text-[#d35132] p-2.5 rounded-xl active:scale-90 transition-transform shadow-md border border-slate-100"
-                >
-                  <Phone size={16} strokeWidth={3} fill="currentColor" />
-                </button>
-                <button 
-                  onClick={(e) => call.students && openWhatsApp(e, call.students)} 
-                  className="bg-gradient-to-br from-[#128c7e] to-[#25d366] text-white p-2.5 rounded-xl shadow-[0_8px_20px_-4px_rgba(37,211,102,0.3)] active:scale-90 transition-all border border-white/20"
-                >
-                  <PhoneCall size={16} strokeWidth={3} fill="currentColor" />
-                </button>
-              </div>
-            </div>
-          ))
+            ))}
+          </div>
         ) : (
-          <div className="text-center py-10 bg-white/5 rounded-3xl border border-dashed border-white/10">
-            <p className="text-white/30 text-[10px] font-black uppercase tracking-widest">{t('no_calls', lang)}</p>
+          <div className="text-center py-24 bg-white/10 rounded-[3rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
+            <p className="text-white/60 text-sm font-black uppercase tracking-[0.2em] leading-relaxed drop-shadow-sm">
+              No History<br/>Found
+            </p>
           </div>
         )}
       </div>

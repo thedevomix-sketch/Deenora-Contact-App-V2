@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Download, Upload, Loader2, Database, AlertCircle, CheckCircle2, FileJson, FileSpreadsheet, Info, Table } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Loader2, CheckCircle2, FileSpreadsheet, Table } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Madrasah, Language } from '../types';
 import * as XLSX from 'xlsx';
@@ -15,391 +15,74 @@ interface DataManagementProps {
 const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack, triggerRefresh }) => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<{ type: 'success' | 'error' | 'idle', message: string }>({ type: 'idle', message: '' });
-  const [importPreview, setImportPreview] = useState<{ classes: any[], students: any[] } | null>(null);
 
   const handleExportExcel = async () => {
     if (!madrasah) return;
     setLoading(true);
-    setStatus({ type: 'idle', message: '' });
-
     try {
-      const { data: students } = await supabase
-        .from('students')
-        .select('*, classes(class_name)')
-        .eq('madrasah_id', madrasah.id)
-        .order('class_id')
-        .order('roll', { ascending: true });
-
-      if (!students || students.length === 0) {
-        throw new Error(lang === 'bn' ? 'কোনো ছাত্রের ডাটা পাওয়া যায়নি' : 'No student data found');
-      }
-
-      const excelData = students.map(s => ({
-        'Class': (s as any).classes?.class_name || '',
-        'Roll': s.roll || '',
-        'Student Name': s.student_name || '',
-        'Guardian Phone': s.guardian_phone || '',
-        'Guardian Name': s.guardian_name || '',
-        'Guardian Phone 2': s.guardian_phone_2 || ''
-      }));
-
-      const worksheet = XLSX.utils.json_to_sheet(excelData);
-      const workbook = XLSX.utils.book_new();
-      XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
-      XLSX.writeFile(workbook, `${madrasah.name}_students_${new Date().toISOString().split('T')[0]}.xlsx`);
-
-      setStatus({ type: 'success', message: lang === 'bn' ? 'এক্সেল ফাইল ডাউনলোড শুরু হয়েছে' : 'Excel file download started' });
-    } catch (err: any) {
-      setStatus({ type: 'error', message: err.message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setLoading(true);
-    try {
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        try {
-          const data = new Uint8Array(event.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheetName = workbook.SheetNames[0];
-          const worksheet = workbook.Sheets[firstSheetName];
-          const rows = XLSX.utils.sheet_to_json(worksheet) as any[];
-
-          if (rows.length === 0) throw new Error('File is empty');
-
-          const classesMap = new Map();
-          const processedStudents: any[] = [];
-          const localFingerprints = new Set(); 
-
-          rows.forEach((row, idx) => {
-            const className = (row['Class'] || row['class'] || row['শ্রেণি'] || 'General').toString().trim();
-            let roll = parseInt(row['Roll'] || row['roll'] || row['রোল'] || '0');
-            if (isNaN(roll)) roll = 0;
-            
-            const studentName = (row['Student Name'] || row['Name'] || row['ছাত্রের নাম'] || row['name'] || '').toString().trim();
-            const phone = (row['Guardian Phone'] || row['Phone'] || row['মোবাইল'] || row['phone'] || '').toString().trim();
-            
-            if (!studentName || !phone) return; 
-
-            const fingerprint = `${className}_${roll}_${studentName}_${phone}`;
-            if (localFingerprints.has(fingerprint)) return;
-            localFingerprints.add(fingerprint);
-
-            if (!classesMap.has(className)) {
-              classesMap.set(className, { id: `temp_cls_${className}`, class_name: className });
-            }
-
-            processedStudents.push({
-              id: `temp_std_${idx}`,
-              student_name: studentName,
-              guardian_name: (row['Guardian Name'] || row['Father'] || row['অভিভাবক'] || '').toString().trim(),
-              roll: roll || null,
-              guardian_phone: phone,
-              guardian_phone_2: (row['Guardian Phone 2'] || row['Phone 2'] || '').toString().trim(),
-              class_id: classesMap.get(className).id
-            });
-          });
-
-          setImportPreview({
-            classes: Array.from(classesMap.values()),
-            students: processedStudents
-          });
-        } catch (err: any) {
-          setStatus({ type: 'error', message: lang === 'bn' ? 'ফাইলটি পড়া সম্ভব হয়নি: ' + err.message : 'Error reading file: ' + err.message });
-        } finally {
-          setLoading(false);
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    } catch (err) {
-      setLoading(false);
-      setStatus({ type: 'error', message: 'File processing error' });
-    }
-  };
-
-  const handleImport = async () => {
-    if (!madrasah || !importPreview) return;
-    setLoading(true);
-    setStatus({ type: 'idle', message: '' });
-
-    try {
-      const { data: existingStudents } = await supabase
-        .from('students')
-        .select('class_id, student_name, guardian_phone, roll')
-        .eq('madrasah_id', madrasah.id);
-
-      const existingFingerprints = new Set(
-        existingStudents?.map(s => `${s.class_id}:${s.student_name.toLowerCase()}:${s.guardian_phone}`) || []
-      );
-      const existingRolls = new Set(
-        existingStudents?.map(s => `${s.class_id}:${s.roll}`) || []
-      );
-
-      const classIdMap: Record<string, string> = {};
-      
-      for (const cls of importPreview.classes) {
-        const { data: existing } = await supabase
-          .from('classes')
-          .select('id')
-          .eq('madrasah_id', madrasah.id)
-          .eq('class_name', cls.class_name)
-          .maybeSingle();
-
-        if (existing) {
-          classIdMap[cls.id] = existing.id;
-        } else {
-          const { data: newCls, error: insertError } = await supabase
-            .from('classes')
-            .insert({ class_name: cls.class_name, madrasah_id: madrasah.id })
-            .select().single();
-          if (insertError) throw insertError;
-          classIdMap[cls.id] = newCls.id;
-        }
-      }
-
-      let importedCount = 0;
-      let skippedCount = 0;
-
-      for (const s of importPreview.students) {
-        const actualClassId = classIdMap[s.class_id];
-        if (!actualClassId) continue;
-
-        const studentFingerprint = `${actualClassId}:${s.student_name.toLowerCase()}:${s.guardian_phone}`;
-        const rollFingerprint = s.roll ? `${actualClassId}:${s.roll}` : null;
-
-        if (existingFingerprints.has(studentFingerprint) || (rollFingerprint && existingRolls.has(rollFingerprint))) {
-          skippedCount++;
-          continue;
-        }
-
-        const { error: studentError } = await supabase.from('students').insert({
-          student_name: s.student_name,
-          guardian_name: s.guardian_name,
-          roll: s.roll,
-          guardian_phone: s.guardian_phone,
-          guardian_phone_2: s.guardian_phone_2 || null,
-          class_id: actualClassId,
-          madrasah_id: madrasah.id
-        });
-
-        if (studentError) {
-          if (studentError.code === '23505') { 
-            skippedCount++;
-            continue;
-          }
-          throw studentError;
-        }
-        importedCount++;
-      }
-
-      setStatus({ 
-        type: 'success', 
-        message: lang === 'bn' 
-          ? `সম্পন্ন হয়েছে! ${importedCount} জন নতুন ছাত্র যোগ করা হয়েছে। (${skippedCount} জন আগে থেকেই ছিল)` 
-          : `Done! ${importedCount} new students added. (${skippedCount} duplicates skipped)` 
-      });
-      setImportPreview(null);
-      triggerRefresh();
-    } catch (err: any) {
-      setStatus({ type: 'error', message: 'Import failed: ' + err.message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleExportJSON = async () => {
-    if (!madrasah) return;
-    setLoading(true);
-    try {
-      const { data: classes } = await supabase.from('classes').select('*').eq('madrasah_id', madrasah.id);
-      const { data: students } = await supabase.from('students').select('*').eq('madrasah_id', madrasah.id);
-      const backupData = {
-        madrasah_name: madrasah.name,
-        export_date: new Date().toISOString(),
-        data: { classes: classes || [], students: students || [] }
-      };
-      const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `madrasah_backup_${new Date().toISOString().split('T')[0]}.json`;
-      link.click();
-      setStatus({ type: 'success', message: lang === 'bn' ? 'JSON ব্যাকআপ তৈরি হয়েছে' : 'JSON Backup created' });
-    } catch (err) {
-      setStatus({ type: 'error', message: 'Export failed' });
-    } finally {
-      setLoading(false);
-    }
+      const { data: students } = await supabase.from('students').select('*, classes(class_name)').eq('madrasah_id', madrasah.id);
+      if (!students) return;
+      const excelData = students.map(s => ({ 'Class': (s as any).classes?.class_name, 'Roll': s.roll, 'Name': s.student_name, 'Phone': s.guardian_phone }));
+      const ws = XLSX.utils.json_to_sheet(excelData);
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, "Students");
+      XLSX.writeFile(wb, `${madrasah.name}_students.xlsx`);
+      setStatus({ type: 'success', message: 'Downloaded Successfully' });
+    } catch (err) { setStatus({ type: 'error', message: 'Failed' }); } finally { setLoading(false); }
   };
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500 pb-20">
-      <div className="flex items-center gap-3">
-        <button onClick={onBack} className="p-2.5 bg-white/10 rounded-xl text-white active:scale-90 transition-all border border-white/20 backdrop-blur-md">
-          <ArrowLeft size={22} strokeWidth={2.5} />
+    <div className="space-y-8 animate-in slide-in-from-bottom-5 duration-500 pb-24">
+      <div className="flex items-center gap-5 px-2">
+        <button onClick={onBack} className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white active:scale-90 transition-all border border-white/20 shadow-xl">
+          <ArrowLeft size={28} strokeWidth={3} />
         </button>
-        <h1 className="text-xl font-black text-white font-noto">
-          {lang === 'bn' ? 'ডাটা ম্যানেজমেন্ট' : 'Data Management'}
-        </h1>
+        <h1 className="text-2xl font-black text-white font-noto drop-shadow-md">ডাটা ম্যানেজমেন্ট</h1>
       </div>
 
-      <div className="grid grid-cols-1 gap-6">
-        <div className="bg-white/15 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 p-8 shadow-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-            <Download size={80} strokeWidth={1} />
-          </div>
-          <div className="flex items-center gap-4 mb-6">
-            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white">
-              <Download size={24} />
+      <div className="grid grid-cols-1 gap-8">
+        <div className="bg-white/95 backdrop-blur-xl rounded-[3rem] border border-white p-10 shadow-2xl relative overflow-hidden group">
+          <div className="flex items-center gap-6 mb-10">
+            <div className="w-16 h-16 bg-[#8D30F4]/10 rounded-[1.5rem] flex items-center justify-center text-[#8D30F4] border border-[#8D30F4]/10 shadow-inner">
+              <Download size={32} />
             </div>
-            <div className="text-left">
-              <h3 className="text-lg font-black text-white">{lang === 'bn' ? 'ডাটা এক্সপোর্ট' : 'Export Data'}</h3>
-              <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">{lang === 'bn' ? 'ফাইল ডাউনলোড করুন' : 'Download students file'}</p>
+            <div>
+              <h3 className="text-2xl font-black text-[#2E0B5E] font-noto leading-tight">ডাটা এক্সপোর্ট</h3>
+              <p className="text-[11px] font-black text-[#A179FF] uppercase tracking-widest mt-1.5">Download Student List</p>
             </div>
           </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <button onClick={handleExportExcel} disabled={loading} className="flex-1 py-4 bg-white text-[#d35132] font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-              {loading ? <Loader2 className="animate-spin" size={20} /> : <><FileSpreadsheet size={20} /> Excel Export</>}
-            </button>
-            <button onClick={handleExportJSON} disabled={loading} className="flex-1 py-4 bg-white/10 border border-white/20 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
-              JSON Backup
-            </button>
-          </div>
+          <button onClick={handleExportExcel} disabled={loading} className="w-full py-6 premium-btn text-white font-black rounded-[2rem] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4 text-xl">
+            {loading ? <Loader2 className="animate-spin" size={28} /> : <><FileSpreadsheet size={28} /> Excel Export</>}
+          </button>
         </div>
 
-        <div className="bg-white/15 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 p-8 shadow-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:scale-110 transition-transform">
-            <Upload size={80} strokeWidth={1} />
-          </div>
-          <div className="flex items-center gap-4 mb-4">
-            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white">
-              <Upload size={24} />
+        <div className="bg-white/95 backdrop-blur-xl rounded-[3rem] border border-white p-10 shadow-2xl relative overflow-hidden group">
+          <div className="flex items-center gap-6 mb-8">
+            <div className="w-16 h-16 bg-[#8D30F4]/10 rounded-[1.5rem] flex items-center justify-center text-[#8D30F4] border border-[#8D30F4]/10 shadow-inner">
+              <Upload size={32} />
             </div>
-            <div className="text-left">
-              <h3 className="text-lg font-black text-white">{lang === 'bn' ? 'ডাটা আপলোড' : 'Upload Data'}</h3>
-              <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">{lang === 'bn' ? 'এক্সেল ফাইল সিলেক্ট করুন' : 'Select Excel File'}</p>
+            <div>
+              <h3 className="text-2xl font-black text-[#2E0B5E] font-noto leading-tight">ডাটা আপলোড</h3>
+              <p className="text-[11px] font-black text-[#A179FF] uppercase tracking-widest mt-1.5">Select Excel File</p>
             </div>
           </div>
-          
-          {!importPreview ? (
-            <div className="relative">
-              <input type="file" accept=".xlsx, .xls, .csv" onChange={handleFileSelect} className="absolute inset-0 opacity-0 cursor-pointer z-10" />
-              <div className="w-full py-10 bg-white/10 border-2 border-dashed border-white/30 rounded-2xl text-white/60 font-black text-xs flex flex-col items-center justify-center gap-3">
-                <FileSpreadsheet size={32} />
-                <span>{lang === 'bn' ? 'এক্সেল ফাইল (.xlsx) ড্রপ করুন' : 'Drop Excel (.xlsx) file'}</span>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-4 animate-in zoom-in-95">
-              <div className="bg-white/5 p-4 rounded-2xl border border-white/10 text-center">
-                 <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-1">Preview</p>
-                 <div className="flex justify-center gap-6">
-                    <div>
-                      <span className="text-xl font-black text-white">{importPreview.classes.length}</span>
-                      <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Classes</p>
-                    </div>
-                    <div className="w-px h-8 bg-white/10 self-center"></div>
-                    <div>
-                      <span className="text-xl font-black text-white">{importPreview.students.length}</span>
-                      <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">Students</p>
-                    </div>
-                 </div>
-              </div>
-              <div className="flex gap-2">
-                <button onClick={() => setImportPreview(null)} className="flex-1 py-4 bg-white/10 text-white font-black rounded-2xl text-xs uppercase">বাতিল</button>
-                <button onClick={handleImport} disabled={loading} className="flex-[2] py-4 bg-green-500 text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2">
-                  {loading ? <Loader2 className="animate-spin" size={18} /> : <><CheckCircle2 size={18} /> ইমপোর্ট শুরু করুন</>}
-                </button>
-              </div>
-            </div>
-          )}
+          <div className="w-full py-16 bg-[#F2EBFF] border-4 border-dashed border-[#8D30F4]/20 rounded-[2.5rem] text-[#8D30F4] font-black text-sm flex flex-col items-center justify-center gap-5 active:scale-[0.98] transition-all">
+            <FileSpreadsheet size={50} className="opacity-50" />
+            <span className="font-noto text-lg">এক্সেল ফাইল সিলেক্ট করুন</span>
+          </div>
         </div>
       </div>
 
-      {status.type !== 'idle' && (
-        <div className={`p-5 rounded-3xl border animate-in slide-in-from-top-4 flex items-center gap-4 ${status.type === 'success' ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-red-500/20 border-red-500/30 text-red-400'}`}>
-          {status.type === 'success' ? <CheckCircle2 size={24} /> : <AlertCircle size={24} />}
-          <p className="text-sm font-black">{status.message}</p>
+      <div className="bg-white/90 p-8 rounded-[3rem] border border-white shadow-xl space-y-5">
+        <div className="flex items-center gap-4 text-[#2E0B5E]">
+          <Table size={24} />
+          <h3 className="text-lg font-black font-noto">এক্সেল ফরম্যাট গাইড</h3>
         </div>
-      )}
-
-      {/* Excel Upload Format Guide */}
-      <div className="bg-white/15 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 p-6 shadow-xl space-y-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-yellow-400/20 rounded-xl text-yellow-400">
-            <Table size={18} />
-          </div>
-          <h3 className="text-sm font-black text-white">{lang === 'bn' ? 'এক্সেল আপলোড ফরম্যাট' : 'Excel Upload Format'}</h3>
+        <div className="grid grid-cols-2 gap-3">
+           <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Column A</p><p className="font-black text-[#8D30F4]">শ্রেণি</p></div>
+           <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Column B</p><p className="font-black text-[#8D30F4]">রোল</p></div>
+           <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Column C</p><p className="font-black text-[#8D30F4]">ছাত্রের নাম</p></div>
+           <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Column D</p><p className="font-black text-[#8D30F4]">মোবাইল</p></div>
         </div>
-        
-        <p className="text-[10px] text-white/50 font-bold leading-relaxed px-1">
-          {lang === 'bn' 
-            ? 'আপনার এক্সেল ফাইলের প্রথম সারিতে নিচের কলাম নামগুলো থাকতে হবে:' 
-            : 'Your Excel file must have these column names in the first row:'}
-        </p>
-
-        <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b border-white/10">
-                <th className="px-3 py-2 text-[9px] font-black text-white/40 uppercase">Column Name</th>
-                <th className="px-3 py-2 text-[9px] font-black text-white/40 uppercase">Bengali (Alternative)</th>
-              </tr>
-            </thead>
-            <tbody className="text-[10px] font-bold text-white/80">
-              <tr className="border-b border-white/5">
-                <td className="px-3 py-2 font-mono">Class</td>
-                <td className="px-3 py-2 font-noto">শ্রেণি</td>
-              </tr>
-              <tr className="border-b border-white/5">
-                <td className="px-3 py-2 font-mono">Roll</td>
-                <td className="px-3 py-2 font-noto">রোল</td>
-              </tr>
-              <tr className="border-b border-white/5">
-                <td className="px-3 py-2 font-mono">Student Name</td>
-                <td className="px-3 py-2 font-noto">ছাত্রের নাম</td>
-              </tr>
-              <tr className="border-b border-white/5">
-                <td className="px-3 py-2 font-mono">Guardian Phone</td>
-                <td className="px-3 py-2 font-noto">মোবাইল</td>
-              </tr>
-              <tr className="border-b border-white/5">
-                <td className="px-3 py-2 font-mono">Guardian Name</td>
-                <td className="px-3 py-2 font-noto">অভিভাবক</td>
-              </tr>
-              <tr>
-                <td className="px-3 py-2 font-mono">Guardian Phone 2</td>
-                <td className="px-3 py-2 font-noto">-</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        
-        <div className="flex items-start gap-3 bg-white/5 p-4 rounded-2xl border border-white/5">
-          <Info className="text-yellow-400/60 shrink-0" size={16} />
-          <p className="text-[9px] text-white/40 font-medium leading-relaxed italic">
-            {lang === 'bn' 
-              ? 'টিপস: আপনি একটি ক্লাস থেকে ডাটা এক্সপোর্ট করে সেটিকেই ফরম্যাট হিসেবে ব্যবহার করতে পারেন।' 
-              : 'Tip: You can export data from a class and use that file as a template.'}
-          </p>
-        </div>
-      </div>
-
-      <div className="bg-white/5 rounded-3xl p-6 border border-white/10 space-y-4">
-        <div className="flex items-center gap-3">
-          <Info className="text-yellow-400/60 shrink-0" size={20} />
-          <h4 className="text-[10px] font-black text-white/60 uppercase tracking-widest">কিভাবে ডুপ্লিকেট রোধ হয়?</h4>
-        </div>
-        <p className="text-[10px] text-white/40 font-medium leading-relaxed italic">
-          সিস্টেম স্বয়ংক্রিয়ভাবে চেক করে যে একই ক্লাসে একই নামের এবং ফোন নম্বরের কোনো ছাত্র আগে থেকেই আছে কি না। এছাড়া একই রোল নম্বর থাকলেও সিস্টেম ডুপ্লিকেট হিসেবে চিহ্নিত করে তা বাদ দেয়। এতে আপনার ডাটাবেজ পরিষ্কার থাকে।
-        </p>
       </div>
     </div>
   );

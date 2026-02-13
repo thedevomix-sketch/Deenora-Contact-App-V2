@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Save, User as UserIcon, Phone, List, Hash, Loader2, UserCheck, AlertCircle, X, Check, ChevronDown, BookOpen, Camera, Upload } from 'lucide-react';
+import { ArrowLeft, Save, User as UserIcon, Phone, List, Hash, Loader2, ChevronDown, Camera, X, Check } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Student, Class, Language } from '../types';
 import { t } from '../translations';
@@ -71,12 +71,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
         .from('madrasah-assets')
         .upload(filePath, file);
 
-      if (uploadError) {
-        if (uploadError.message.includes('bucket not found')) {
-          throw new Error("Storage Bucket not initialized. Please run the SQL fix.");
-        }
-        throw uploadError;
-      }
+      if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
         .from('madrasah-assets')
@@ -84,8 +79,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
 
       setPhotoUrl(publicUrl);
     } catch (err: any) {
-      console.error("Upload failed:", err);
-      setErrorModal({ show: true, message: lang === 'bn' ? `ছবি আপলোড ব্যর্থ হয়েছে: ${err.message}` : `Upload failed: ${err.message}` });
+      setErrorModal({ show: true, message: lang === 'bn' ? `ব্যর্থ হয়েছে: ${err.message}` : `Upload failed: ${err.message}` });
     } finally {
       setUploading(false);
     }
@@ -96,57 +90,18 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
     return cls ? cls.class_name : t('class_choose', lang);
   };
 
-  const checkDuplicateRoll = async (targetRoll: number, targetClassId: string) => {
-    const cacheKey = `students_list_${targetClassId}`;
-    const cachedStudents = offlineApi.getCache(cacheKey) as Student[] | null;
-    
-    if (cachedStudents) {
-      const isDuplicate = cachedStudents.some(s => 
-        s.roll === targetRoll && (!isEditing || s.id !== student?.id)
-      );
-      if (isDuplicate) return true;
-    }
-
-    if (navigator.onLine) {
-      let query = supabase
-        .from('students')
-        .select('id')
-        .eq('class_id', targetClassId)
-        .eq('roll', targetRoll);
-      
-      if (isEditing && student) {
-        query = query.neq('id', student.id);
-      }
-
-      const { data, error } = await query;
-      if (!error && data && data.length > 0) return true;
-    }
-
-    return false;
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !phone.trim() || !classId) {
-      setErrorModal({ show: true, message: lang === 'bn' ? 'দয়া করে নাম, ফোন এবং ক্লাস নিশ্চিত করুন' : 'Please fill required fields' });
+      setErrorModal({ show: true, message: lang === 'bn' ? 'সব তথ্য পূরণ করুন' : 'Fill required fields' });
       return;
     }
 
     setLoading(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Auth session expired");
+      if (!user) throw new Error("Session expired");
 
-      if (roll) {
-        const rollNum = parseInt(roll);
-        const isDuplicate = await checkDuplicateRoll(rollNum, classId);
-        if (isDuplicate) {
-          setErrorModal({ show: true, message: t('duplicate_roll', lang) });
-          setLoading(false);
-          return;
-        }
-      }
-      
       const payload = {
         student_name: name.trim(),
         guardian_name: guardianName.trim(),
@@ -160,247 +115,85 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, defaultClassId, isEd
 
       if (navigator.onLine) {
         if (isEditing && student) {
-          const { error } = await supabase.from('students').update(payload).eq('id', student.id);
-          if (error) throw error;
+          await supabase.from('students').update(payload).eq('id', student.id);
         } else {
-          const { error } = await supabase.from('students').insert(payload);
-          if (error) throw error;
+          await supabase.from('students').insert(payload);
         }
       } else {
-        if (isEditing && student) {
-          offlineApi.queueAction('students', 'UPDATE', { ...payload, id: student.id });
-        } else {
-          offlineApi.queueAction('students', 'INSERT', payload);
-        }
+        offlineApi.queueAction('students', isEditing ? 'UPDATE' : 'INSERT', isEditing ? { ...payload, id: student?.id } : payload);
       }
-
-      // Clear caches
-      offlineApi.removeCache(`students_list_${classId}`);
-      offlineApi.removeCache(`all_students_search`);
-      offlineApi.removeCache(`recent_calls`);
-      
       onSuccess();
     } catch (err: any) { 
-      console.error("Save Error:", err); 
-      setErrorModal({ show: true, message: lang === 'bn' ? `সেভ করতে সমস্যা হয়েছে: ${err.message}` : `Save failed: ${err.message}` });
-    } finally { 
-      setLoading(false); 
-    }
+      setErrorModal({ show: true, message: err.message });
+    } finally { setLoading(false); }
   };
 
   return (
-    <div className="animate-in slide-in-from-bottom-6 duration-500 pb-8">
-      <div className="flex items-center gap-3 mb-6">
-        <button onClick={onCancel} className="p-2.5 bg-white/10 rounded-xl text-white active:scale-90 transition-all border border-white/20 backdrop-blur-md">
-          <ArrowLeft size={22} strokeWidth={2.5} />
+    <div className="animate-in slide-in-from-bottom-6 duration-500 pb-24 space-y-8">
+      <div className="flex items-center gap-5">
+        <button onClick={onCancel} className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white active:scale-95 transition-all border border-white/20 shadow-xl">
+          <ArrowLeft size={28} strokeWidth={3} />
         </button>
-        <h1 className="text-xl font-black text-white">
+        <h1 className="text-2xl font-black text-white font-noto drop-shadow-md">
           {isEditing ? t('edit_student', lang) : t('add_student', lang)}
         </h1>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <div className="bg-white/10 backdrop-blur-xl p-6 rounded-[2rem] border border-white/20 shadow-xl space-y-5">
-          {/* Photo Upload Section */}
-          <div className="flex flex-col items-center gap-3 pb-2 border-b border-white/10">
-            <div 
-              onClick={() => fileInputRef.current?.click()}
-              className="w-24 h-24 rounded-[1.8rem] bg-white/10 border-2 border-dashed border-white/30 flex flex-col items-center justify-center text-white/40 cursor-pointer overflow-hidden relative group active:scale-95 transition-all shadow-inner"
-            >
-              {uploading ? (
-                <Loader2 className="animate-spin text-white" size={24} />
-              ) : photoUrl ? (
-                <img src={photoUrl} className="w-full h-full object-cover" alt="Preview" />
-              ) : (
-                <>
-                  <Camera size={24} />
-                  <span className="text-[8px] font-black uppercase mt-1">Photo</span>
-                </>
-              )}
-              {photoUrl && !uploading && (
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                  <Camera size={20} className="text-white" />
+      <form onSubmit={handleSubmit} className="space-y-8">
+        <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] border-2 border-[#8D30F4]/10 shadow-2xl space-y-8">
+          <div className="flex flex-col items-center gap-4">
+            <div onClick={() => fileInputRef.current?.click()} className="w-32 h-32 rounded-[2.5rem] bg-[#F2EBFF] border-4 border-dashed border-[#8D30F4]/30 flex items-center justify-center text-[#8D30F4]/40 overflow-hidden relative active:scale-95 transition-all shadow-inner">
+              {uploading ? <Loader2 className="animate-spin text-[#8D30F4]" /> : photoUrl ? <img src={photoUrl} className="w-full h-full object-cover" /> : <Camera size={45} />}
+            </div>
+            <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
+            <p className="text-[12px] font-black text-[#8D30F4] uppercase tracking-widest">{photoUrl ? 'Change Photo' : 'Add Student Photo'}</p>
+          </div>
+
+          <div className="space-y-6">
+             <div className="space-y-2">
+               <label className="flex items-center gap-2 text-[11px] font-black text-[#4B168A] uppercase tracking-widest px-2"><UserIcon size={16} className="text-[#8D30F4]" /> {t('student_name', lang)}</label>
+               <input type="text" required className="w-full px-6 py-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/20 rounded-[1.5rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4] transition-all" value={name} onChange={(e) => setName(e.target.value)} />
+             </div>
+             
+             <div className="grid grid-cols-2 gap-5">
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-[11px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Hash size={16} className="text-[#8D30F4]" /> Roll</label>
+                  <input type="number" className="w-full px-6 py-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/20 rounded-[1.5rem] text-[#2D3142] font-black text-xl outline-none text-center focus:border-[#8D30F4] transition-all" value={roll} onChange={(e) => setRoll(e.target.value)} />
                 </div>
-              )}
-            </div>
-            <input 
-              type="file" 
-              ref={fileInputRef} 
-              className="hidden" 
-              accept="image/*" 
-              onChange={handlePhotoUpload}
-            />
-            <p className="text-[10px] font-bold text-white/50 uppercase tracking-widest">
-              {photoUrl ? (lang === 'bn' ? 'ছবি পরিবর্তন করুন' : 'Change Photo') : (lang === 'bn' ? 'ছাত্রের ছবি দিন' : 'Student Photo')}
-            </p>
-          </div>
+                <div className="space-y-2">
+                  <label className="flex items-center gap-2 text-[11px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Phone size={16} className="text-[#8D30F4]" /> Phone</label>
+                  <input type="tel" required className="w-full px-6 py-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/20 rounded-[1.5rem] text-[#2D3142] font-black text-lg outline-none focus:border-[#8D30F4] transition-all" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} />
+                </div>
+             </div>
 
-          {!navigator.onLine && (
-            <p className="text-[10px] bg-yellow-400/20 text-yellow-200 p-2 rounded-lg font-bold text-center">
-              {lang === 'bn' ? 'আপনি অফলাইনে আছেন। ডাটা পরে সেভ হবে।' : 'You are offline. Data will sync later.'}
-            </p>
-          )}
-          
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-2 text-[10px] font-black text-white/50 uppercase tracking-widest px-1">
-              <UserIcon size={12} />
-              {t('student_name', lang)}
-            </label>
-            <input
-              type="text"
-              required
-              className="w-full px-4 py-4 bg-white/10 border border-white/15 rounded-xl outline-none text-white font-bold focus:bg-white/20 transition-all text-sm"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-2 text-[10px] font-black text-white/50 uppercase tracking-widest px-1">
-              <UserCheck size={12} />
-              {t('guardian_name', lang)}
-            </label>
-            <input
-              type="text"
-              className="w-full px-4 py-4 bg-white/10 border border-white/15 rounded-xl outline-none text-white font-bold focus:bg-white/20 transition-all text-sm"
-              value={guardianName}
-              onChange={(e) => setGuardianName(e.target.value)}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="flex items-center gap-2 text-[10px] font-black text-white/50 uppercase tracking-widest px-1">
-                <Hash size={12} />
-                {t('roll', lang)}
-              </label>
-              <input
-                type="number"
-                className="w-full px-4 py-4 bg-white/10 border border-white/15 rounded-xl outline-none text-white font-bold focus:bg-white/20 transition-all text-center text-sm"
-                value={roll}
-                onChange={(e) => setRoll(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="flex items-center gap-2 text-[10px] font-black text-white/50 uppercase tracking-widest px-1">
-                <Phone size={12} />
-                {t('guardian_phone', lang)} {lang === 'bn' ? '(হোয়াটসঅ্যাপ)' : '(WhatsApp)'}
-              </label>
-              <input
-                type="tel"
-                required
-                maxLength={11}
-                className="w-full px-4 py-4 bg-white/10 border border-white/15 rounded-xl outline-none text-white font-bold focus:bg-white/20 transition-all tracking-wider text-sm"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 11))}
-              />
-            </div>
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-2 text-[10px] font-black text-white/50 uppercase tracking-widest px-1">
-              <Phone size={12} />
-              {t('guardian_phone_2', lang)}
-            </label>
-            <input
-              type="tel"
-              maxLength={11}
-              className="w-full px-4 py-4 bg-white/10 border border-white/15 rounded-xl outline-none text-white font-bold focus:bg-white/20 transition-all tracking-wider text-sm"
-              value={phone2}
-              onChange={(e) => setPhone2(e.target.value.replace(/\D/g, '').slice(0, 11))}
-              placeholder={lang === 'bn' ? 'ঐচ্ছিক' : 'Optional'}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="flex items-center gap-2 text-[10px] font-black text-white/50 uppercase tracking-widest px-1">
-              <List size={12} />
-              {t('class_select', lang)}
-            </label>
-            <div 
-              onClick={() => setShowClassModal(true)}
-              className={`w-full px-5 py-4 bg-white/10 border border-white/15 rounded-xl flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all ${!classId ? 'text-white/40' : 'text-white'}`}
-            >
-              <span className="font-bold text-sm truncate">{getSelectedClassName()}</span>
-              <ChevronDown size={18} className="text-white/30" />
-            </div>
+             <div className="space-y-2">
+               <label className="flex items-center gap-2 text-[11px] font-black text-[#4B168A] uppercase tracking-widest px-2"><List size={16} className="text-[#8D30F4]" /> {t('class_select', lang)}</label>
+               <div onClick={() => setShowClassModal(true)} className="w-full px-6 py-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/20 rounded-[1.5rem] flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all">
+                 <span className="font-black text-[#2D3142] text-lg">{getSelectedClassName()}</span>
+                 <ChevronDown size={24} className="text-[#8D30F4]" />
+               </div>
+             </div>
           </div>
         </div>
 
-        <button
-          type="submit"
-          disabled={loading || uploading}
-          className="w-full py-4 bg-white text-[#d35132] font-black rounded-2xl shadow-xl active:scale-95 transition-all text-base flex items-center justify-center gap-2 disabled:opacity-50"
-        >
-          {loading ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> {t('save', lang)}</>}
+        <button type="submit" disabled={loading} className="w-full py-6 premium-btn text-white font-black rounded-[2.5rem] shadow-[0_20px_50px_rgba(141,48,244,0.4)] active:scale-[0.98] transition-all flex items-center justify-center gap-4 text-xl font-noto">
+          {loading ? <Loader2 className="animate-spin" size={28} /> : <><Save size={28} /> {t('save', lang)}</>}
         </button>
       </form>
 
       {showClassModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[150] flex items-end sm:items-center justify-center p-0 sm:p-6 animate-in fade-in duration-300">
-          <div className="bg-[#d35132] w-full max-w-md rounded-t-[2.5rem] sm:rounded-[2.5rem] shadow-2xl p-6 border-t sm:border border-white/20 max-h-[85vh] flex flex-col animate-in slide-in-from-bottom-10">
-            <div className="flex items-center justify-between mb-6 px-2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center text-white">
-                  <BookOpen size={20} />
-                </div>
-                <h2 className="text-xl font-black text-white font-noto">{t('class_select', lang)}</h2>
-              </div>
-              <button onClick={() => setShowClassModal(false)} className="p-2 bg-white/10 text-white rounded-full active:scale-90 transition-all"><X size={20} /></button>
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[500] flex items-center justify-center p-8 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[3.5rem] p-10 shadow-2xl border-2 border-[#8D30F4]/10 relative">
+            <button onClick={() => setShowClassModal(false)} className="absolute top-8 right-8 text-[#8D30F4] hover:scale-110 transition-all"><X size={32} strokeWidth={3} /></button>
+            <h2 className="text-2xl font-black text-[#4B168A] mb-8 font-noto tracking-tight">ক্লাস বাছাই করুন</h2>
+            <div className="space-y-4 max-h-80 overflow-y-auto pr-3 custom-scrollbar">
+               {classes.map(cls => (
+                 <button key={cls.id} onClick={() => { setClassId(cls.id); setShowClassModal(false); }} className={`w-full p-5 rounded-2xl font-black text-lg transition-all flex items-center justify-between ${classId === cls.id ? 'bg-[#8D30F4] text-white shadow-xl scale-105' : 'bg-[#F2EBFF] text-[#4B168A] border border-[#8D30F4]/10'}`}>
+                    <span>{cls.class_name}</span>
+                    {classId === cls.id && <Check size={24} strokeWidth={4} />}
+                 </button>
+               ))}
             </div>
-            <div className="flex-1 overflow-y-auto space-y-3 px-1 custom-scrollbar pb-6">
-              {classes.length > 0 ? (
-                classes.map((cls) => (
-                  <div
-                    key={cls.id}
-                    onClick={() => {
-                      setClassId(cls.id);
-                      setShowClassModal(false);
-                    }}
-                    className={`p-4 rounded-2xl flex items-center justify-between transition-all active:scale-[0.98] ${
-                      classId === cls.id 
-                        ? 'bg-white text-[#d35132] shadow-xl' 
-                        : 'bg-white/10 text-white border border-white/5'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${classId === cls.id ? 'bg-[#d35132]/10' : 'bg-white/5'}`}>
-                        <Hash size={14} />
-                      </div>
-                      <span className="font-bold font-noto">{cls.class_name}</span>
-                    </div>
-                    {classId === cls.id && (
-                      <div className="bg-[#d35132] text-white p-1 rounded-full">
-                        <Check size={14} strokeWidth={3} />
-                      </div>
-                    )}
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-10 opacity-40">
-                  <p className="font-bold text-sm text-white">{t('no_classes', lang)}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {errorModal.show && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[200] flex items-center justify-center p-6 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 animate-in zoom-in-95 text-center border border-white/20">
-            <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-5 text-red-500 shadow-sm">
-              <AlertCircle size={32} />
-            </div>
-            <h2 className="text-xl font-black text-slate-800 mb-3 font-noto">{lang === 'bn' ? 'দুঃখিত!' : 'Sorry!'}</h2>
-            <p className="text-slate-600 text-sm font-bold mb-8 font-noto leading-relaxed px-2">{errorModal.message}</p>
-            <button
-              onClick={() => setErrorModal({ show: false, message: '' })}
-              className="w-full py-4 bg-[#d35132] text-white font-black rounded-2xl shadow-xl active:scale-95 transition-all flex items-center justify-center gap-2"
-            >
-              {lang === 'bn' ? 'ঠিক আছে' : 'OK'}
-            </button>
           </div>
         </div>
       )}

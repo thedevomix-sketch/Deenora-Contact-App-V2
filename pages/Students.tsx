@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash, CheckCircle2, MessageSquare, Send, X, BookOpen, ChevronDown, Check, Trash2, LayoutGrid, PhoneCall } from 'lucide-react';
+import { ArrowLeft, Plus, Phone, Search, CheckCircle2, MessageSquare, X, BookOpen, ChevronDown, Check, PhoneCall } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
-import { Class, Student, Language, SMSTemplate } from '../types';
+import { Class, Student, Language } from '../types';
 import { t } from '../translations';
 
 interface StudentsProps {
@@ -29,8 +30,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
 
-  const cacheKey = `students_list_${selectedClass.id}`;
-
   useEffect(() => {
     fetchStudents();
     fetchTemplates();
@@ -49,277 +48,125 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
-
-      const { data, error } = await supabase
-        .from('sms_templates')
-        .select('*')
-        .eq('madrasah_id', user.id)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      if (data && data.length > 0) {
-        setTemplates(data);
-      } else {
-        setTemplates(STATIC_DEFAULTS);
-      }
-    } catch (err) {
-      console.error("Templates fetch error:", err);
-      setTemplates(STATIC_DEFAULTS);
-    }
+      const { data } = await supabase.from('sms_templates').select('*').eq('madrasah_id', user.id).order('created_at', { ascending: false });
+      setTemplates(data && data.length > 0 ? data : STATIC_DEFAULTS);
+    } catch (err) { setTemplates(STATIC_DEFAULTS); }
   };
 
   const fetchStudents = async () => {
     setLoading(true);
-    const cached = offlineApi.getCache(cacheKey);
-    if (cached) {
-      setStudents(cached);
-      setLoading(false);
-    }
-
     if (navigator.onLine) {
       try {
-        const { data, error } = await supabase
-          .from('students')
-          .select('*, classes(*)')
-          .eq('class_id', selectedClass.id)
-          .order('roll', { ascending: true, nullsFirst: false })
-          .order('student_name', { ascending: true });
-        
-        if (error) throw error;
-        if (data) {
-          setStudents(data);
-          offlineApi.setCache(cacheKey, data);
-        }
-      } catch (err) {
-        console.error("Fetch Students Error:", err);
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      setLoading(false);
-    }
+        const { data } = await supabase.from('students').select('*, classes(*)').eq('class_id', selectedClass.id).order('roll', { ascending: true, nullsFirst: false });
+        if (data) setStudents(data);
+      } catch (err) { console.error(err); } finally { setLoading(false); }
+    } else { setLoading(false); }
   };
 
   const toggleSelection = (id: string) => {
     const newSelected = new Set(selectedIds);
-    if (newSelected.has(id)) {
-      newSelected.delete(id);
-    } else {
-      newSelected.add(id);
-    }
+    if (newSelected.has(id)) newSelected.delete(id); else newSelected.add(id);
     setSelectedIds(newSelected);
   };
 
-  const sendNativeSMS = () => {
-    const selectedStudents = students.filter(s => selectedIds.has(s.id));
-    if (selectedStudents.length === 0) return;
-    
-    const phoneNumbers = selectedStudents.map(s => s.guardian_phone.replace(/\D/g, ''));
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    const separator = isIOS ? ';' : ',';
-    const numbersStr = phoneNumbers.join(separator);
-    
-    const bodyParam = selectedTemplate ? `${isIOS ? '&' : '?'}body=${encodeURIComponent(selectedTemplate.body)}` : '';
-    // Use _top to ensure WebView handlers catch it
-    window.location.href = `sms:${numbersStr}${bodyParam}`;
-  };
-
-  const initiateCall = (e: React.MouseEvent, phone: string) => {
-    e.stopPropagation();
-    const cleanPhone = phone.replace(/\D/g, '');
-    window.location.href = `tel:${cleanPhone}`;
-  };
-
-  const formatWhatsAppNumber = (phone: string) => {
-    let cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length === 11 && cleaned.startsWith('0')) {
-      return '88' + cleaned;
-    }
-    return cleaned;
-  };
-
-  const openWhatsApp = (e: React.MouseEvent, phone: string) => {
-    e.stopPropagation();
-    const waNumber = formatWhatsAppNumber(phone);
-    // Directly setting window.location.href is more reliable in WebViews than window.open
-    window.location.href = `https://wa.me/${waNumber}`;
-  };
-
-  const selectAll = () => {
-    if (selectedIds.size === filteredStudents.length) {
-      setSelectedIds(new Set());
-    } else {
-      setSelectedIds(new Set(filteredStudents.map(s => s.id)));
-    }
-  };
-
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative min-h-[85vh] pb-80">
+    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 min-h-[85vh] pb-80">
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
-            <button onClick={onBack} className="p-2.5 bg-white/10 rounded-xl text-white active:scale-90 transition-all border border-white/20 backdrop-blur-md shrink-0">
-              <ArrowLeft size={22} strokeWidth={2.5} />
+            <button onClick={onBack} className="w-11 h-11 bg-white/20 backdrop-blur-md rounded-xl text-white active:scale-90 transition-all border border-white/20 shadow-lg flex items-center justify-center">
+              <ArrowLeft size={24} strokeWidth={3} />
             </button>
             <div className="min-w-0">
-              <h1 className="text-xl font-black text-white truncate drop-shadow-sm font-noto leading-tight">{selectedClass.class_name}</h1>
-              <p className="text-[10px] font-black text-white/60 uppercase tracking-widest leading-none mt-1">
-                {loading ? '...' : students.length} {t('students_count', lang)}
+              <h1 className="text-xl font-black text-white truncate font-noto leading-tight drop-shadow-md">{selectedClass.class_name}</h1>
+              <p className="text-[11px] font-black text-white/70 uppercase tracking-widest leading-none mt-1">
+                {students.length} {t('students_count', lang)}
               </p>
             </div>
           </div>
           
           <div className="flex items-center gap-2">
-            <button 
-              onClick={() => {
-                setIsSelectionMode(!isSelectionMode);
-                if (isSelectionMode) {
-                  setSelectedIds(new Set());
-                  setSelectedTemplate(null);
-                  setShowTemplateMenu(false);
-                }
-              }}
-              className={`shrink-0 p-2.5 rounded-xl transition-all active:scale-95 border ${isSelectionMode ? 'bg-white text-[#d35132] border-white shadow-xl' : 'bg-white/10 text-white border-white/20'}`}
-            >
-              {isSelectionMode ? <X size={20} /> : <CheckCircle2 size={20} />}
+            <button onClick={() => { setIsSelectionMode(!isSelectionMode); if (isSelectionMode) setSelectedIds(new Set()); }}
+              className={`shrink-0 w-11 h-11 rounded-xl transition-all active:scale-95 border flex items-center justify-center ${isSelectionMode ? 'bg-white text-[#8D30F4] border-white shadow-xl' : 'bg-white/20 text-white border-white/20'}`}>
+              {isSelectionMode ? <X size={20} strokeWidth={3} /> : <CheckCircle2 size={20} strokeWidth={2.5} />}
             </button>
-            <button 
-              onClick={onAddClick} 
-              className="shrink-0 bg-white text-[#d35132] px-4 py-2.5 rounded-xl text-[13px] font-black flex items-center gap-2 shadow-xl active:scale-95 transition-all"
-            >
+            <button onClick={onAddClick} className="premium-btn text-white px-5 py-2.5 rounded-xl text-[13px] font-black flex items-center gap-2 shadow-2xl active:scale-95 transition-all border border-white/20">
               <Plus size={16} strokeWidth={3.5} /> {t('add_student', lang)}
             </button>
           </div>
         </div>
 
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-white/50" size={18} />
-          <input
-            type="text"
-            placeholder={t('search_placeholder', lang)}
-            className="w-full pl-11 pr-5 py-3.5 bg-white/15 backdrop-blur-md border border-white/20 rounded-2xl outline-none text-white placeholder:text-white/40 font-bold text-sm focus:bg-white/25 transition-all shadow-lg"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+        <div className="relative group">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#4B168A] group-focus-within:scale-110 transition-transform" size={20} strokeWidth={3} />
+          <input type="text" placeholder={t('search_placeholder', lang)}
+            className="w-full pl-12 pr-6 py-4.5 bg-white/90 backdrop-blur-md border-2 border-transparent rounded-[1.8rem] outline-none text-[#2D3142] placeholder:text-[#9B6DFF] font-black text-base focus:border-[#8D30F4] shadow-xl transition-all"
+            value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         </div>
-
-        {isSelectionMode && filteredStudents.length > 0 && (
-          <div className="flex items-center justify-between bg-black/20 p-3 rounded-2xl animate-in fade-in slide-in-from-top-2 border border-white/5">
-             <p className="text-[10px] font-black text-white/60 uppercase tracking-widest pl-2">Selection Actions</p>
-             <button onClick={selectAll} className="text-[10px] font-black text-white uppercase tracking-widest bg-white/10 px-4 py-2 rounded-lg active:bg-white/20">
-               {selectedIds.size === filteredStudents.length ? 'Deselect All' : 'Select All'}
-             </button>
-          </div>
-        )}
       </div>
 
-      {loading && students.length === 0 ? (
-        <div className="space-y-4">
-          {[1, 2, 3, 4, 5].map(i => <div key={i} className="h-20 bg-white/10 animate-pulse rounded-[2rem]"></div>)}
-        </div>
-      ) : filteredStudents.length > 0 ? (
-        <div className="space-y-3">
-          {filteredStudents.map(student => (
-            <div 
-              key={student.id} 
-              onClick={() => isSelectionMode ? toggleSelection(student.id) : onStudentClick(student)}
-              className={`p-4 rounded-[2rem] backdrop-blur-md border transition-all animate-in slide-in-from-bottom-2 flex items-center justify-between shadow-lg relative overflow-hidden ${isSelectionMode && selectedIds.has(student.id) ? 'bg-white/30 border-white shadow-white/10' : 'bg-white/10 border-white/15 active:bg-white/20'}`}
-            >
-              <div className="flex items-center gap-4 flex-1 min-w-0">
-                {isSelectionMode ? (
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center border shrink-0 transition-all ${selectedIds.has(student.id) ? 'bg-white text-[#d35132] border-white' : 'bg-white/5 border-white/20 text-white/20'}`}>
-                    <CheckCircle2 size={24} fill={selectedIds.has(student.id) ? "currentColor" : "none"} />
-                  </div>
-                ) : (
-                  <div className="w-12 h-12 rounded-xl flex flex-col items-center justify-center border shrink-0 bg-white/10 border-white/10 shadow-inner text-white">
-                    <span className="text-[7px] font-black opacity-40 uppercase leading-none">Roll</span>
-                    <span className="text-lg font-black leading-tight">{student.roll || '-'}</span>
-                  </div>
-                )}
-                
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-black text-white text-base font-noto truncate pr-1 leading-normal">
-                    {student.student_name}
-                  </h3>
-                  <p className="text-[10px] font-bold text-white/40 truncate">{student.guardian_name || '-'}</p>
+      <div className="space-y-4">
+        {filteredStudents.map(student => (
+          <div key={student.id} onClick={() => isSelectionMode ? toggleSelection(student.id) : onStudentClick(student)}
+            className={`p-6 rounded-[2.5rem] border backdrop-blur-md transition-all flex items-center justify-between shadow-xl relative overflow-hidden ${isSelectionMode && selectedIds.has(student.id) ? 'bg-white text-[#8D30F4] border-[#8D30F4] scale-105' : 'bg-white/95 border-white/40 active:scale-[0.98]'}`}>
+            <div className="flex items-center gap-5 flex-1 min-w-0">
+              {isSelectionMode ? (
+                <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border-2 shrink-0 transition-all ${selectedIds.has(student.id) ? 'bg-[#8D30F4] text-white border-[#8D30F4]' : 'bg-slate-50 border-slate-100 text-slate-200'}`}>
+                  <CheckCircle2 size={28} fill={selectedIds.has(student.id) ? "white" : "none"} />
                 </div>
-              </div>
-              
-              {!isSelectionMode && (
-                <div className="flex items-center gap-3 shrink-0 pr-1">
-                  <button 
-                    onClick={(e) => initiateCall(e, student.guardian_phone)}
-                    className="bg-white text-[#d35132] p-2.5 rounded-xl shadow-[0_8px_20px_-4px_rgba(255,255,255,0.3)] active:scale-90 transition-all border border-slate-100"
-                  >
-                    <Phone size={18} strokeWidth={3} fill="currentColor" />
-                  </button>
-                  <button 
-                    onClick={(e) => openWhatsApp(e, student.guardian_phone)}
-                    className="bg-gradient-to-br from-[#128c7e] to-[#25d366] text-white p-2.5 rounded-xl shadow-[0_8px_20px_-4px_rgba(37,211,102,0.4)] active:scale-90 transition-all border border-white/20 ring-1 ring-white/10"
-                  >
-                    <PhoneCall size={18} strokeWidth={3} fill="currentColor" />
-                  </button>
-                  <ChevronRight size={18} className="text-white/20 ml-1" />
+              ) : (
+                <div className="w-14 h-14 rounded-2xl flex flex-col items-center justify-center border-2 shrink-0 bg-[#F2EBFF] border-[#8D30F4]/10 text-[#8D30F4] shadow-inner">
+                  <span className="text-[9px] font-black opacity-40 uppercase leading-none mb-1">Roll</span>
+                  <span className="text-xl font-black leading-none">{student.roll || '-'}</span>
                 </div>
               )}
+              <div className="min-w-0 flex-1">
+                <h3 className="font-black text-[#2E0B5E] text-[19px] font-noto truncate leading-tight">{student.student_name}</h3>
+                <p className="text-[11px] font-black text-[#A179FF] truncate uppercase tracking-widest mt-1.5">{student.guardian_name || '-'}</p>
+              </div>
             </div>
-          ))}
-        </div>
-      ) : (
-        <div className="text-center py-20 bg-white/5 rounded-[3rem] border border-dashed border-white/20">
-          <p className="text-white/40 font-black uppercase tracking-widest text-[10px]">{t('no_students', lang)}</p>
-        </div>
-      )}
+            {!isSelectionMode && (
+              <div className="flex items-center gap-3 shrink-0 ml-4">
+                <button onClick={(e) => { e.stopPropagation(); window.location.href = `tel:${student.guardian_phone}`; }} className="w-12 h-12 bg-[#F2EBFF] text-[#8D30F4] rounded-2xl active:scale-90 transition-all border border-[#8D30F4]/10 flex items-center justify-center shadow-sm">
+                  <Phone size={22} fill="currentColor" />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); window.location.href = `https://wa.me/88${student.guardian_phone}`; }} className="w-12 h-12 bg-[#25d366] text-white rounded-2xl shadow-lg active:scale-90 transition-all flex items-center justify-center border border-white/20">
+                  <PhoneCall size={22} fill="currentColor" />
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
 
       {isSelectionMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+90px)] left-4 right-4 z-[150] animate-in slide-in-from-bottom-10">
-          <div className="bg-white rounded-[2.5rem] p-4 shadow-[0_25px_60px_rgba(0,0,0,0.4)] border border-white/20 ring-4 ring-black/5 flex flex-col gap-3">
-            <div className="relative">
-              <button 
-                onClick={() => setShowTemplateMenu(!showTemplateMenu)}
-                className={`w-full flex items-center justify-between p-4 rounded-2xl text-[14px] font-black transition-all border-2 ${selectedTemplate ? 'bg-[#d35132]/5 border-[#d35132] text-[#d35132]' : 'bg-slate-100 border-slate-200 text-slate-500'}`}
-              >
-                <div className="flex items-center gap-3 truncate">
-                  <BookOpen size={20} className={selectedTemplate ? 'text-[#d35132]' : 'text-slate-400'} />
-                  <span className="truncate">{selectedTemplate ? selectedTemplate.title : (lang === 'bn' ? '১. টেমপ্লেট বাছাই করুন' : '1. Choose Template')}</span>
-                </div>
-                <ChevronDown size={22} className={`transition-transform duration-300 ${showTemplateMenu ? 'rotate-180' : ''} ${selectedTemplate ? 'text-[#d35132]' : 'text-slate-400'}`} />
-              </button>
-
-              {showTemplateMenu && (
-                <div className="absolute bottom-full left-0 right-0 mb-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 max-h-64 overflow-y-auto z-[160] animate-in slide-in-from-bottom-4 p-2 ring-1 ring-black/5">
-                  {templates.map(tmp => (
-                    <button 
-                      key={tmp.id}
-                      onClick={() => { setSelectedTemplate(tmp); setShowTemplateMenu(false); }}
-                      className={`w-full text-left px-4 py-4 rounded-xl flex items-center justify-between transition-all ${selectedTemplate?.id === tmp.id ? 'bg-[#d35132] text-white shadow-lg' : 'hover:bg-slate-50 text-slate-700'}`}
-                    >
-                      <div className="min-w-0 pr-4">
-                         <p className="text-xs font-black truncate">{tmp.title}</p>
-                         <p className={`text-[10px] truncate opacity-60 ${selectedTemplate?.id === tmp.id ? 'text-white' : 'text-slate-500'}`}>{tmp.body}</p>
-                      </div>
-                      {selectedTemplate?.id === tmp.id && <Check size={16} strokeWidth={4} />}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="bg-slate-50 px-4 py-3 rounded-2xl flex items-center gap-3 flex-1 border border-slate-100">
-                <div className="w-8 h-8 bg-[#d35132] rounded-full flex items-center justify-center text-white shadow-md">
-                  <span className="text-sm font-black">{selectedIds.size}</span>
-                </div>
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Selected</p>
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+95px)] left-1/2 -translate-x-1/2 w-[94%] max-w-md z-[150] animate-in slide-in-from-bottom-10">
+          <div className="bg-white/95 backdrop-blur-xl rounded-[3rem] p-7 shadow-[0_30px_70px_rgba(46,11,94,0.4)] border border-[#8D30F4]/10 flex flex-col gap-5">
+            <button onClick={() => setShowTemplateMenu(!showTemplateMenu)} className={`w-full flex items-center justify-between p-5 rounded-[1.8rem] text-[15px] font-black transition-all border-2 ${selectedTemplate ? 'bg-[#8D30F4]/5 border-[#8D30F4] text-[#8D30F4]' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+              <div className="flex items-center gap-4 truncate">
+                <BookOpen size={24} className="text-[#8D30F4]" />
+                <span className="truncate">{selectedTemplate ? selectedTemplate.title : 'মেসেজ টেমপ্লেট বেছে নিন'}</span>
               </div>
-              
-              <button 
-                onClick={sendNativeSMS}
-                className={`flex-[2] py-4 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase shadow-xl active:scale-95 transition-all ${selectedTemplate ? 'bg-[#d35132] text-white' : 'bg-slate-200 text-slate-400 pointer-events-none'}`}
-              >
-                <MessageSquare size={18} fill={selectedTemplate ? "white" : "none"} />
-                {lang === 'bn' ? 'মেসেজ পাঠান' : 'Send SMS'}
+              <ChevronDown size={24} className={`transition-transform duration-300 ${showTemplateMenu ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showTemplateMenu && (
+              <div className="absolute bottom-full left-0 right-0 mb-4 bg-white rounded-[2.5rem] shadow-2xl border border-slate-100 max-h-72 overflow-y-auto z-[160] p-3 animate-in slide-in-from-bottom-5">
+                {templates.map(tmp => (
+                  <button key={tmp.id} onClick={() => { setSelectedTemplate(tmp); setShowTemplateMenu(false); }} className={`w-full text-left px-6 py-5 rounded-2xl flex items-center justify-between transition-all mb-1 ${selectedTemplate?.id === tmp.id ? 'bg-[#8D30F4] text-white shadow-xl' : 'hover:bg-slate-50 text-[#2E0B5E]'}`}>
+                    <div className="min-w-0"><p className="text-sm font-black truncate">{tmp.title}</p></div>
+                    {selectedTemplate?.id === tmp.id && <Check size={20} strokeWidth={4} />}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-center gap-4">
+              <div className="bg-[#F2EBFF] px-6 py-4 rounded-[1.8rem] flex items-center gap-4 border border-[#8D30F4]/10">
+                <div className="w-10 h-10 bg-[#8D30F4] rounded-full flex items-center justify-center text-white shadow-lg text-[15px] font-black">{selectedIds.size}</div>
+                <p className="text-[11px] font-black text-[#8D30F4] uppercase tracking-widest">জন</p>
+              </div>
+              <button className={`flex-1 py-5 rounded-[1.8rem] flex items-center justify-center gap-4 font-black text-sm uppercase shadow-2xl transition-all ${selectedTemplate ? 'premium-btn text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}>
+                <MessageSquare size={22} fill={selectedTemplate ? "white" : "none"} /> মেসেজ পাঠান
               </button>
             </div>
           </div>
