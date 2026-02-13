@@ -40,9 +40,12 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         const registrations = await navigator.serviceWorker.getRegistrations();
         for (let reg of registrations) await reg.unregister();
       }
+      
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map(name => caches.delete(name)));
+      
       Object.keys(localStorage).forEach(k => { if(k.startsWith('cache_')) localStorage.removeItem(k); });
-      // Fix: reload() expects 0 arguments in standard TypeScript Location definition.
-      window.location.reload();
+      window.location.replace(window.location.origin + window.location.pathname);
     }
   };
 
@@ -206,18 +209,19 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
           <button 
             onClick={forceUpdate}
-            className="w-full flex items-center justify-between p-4 bg-white/10 border border-white/20 rounded-2xl hover:bg-white/20 transition-all group"
+            className="w-full flex items-center justify-between p-4 bg-white/15 border border-white/30 rounded-2xl hover:bg-white/25 transition-all group relative overflow-hidden"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-400/20 rounded-xl text-yellow-400 group-hover:scale-110 transition-transform">
+              <div className="p-2 bg-yellow-400/20 rounded-xl text-yellow-400 group-hover:scale-110 transition-transform relative">
                 <Sparkles size={20} />
+                <div className="absolute inset-0 bg-yellow-400/10 blur-md rounded-full animate-pulse"></div>
               </div>
               <div className="text-left">
                 <p className="text-sm font-black text-white">{lang === 'bn' ? 'অ্যাপ আপডেট করুন' : 'Update App Version'}</p>
                 <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">{lang === 'bn' ? 'ক্যাশ ক্লিয়ার করুন' : 'Clear Cache & Reload'}</p>
               </div>
             </div>
-            <RefreshCw size={18} className="text-white/30" />
+            <RefreshCw size={18} className="text-white/30 active:rotate-180 transition-all" />
           </button>
         </div>
 

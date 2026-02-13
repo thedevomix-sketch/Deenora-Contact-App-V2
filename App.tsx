@@ -32,7 +32,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.1.3-GOLD";
+  const APP_VERSION = "2.1.3-STABLE";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -54,15 +54,19 @@ const App: React.FC = () => {
         await registration.unregister();
       }
     }
-    // Clear all related caches
-    const cacheNames = await caches.keys();
-    await Promise.all(cacheNames.map(name => caches.delete(name)));
+    
+    try {
+      const cacheNames = await caches.keys();
+      await Promise.all(cacheNames.map(name => caches.delete(name)));
+    } catch (e) {
+      console.warn("Cache clearing failed", e);
+    }
     
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('cache_')) localStorage.removeItem(key);
     });
     
-    window.location.reload();
+    window.location.replace(window.location.origin + window.location.pathname);
   };
 
   useEffect(() => {

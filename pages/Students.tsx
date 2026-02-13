@@ -244,8 +244,8 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
 
       {/* Floating Action Menu (Always Visible when in Selection Mode) */}
       {isSelectionMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+85px)] left-4 right-4 z-[150] animate-in slide-in-from-bottom-10">
-          <div className="bg-white rounded-[2.5rem] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20 ring-4 ring-black/5 flex flex-col gap-3">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+80px)] left-4 right-4 z-[150] animate-in slide-in-from-bottom-10">
+          <div className="bg-white rounded-[2.5rem] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.35)] border border-white/20 ring-4 ring-black/5 flex flex-col gap-3">
             
             {/* Template Selector - Large & Explicit */}
             <div className="relative">
@@ -306,7 +306,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
               
               <button 
                 onClick={sendNativeSMS}
-                className={`flex-[2] py-4 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase shadow-xl active:scale-95 transition-all ${selectedTemplate ? 'bg-[#d35132] text-white' : 'bg-slate-200 text-slate-400 pointer-events-none cursor-not-allowed'}`}
+                className={`flex-[2] py-4 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase shadow-xl active:scale-95 transition-all ${selectedTemplate ? 'bg-[#d35132] text-white active:bg-[#e65c3b]' : 'bg-slate-200 text-slate-400 pointer-events-none cursor-not-allowed'}`}
               >
                 <MessageSquare size={18} fill={selectedTemplate ? "white" : "none"} strokeWidth={selectedTemplate ? 1 : 3} />
                 {lang === 'bn' ? 'মেসেজ পাঠান' : 'Send SMS'}
