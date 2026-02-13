@@ -1,8 +1,7 @@
-
 {
-  "name": "madrasah-contact-app-(মাদরাসা-কন্টাক্ট-অ্যাপ)",
+  "name": "madrasah-contact-app",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -14,12 +13,14 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "@supabase/supabase-js": "2.45.4",
-    "xlsx": "https://esm.sh/xlsx@0.18.5"
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "~5.8.2",
-    "vite": "^6.2.0"
+    "@vitejs/plugin-react": "^4.3.4",
+    "@types/react": "^19.0.8",
+    "@types/react-dom": "^19.0.3",
+    "typescript": "~5.7.3",
+    "vite": "^6.0.11"
   }
 }
