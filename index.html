@@ -59,24 +59,6 @@
         transform: translateZ(0);
       }
 
-      .img-placeholder {
-        background: linear-gradient(110deg, rgba(255,255,255,0.05) 8%, rgba(255,255,255,0.12) 18%, rgba(255,255,255,0.05) 33%);
-        background-size: 200% 100%;
-        animation: 1.5s shine linear infinite;
-      }
-      
-      @keyframes shine {
-        to { background-position-x: -200%; }
-      }
-
-      @keyframes pulse-white {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.5; }
-      }
-      .loading-pulse {
-        animation: pulse-white 1.5s infinite ease-in-out;
-      }
-
       ::-webkit-scrollbar {
         width: 4px;
       }
@@ -85,19 +67,19 @@
         border-radius: 10px;
       }
     </style>
-<script type="importmap">
+  <script type="importmap">
 {
   "imports": {
-    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
-    "xlsx": "https://esm.sh/xlsx@^0.18.5",
-    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
     "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
     "react/": "https://esm.sh/react@^19.2.4/",
     "react": "https://esm.sh/react@^19.2.4",
-    "url": "https://esm.sh/url@^0.11.4",
+    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.95.3",
+    "lucide-react": "https://esm.sh/lucide-react@^0.563.0",
     "path": "https://esm.sh/path@^0.12.7",
     "vite": "https://esm.sh/vite@^7.3.1",
-    "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.95.3"
+    "xlsx": "https://esm.sh/xlsx@^0.18.5",
+    "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.4",
+    "url": "https://esm.sh/url@^0.11.4"
   }
 }
 </script>
@@ -114,5 +96,5 @@
       window.addEventListener('resize', updateHeight);
       updateHeight();
     </script>
-</body>
+  </body>
 </html>
