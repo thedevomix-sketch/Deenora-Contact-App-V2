@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Wallet, MessageSquare, Plus, Trash2, CreditCard, Loader2, Check, Save, Edit3, Send, ChevronDown, BookOpen, Users, CheckCircle2, AlertCircle, History, Smartphone, X } from 'lucide-react';
+import { Wallet, MessageSquare, Plus, Trash2, CreditCard, Loader2, Check, Save, Edit3, Send, ChevronDown, BookOpen, Users, CheckCircle2, AlertCircle, History, Smartphone, X, Type } from 'lucide-react';
 import { supabase, offlineApi, smsApi } from '../supabase';
 import { SMSTemplate, Language, Madrasah, Transaction, Class, Student } from '../types';
 import { t } from '../translations';
@@ -253,7 +253,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
                   onClick={() => setShowTemplateDropdown(!showTemplateDropdown)}
                   className="w-full flex items-center justify-between px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white/80 text-xs font-bold active:bg-white/20 transition-all"
                 >
-                  <div className="flex items-center gap-2 truncate">
+                  <div className="flex items-center gap-2 truncate text-white/80">
                     <BookOpen size={14} className="text-yellow-400" />
                     <span>{lang === 'bn' ? 'সংরক্ষিত টেমপ্লেট' : 'Select Template'}</span>
                   </div>
@@ -412,14 +412,19 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
         </div>
       )}
 
-      {/* Template Modal - Fixed Layout and Removed Black Blur Background */}
+      {/* Modern Full-Screen Template Editor Modal */}
       {showTemplateModal && (
-        <div className="fixed inset-0 bg-[#d35132] z-[300] flex flex-col animate-in fade-in duration-300 overflow-hidden">
-          {/* Header */}
+        <div className="fixed inset-0 bg-[#d35132] z-[400] flex flex-col animate-in fade-in duration-300 overflow-hidden">
+          {/* Native-style Header */}
           <div className="flex-none px-6 pt-[calc(env(safe-area-inset-top,20px)+10px)] pb-4 flex items-center justify-between border-b border-white/10">
-            <h2 className="text-xl font-black text-white font-noto">
-              {editingTemplate ? t('edit_class', lang) : t('new_template', lang)}
-            </h2>
+            <div className="flex items-center gap-3">
+               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white shadow-inner">
+                  <MessageSquare size={20} />
+               </div>
+               <h2 className="text-xl font-black text-white font-noto">
+                 {editingTemplate ? t('edit_class', lang) : t('new_template', lang)}
+               </h2>
+            </div>
             <button 
               onClick={() => setShowTemplateModal(false)} 
               className="p-2.5 bg-white/15 rounded-xl text-white active:scale-90 transition-all border border-white/10 shadow-lg"
@@ -428,51 +433,67 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
             </button>
           </div>
           
-          {/* Scrollable Form Content */}
-          <div className="flex-1 overflow-y-auto px-6 pt-6 pb-24">
-            <div className="max-w-md mx-auto space-y-6">
-              <form onSubmit={handleSaveTemplate} className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1">
-                    {t('template_title', lang)}
+          {/* Scrollable Editor Content */}
+          <div className="flex-1 overflow-y-auto px-6 pt-8 pb-32">
+            <div className="max-w-md mx-auto space-y-8">
+              <form onSubmit={handleSaveTemplate} className="space-y-8">
+                {/* Title Input Card */}
+                <div className="space-y-3">
+                  <label className="text-[11px] font-black text-white/50 uppercase tracking-[0.2em] px-1 flex items-center gap-2">
+                    <Type size={12} /> {t('template_title', lang)}
                   </label>
-                  <input 
-                    type="text" 
-                    required 
-                    placeholder="e.g. ছুটির নোটিশ" 
-                    className="w-full px-5 py-4 bg-white/10 border border-white/20 rounded-2xl text-white font-bold outline-none focus:bg-white/20 transition-all shadow-inner" 
-                    value={templateTitle} 
-                    onChange={(e) => setTemplateTitle(e.target.value)} 
-                  />
+                  <div className="relative group">
+                    <input 
+                      type="text" 
+                      required 
+                      placeholder="e.g. ছুটির নোটিশ" 
+                      className="w-full px-6 py-5 bg-white/10 border-2 border-white/10 rounded-3xl text-white font-bold outline-none focus:bg-white/20 focus:border-white/30 transition-all shadow-inner text-lg font-noto" 
+                      value={templateTitle} 
+                      onChange={(e) => setTemplateTitle(e.target.value)} 
+                    />
+                  </div>
                 </div>
                 
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1">
-                    {t('template_body', lang)}
-                  </label>
-                  <textarea 
-                    required 
-                    placeholder="মেসেজের মূল অংশ এখানে লিখুন..." 
-                    className="w-full h-48 px-5 py-4 bg-white/10 border border-white/20 rounded-2xl text-white font-medium outline-none focus:bg-white/20 transition-all resize-none shadow-inner leading-relaxed" 
-                    value={templateBody} 
-                    onChange={(e) => setTemplateBody(e.target.value)} 
-                  />
-                  <p className="text-[10px] font-black text-white/30 uppercase tracking-widest text-right px-1">
-                    {templateBody.length} / 160
-                  </p>
+                {/* Message Body Input Card */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <label className="text-[11px] font-black text-white/50 uppercase tracking-[0.2em] flex items-center gap-2">
+                      <BookOpen size={12} /> {t('template_body', lang)}
+                    </label>
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${templateBody.length > 160 ? 'text-yellow-400' : 'text-white/30'}`}>
+                      {templateBody.length} / 160
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <textarea 
+                      required 
+                      placeholder="মেসেজের মূল অংশ এখানে লিখুন..." 
+                      className="w-full h-64 px-6 py-5 bg-white/10 border-2 border-white/10 rounded-[2.5rem] text-white font-medium outline-none focus:bg-white/20 focus:border-white/30 transition-all resize-none shadow-inner leading-relaxed text-base font-noto" 
+                      value={templateBody} 
+                      onChange={(e) => setTemplateBody(e.target.value)} 
+                    />
+                    {/* Character limit progress bar subtle */}
+                    <div className="absolute bottom-6 right-8 left-8 h-1 bg-white/10 rounded-full overflow-hidden">
+                       <div 
+                        className={`h-full transition-all duration-300 ${templateBody.length > 160 ? 'bg-yellow-400' : 'bg-white/40'}`}
+                        style={{ width: `${Math.min((templateBody.length / 160) * 100, 100)}%` }}
+                       ></div>
+                    </div>
+                  </div>
                 </div>
                 
-                <div className="pt-4 space-y-3">
+                {/* Fixed-position feel action buttons */}
+                <div className="pt-4 space-y-4">
                   <button 
                     type="submit" 
                     disabled={savingTemplate} 
-                    className="w-full py-5 bg-white text-[#d35132] font-black rounded-3xl shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-base disabled:opacity-50"
+                    className="w-full py-5 bg-white text-[#d35132] font-black rounded-[2rem] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] active:scale-[0.97] transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-50"
                   >
                     {savingTemplate ? (
-                      <Loader2 className="animate-spin" size={20} />
+                      <Loader2 className="animate-spin" size={24} />
                     ) : (
                       <>
-                        <Save size={20} /> 
+                        <Save size={22} /> 
                         {t('save', lang)}
                       </>
                     )}
@@ -480,7 +501,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
                   <button 
                     type="button"
                     onClick={() => setShowTemplateModal(false)}
-                    className="w-full py-4 text-white/60 font-black uppercase tracking-widest text-[10px] active:text-white transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-4 text-white/50 font-black uppercase tracking-[0.2em] text-[11px] active:text-white transition-colors flex items-center justify-center gap-2"
                   >
                     {t('cancel', lang)}
                   </button>
