@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ArrowLeft, Download, Upload, Loader2, Database, AlertCircle, CheckCircle2, FileJson, FileSpreadsheet, Info } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Loader2, Database, AlertCircle, CheckCircle2, FileJson, FileSpreadsheet, Info, Table } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Madrasah, Language } from '../types';
 import * as XLSX from 'xlsx';
@@ -335,6 +335,68 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
           <p className="text-sm font-black">{status.message}</p>
         </div>
       )}
+
+      {/* Excel Upload Format Guide */}
+      <div className="bg-white/15 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 p-6 shadow-xl space-y-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-yellow-400/20 rounded-xl text-yellow-400">
+            <Table size={18} />
+          </div>
+          <h3 className="text-sm font-black text-white">{lang === 'bn' ? 'এক্সেল আপলোড ফরম্যাট' : 'Excel Upload Format'}</h3>
+        </div>
+        
+        <p className="text-[10px] text-white/50 font-bold leading-relaxed px-1">
+          {lang === 'bn' 
+            ? 'আপনার এক্সেল ফাইলের প্রথম সারিতে নিচের কলাম নামগুলো থাকতে হবে:' 
+            : 'Your Excel file must have these column names in the first row:'}
+        </p>
+
+        <div className="overflow-x-auto rounded-2xl border border-white/10 bg-white/5">
+          <table className="w-full text-left border-collapse">
+            <thead>
+              <tr className="border-b border-white/10">
+                <th className="px-3 py-2 text-[9px] font-black text-white/40 uppercase">Column Name</th>
+                <th className="px-3 py-2 text-[9px] font-black text-white/40 uppercase">Bengali (Alternative)</th>
+              </tr>
+            </thead>
+            <tbody className="text-[10px] font-bold text-white/80">
+              <tr className="border-b border-white/5">
+                <td className="px-3 py-2 font-mono">Class</td>
+                <td className="px-3 py-2 font-noto">শ্রেণি</td>
+              </tr>
+              <tr className="border-b border-white/5">
+                <td className="px-3 py-2 font-mono">Roll</td>
+                <td className="px-3 py-2 font-noto">রোল</td>
+              </tr>
+              <tr className="border-b border-white/5">
+                <td className="px-3 py-2 font-mono">Student Name</td>
+                <td className="px-3 py-2 font-noto">ছাত্রের নাম</td>
+              </tr>
+              <tr className="border-b border-white/5">
+                <td className="px-3 py-2 font-mono">Guardian Name</td>
+                <td className="px-3 py-2 font-noto">অভিভাবক</td>
+              </tr>
+              <tr className="border-b border-white/5">
+                <td className="px-3 py-2 font-mono">Guardian Phone</td>
+                <td className="px-3 py-2 font-noto">মোবাইল</td>
+              </tr>
+              <tr>
+                <td className="px-3 py-2 font-mono">Guardian Phone 2</td>
+                <td className="px-3 py-2 font-noto">-</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        
+        <div className="flex items-start gap-3 bg-white/5 p-4 rounded-2xl border border-white/5">
+          <Info className="text-yellow-400/60 shrink-0" size={16} />
+          <p className="text-[9px] text-white/40 font-medium leading-relaxed italic">
+            {lang === 'bn' 
+              ? 'টিপস: আপনি একটি ক্লাস থেকে ডাটা এক্সপোর্ট করে সেটিকেই ফরম্যাট হিসেবে ব্যবহার করতে পারেন।' 
+              : 'Tip: You can export data from a class and use that file as a template.'}
+          </p>
+        </div>
+      </div>
 
       <div className="bg-white/5 rounded-3xl p-6 border border-white/10 space-y-4">
         <div className="flex items-center gap-3">
