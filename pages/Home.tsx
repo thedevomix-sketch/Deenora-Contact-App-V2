@@ -68,28 +68,34 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
   }
 
   return (
-    <div className="space-y-5 animate-in fade-in duration-500">
-      {/* Premium Search Input */}
-      <div className="relative group flex items-center">
-        <div className="absolute left-5 text-[#4B168A] group-focus-within:scale-110 transition-transform z-10 pointer-events-none">
-          <Search size={20} strokeWidth={3} />
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Redesigned Premium Search Bar */}
+      <div className="relative z-20 group px-1">
+        <div className="absolute -inset-1 bg-gradient-to-r from-[#8D30F4] to-[#A179FF] rounded-[2.2rem] blur opacity-10 group-focus-within:opacity-30 transition duration-500"></div>
+        <div className="relative flex items-center">
+          <div className="absolute left-6 text-[#8D30F4] transition-all duration-300 group-focus-within:scale-110 group-focus-within:rotate-12 z-10">
+            <Search size={22} strokeWidth={2.5} />
+          </div>
+          <input
+            type="text"
+            placeholder={t('search_placeholder', lang)}
+            className="w-full pl-16 pr-14 py-5 bg-white/95 backdrop-blur-2xl border border-white/50 rounded-[2rem] outline-none text-[#2E0B5E] placeholder:text-[#9B6DFF]/60 font-bold text-base shadow-[0_15px_40px_-10px_rgba(46,11,94,0.2)] focus:shadow-[0_20px_60px_-10px_rgba(141,48,244,0.3)] focus:border-[#8D30F4]/30 transition-all duration-300"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button 
+              onClick={() => setSearchQuery('')} 
+              className="absolute right-5 p-2 bg-[#F2EBFF] text-[#8D30F4] rounded-2xl hover:bg-[#8D30F4] hover:text-white active:scale-90 transition-all duration-200 shadow-sm flex items-center justify-center z-10"
+            >
+              <X size={18} strokeWidth={3} />
+            </button>
+          )}
         </div>
-        <input
-          type="text"
-          placeholder={t('search_placeholder', lang)}
-          className="w-full pl-13 pr-11 py-4.5 bg-white/95 border-2 border-white/20 rounded-[1.5rem] outline-none text-[#2D3142] placeholder:text-[#9B6DFF] font-black text-sm focus:border-[#8D30F4] shadow-xl transition-all backdrop-blur-md"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
-        {searchQuery && (
-          <button onClick={() => setSearchQuery('')} className="absolute right-4 p-1.5 text-[#A179FF] active:scale-90 transition-all z-10">
-            <X size={18} strokeWidth={3} />
-          </button>
-        )}
       </div>
 
       {searchQuery.length > 0 && (
-        <div className="space-y-2.5 animate-in slide-in-from-top-3">
+        <div className="space-y-2.5 animate-in slide-in-from-top-3 px-1">
           <h2 className="text-[10px] font-black text-white uppercase tracking-[0.2em] px-3 drop-shadow-md opacity-80">
             {loadingSearch ? (lang === 'bn' ? 'খোঁজা হচ্ছে...' : 'Searching...') : (lang === 'bn' ? 'সার্চ ফলাফল' : 'Search Results')}
           </h2>
@@ -108,8 +114,8 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
       )}
 
       {/* Recent Activity - Reduced Size Cards */}
-      <div className="space-y-3.5">
-        <div className="flex items-center justify-between px-4">
+      <div className="space-y-3.5 px-1">
+        <div className="flex items-center justify-between px-3">
           <h2 className="text-[10px] font-black text-white uppercase tracking-[0.3em] drop-shadow-md opacity-80">{t('recent_calls', lang)}</h2>
           <button onClick={() => fetchRecentCalls(true)} className="p-2 bg-white/20 rounded-xl text-white backdrop-blur-md active:scale-95 transition-all">
             <RefreshCw size={14} strokeWidth={3} className={loadingRecent ? 'animate-spin' : ''} />
