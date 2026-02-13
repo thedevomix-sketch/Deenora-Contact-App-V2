@@ -38,8 +38,8 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
         'Class': (s as any).classes?.class_name || '',
         'Roll': s.roll || '',
         'Student Name': s.student_name || '',
-        'Guardian Name': s.guardian_name || '',
         'Guardian Phone': s.guardian_phone || '',
+        'Guardian Name': s.guardian_name || '',
         'Guardian Phone 2': s.guardian_phone_2 || ''
       }));
 
@@ -75,7 +75,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
 
           const classesMap = new Map();
           const processedStudents: any[] = [];
-          const localFingerprints = new Set(); // Internal file duplicate check
+          const localFingerprints = new Set(); 
 
           rows.forEach((row, idx) => {
             const className = (row['Class'] || row['class'] || row['শ্রেণি'] || 'General').toString().trim();
@@ -85,9 +85,8 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
             const studentName = (row['Student Name'] || row['Name'] || row['ছাত্রের নাম'] || row['name'] || '').toString().trim();
             const phone = (row['Guardian Phone'] || row['Phone'] || row['মোবাইল'] || row['phone'] || '').toString().trim();
             
-            if (!studentName || !phone) return; // Skip empty rows
+            if (!studentName || !phone) return; 
 
-            // Local duplicate check within the file (Class + Roll OR Class + Name + Phone)
             const fingerprint = `${className}_${roll}_${studentName}_${phone}`;
             if (localFingerprints.has(fingerprint)) return;
             localFingerprints.add(fingerprint);
@@ -130,7 +129,6 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
     setStatus({ type: 'idle', message: '' });
 
     try {
-      // Step 0: Get existing students to prevent duplication
       const { data: existingStudents } = await supabase
         .from('students')
         .select('class_id, student_name, guardian_phone, roll')
@@ -145,7 +143,6 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
 
       const classIdMap: Record<string, string> = {};
       
-      // Step 1: Sync Classes
       for (const cls of importPreview.classes) {
         const { data: existing } = await supabase
           .from('classes')
@@ -166,7 +163,6 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
         }
       }
 
-      // Step 2: Sync Students with Duplicate Detection
       let importedCount = 0;
       let skippedCount = 0;
 
@@ -174,9 +170,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
         const actualClassId = classIdMap[s.class_id];
         if (!actualClassId) continue;
 
-        // CHECK 1: Same Name + Same Phone in Same Class
         const studentFingerprint = `${actualClassId}:${s.student_name.toLowerCase()}:${s.guardian_phone}`;
-        // CHECK 2: Same Roll in Same Class
         const rollFingerprint = s.roll ? `${actualClassId}:${s.roll}` : null;
 
         if (existingFingerprints.has(studentFingerprint) || (rollFingerprint && existingRolls.has(rollFingerprint))) {
@@ -195,7 +189,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
         });
 
         if (studentError) {
-          if (studentError.code === '23505') { // DB Level Unique Constraint
+          if (studentError.code === '23505') { 
             skippedCount++;
             continue;
           }
@@ -373,12 +367,12 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
                 <td className="px-3 py-2 font-noto">ছাত্রের নাম</td>
               </tr>
               <tr className="border-b border-white/5">
-                <td className="px-3 py-2 font-mono">Guardian Name</td>
-                <td className="px-3 py-2 font-noto">অভিভাবক</td>
-              </tr>
-              <tr className="border-b border-white/5">
                 <td className="px-3 py-2 font-mono">Guardian Phone</td>
                 <td className="px-3 py-2 font-noto">মোবাইল</td>
+              </tr>
+              <tr className="border-b border-white/5">
+                <td className="px-3 py-2 font-mono">Guardian Name</td>
+                <td className="px-3 py-2 font-noto">অভিভাবক</td>
               </tr>
               <tr>
                 <td className="px-3 py-2 font-mono">Guardian Phone 2</td>
