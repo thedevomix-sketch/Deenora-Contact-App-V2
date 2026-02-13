@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Wallet, MessageSquare, Plus, Trash2, CreditCard, Loader2, Check, Save, Edit3, Send, ChevronDown, BookOpen, Users, CheckCircle2, AlertCircle, History, Smartphone, X, Type } from 'lucide-react';
 import { supabase, offlineApi, smsApi } from '../supabase';
@@ -412,32 +413,32 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
         </div>
       )}
 
-      {/* Modern Full-Screen Template Editor - No Dark Backdrop */}
+      {/* Modern High-End Template Editor - Fixed Backdrop and Contrast */}
       {showTemplateModal && (
-        <div className="fixed inset-0 bg-[#d35132] z-[400] flex flex-col animate-in fade-in duration-300 overflow-hidden">
-          {/* Header */}
-          <div className="flex-none px-6 pt-[calc(env(safe-area-inset-top,20px)+10px)] pb-4 flex items-center justify-between border-b border-white/10 bg-[#d35132]">
-            <div className="flex items-center gap-3">
-               <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white shadow-inner">
-                  <MessageSquare size={20} />
-               </div>
-               <h2 className="text-xl font-black text-white font-noto">
-                 {editingTemplate ? t('edit_class', lang) : t('new_template', lang)}
-               </h2>
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-2xl z-[400] flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+          <div className="bg-[#d35132] w-full max-w-md rounded-[3rem] shadow-[0_30px_90px_-15px_rgba(0,0,0,0.5)] border border-white/20 overflow-hidden flex flex-col relative animate-in zoom-in-95">
+            {/* Header */}
+            <div className="px-8 py-6 flex items-center justify-between bg-white/10 border-b border-white/10">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center text-white shadow-inner">
+                  <MessageSquare size={24} />
+                </div>
+                <h2 className="text-xl font-black text-white font-noto tracking-tight">
+                  {editingTemplate ? t('edit_class', lang) : t('new_template', lang)}
+                </h2>
+              </div>
+              <button 
+                onClick={() => setShowTemplateModal(false)} 
+                className="p-3 bg-white/15 rounded-2xl text-white active:scale-90 transition-all border border-white/10 hover:bg-white/25"
+              >
+                <X size={24} />
+              </button>
             </div>
-            <button 
-              onClick={() => setShowTemplateModal(false)} 
-              className="p-2.5 bg-white/15 rounded-xl text-white active:scale-90 transition-all border border-white/10 shadow-lg"
-            >
-              <X size={22} />
-            </button>
-          </div>
-          
-          {/* Scrollable Content */}
-          <div className="flex-1 overflow-y-auto px-6 pt-8 pb-32">
-            <div className="max-w-md mx-auto space-y-8">
-              <form onSubmit={handleSaveTemplate} className="space-y-8">
-                <div className="space-y-3">
+            
+            {/* Editor Content */}
+            <div className="p-8 space-y-6 overflow-y-auto max-h-[70vh]">
+              <form onSubmit={handleSaveTemplate} className="space-y-6">
+                <div className="space-y-2">
                   <label className="text-[11px] font-black text-white/50 uppercase tracking-[0.2em] px-1 flex items-center gap-2">
                     <Type size={12} /> {t('template_title', lang)}
                   </label>
@@ -445,13 +446,13 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
                     type="text" 
                     required 
                     placeholder="e.g. ছুটির নোটিশ" 
-                    className="w-full px-6 py-5 bg-white/10 border-2 border-white/10 rounded-3xl text-white font-bold outline-none focus:bg-white/20 focus:border-white/30 transition-all shadow-inner text-lg font-noto" 
+                    className="w-full px-6 py-4.5 bg-white/15 border border-white/20 rounded-2xl text-white font-bold outline-none focus:bg-white/25 focus:border-white/40 transition-all shadow-inner text-base font-noto placeholder:text-white/30" 
                     value={templateTitle} 
                     onChange={(e) => setTemplateTitle(e.target.value)} 
                   />
                 </div>
                 
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between px-1">
                     <label className="text-[11px] font-black text-white/50 uppercase tracking-[0.2em] flex items-center gap-2">
                       <BookOpen size={12} /> {t('template_body', lang)}
@@ -463,24 +464,24 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
                   <textarea 
                     required 
                     placeholder="মেসেজের মূল অংশ এখানে লিখুন..." 
-                    className="w-full h-64 px-6 py-5 bg-white/10 border-2 border-white/10 rounded-[2.5rem] text-white font-medium outline-none focus:bg-white/20 focus:border-white/30 transition-all resize-none shadow-inner leading-relaxed text-base font-noto" 
+                    className="w-full h-48 px-6 py-5 bg-white/15 border border-white/20 rounded-[2rem] text-white font-medium outline-none focus:bg-white/25 focus:border-white/40 transition-all resize-none shadow-inner leading-relaxed text-sm font-noto placeholder:text-white/30" 
                     value={templateBody} 
                     onChange={(e) => setTemplateBody(e.target.value)} 
                   />
                 </div>
                 
-                <div className="pt-4 space-y-4">
+                <div className="pt-4 flex flex-col gap-3">
                   <button 
                     type="submit" 
                     disabled={savingTemplate} 
-                    className="w-full py-5 bg-white text-[#d35132] font-black rounded-[2rem] shadow-2xl active:scale-[0.97] transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-50"
+                    className="w-full py-5 bg-white text-[#d35132] font-black rounded-2xl shadow-2xl active:scale-[0.97] transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-50"
                   >
                     {savingTemplate ? <Loader2 className="animate-spin" size={24} /> : <><Save size={22} /> {t('save', lang)}</>}
                   </button>
                   <button 
                     type="button"
                     onClick={() => setShowTemplateModal(false)}
-                    className="w-full py-4 text-white/50 font-black uppercase tracking-[0.2em] text-[11px] active:text-white transition-colors flex items-center justify-center gap-2"
+                    className="w-full py-4 text-white/60 font-black uppercase tracking-[0.2em] text-[11px] active:text-white transition-colors"
                   >
                     {t('cancel', lang)}
                   </button>

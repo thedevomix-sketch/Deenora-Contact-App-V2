@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Plus, ChevronRight, BookOpen, Loader2, Edit2, X, Trash2, AlertTriangle } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
@@ -190,7 +191,7 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
 
       {/* Class Form Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-[#d35132]/80 backdrop-blur-md z-[100] flex items-center justify-center p-6 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xl z-[100] flex items-center justify-center p-6 animate-in fade-in duration-200">
           <div className="bg-[#e57d4a] w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 border border-white/30 animate-in zoom-in-95 relative">
             <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 text-white/60 hover:text-white"><X size={24} /></button>
             <h2 className="text-2xl font-black text-white mb-6 text-center font-noto">{editingClass ? t('edit_class', lang) : t('new_class', lang)}</h2>
@@ -210,10 +211,10 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
         </div>
       )}
 
-      {/* Delete Confirmation Modal - Optimized Layout and Removed Black Backdrop */}
+      {/* Delete Confirmation Modal - No more solid orange background */}
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-[#d35132]/80 backdrop-blur-md z-[110] flex items-center justify-center p-6 animate-in fade-in zoom-in-95">
-          <div className="bg-white w-full max-w-[340px] rounded-[3rem] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.5)] p-8 text-center relative border border-white/20 flex flex-col items-center">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-xl z-[110] flex items-center justify-center p-6 animate-in fade-in zoom-in-95">
+          <div className="bg-white w-full max-w-[340px] rounded-[3rem] shadow-[0_20px_60px_-10px_rgba(0,0,0,0.4)] p-8 text-center relative border border-white/20 flex flex-col items-center">
             <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mb-6 text-red-500 shadow-inner shrink-0">
               <AlertTriangle size={40} />
             </div>
@@ -222,7 +223,7 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
               {lang === 'bn' ? 'আপনি কি নিশ্চিতভাবে ডিলিট করতে চান?' : t('confirm_delete', lang)}
             </h2>
             
-            <p className="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-8 leading-relaxed px-4">
+            <p className="text-slate-400 text-[11px] font-bold uppercase tracking-wider mb-8 leading-relaxed px-4 text-center">
               {lang === 'bn' 
                 ? 'এই ক্লাসটি ডিলিট করলে এর সকল ছাত্রের তথ্যও মুছে যাবে।' 
                 : 'Deleting this class will also remove all student records inside it.'}
