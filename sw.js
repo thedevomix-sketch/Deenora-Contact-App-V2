@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'madrasah-app-v8';
+const CACHE_NAME = 'madrasah-app-v9';
 const ASSETS = [
   './',
   './index.html',

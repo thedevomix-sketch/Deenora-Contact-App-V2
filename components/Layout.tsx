@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Home, User, BookOpen, Wallet, ShieldCheck, BarChart3, Clock } from 'lucide-react';
+import { Home, User, BookOpen, Wallet, ShieldCheck, BarChart3, Clock, RefreshCw } from 'lucide-react';
 import { View, Language, Madrasah } from '../types';
 import { t } from '../translations';
 
@@ -10,9 +10,10 @@ interface LayoutProps {
   setView: (view: View) => void;
   lang: Language;
   madrasah: Madrasah | null;
+  onUpdateClick?: () => void;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, madrasah }) => {
+const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, madrasah, onUpdateClick }) => {
   const isSuperAdmin = madrasah?.is_super_admin === true;
 
   const isTabActive = (tab: string) => {
@@ -62,6 +63,15 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
             )}
           </div>
         </div>
+        
+        {/* Force Update Button in Header */}
+        <button 
+          onClick={onUpdateClick}
+          className="p-2.5 bg-white/10 rounded-xl text-white/60 active:scale-90 active:text-white transition-all border border-white/10 backdrop-blur-md"
+          title="Update App"
+        >
+          <RefreshCw size={18} />
+        </button>
       </header>
 
       {/* Content Area */}

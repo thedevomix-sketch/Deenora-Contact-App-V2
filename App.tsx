@@ -32,7 +32,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.1.2-GOLD-SMS";
+  const APP_VERSION = "2.1.3-GOLD";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -54,10 +54,14 @@ const App: React.FC = () => {
         await registration.unregister();
       }
     }
+    // Clear all related caches
+    const cacheNames = await caches.keys();
+    await Promise.all(cacheNames.map(name => caches.delete(name)));
+    
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('cache_')) localStorage.removeItem(key);
     });
-    // Fix: reload() expects 0 arguments in standard TypeScript Location definition.
+    
     window.location.reload();
   };
 
@@ -175,7 +179,13 @@ const App: React.FC = () => {
         </div>
       )}
       
-      <Layout currentView={view} setView={navigateTo} lang={lang} madrasah={madrasah}>
+      <Layout 
+        currentView={view} 
+        setView={navigateTo} 
+        lang={lang} 
+        madrasah={madrasah} 
+        onUpdateClick={forceUpdate}
+      >
         {view === 'home' && (
           isSuperAdmin ? <AdminPanel lang={lang} currentView="list" /> : 
           <Home onStudentClick={(s) => { setSelectedStudent(s); setView('student-details'); }} lang={lang} dataVersion={dataVersion} triggerRefresh={triggerRefresh} />

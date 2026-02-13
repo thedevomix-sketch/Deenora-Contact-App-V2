@@ -244,7 +244,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
 
       {/* Floating Action Menu (Always Visible when in Selection Mode) */}
       {isSelectionMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+100px)] left-4 right-4 z-[150] animate-in slide-in-from-bottom-10">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+85px)] left-4 right-4 z-[150] animate-in slide-in-from-bottom-10">
           <div className="bg-white rounded-[2.5rem] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20 ring-4 ring-black/5 flex flex-col gap-3">
             
             {/* Template Selector - Large & Explicit */}
