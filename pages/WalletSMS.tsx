@@ -13,7 +13,7 @@ interface WalletSMSProps {
 }
 
 const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, dataVersion }) => {
-  const [activeTab, setActiveTab] = useState<'bulk-sms' | 'templates' | 'recharge'>('bulk-sms');
+  const [activeTab, setActiveTab] = useState<'templates' | 'bulk-sms' | 'recharge'>('templates');
   const [templates, setTemplates] = useState<SMSTemplate[]>([]);
   const [loading, setLoading] = useState(true);
   const [classes, setClasses] = useState<Class[]>([]);
@@ -148,21 +148,21 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
           className="absolute h-[calc(100%-12px)] rounded-[2rem] bg-white shadow-lg transition-all duration-500 ease-out z-0"
           style={{ 
             width: 'calc(33.33% - 8px)',
-            left: activeTab === 'bulk-sms' ? '6px' : activeTab === 'templates' ? '33.33%' : '66.66%',
-            marginLeft: activeTab === 'bulk-sms' ? '0px' : activeTab === 'templates' ? '4px' : '2px'
+            left: activeTab === 'templates' ? '6px' : activeTab === 'bulk-sms' ? '33.33%' : '66.66%',
+            marginLeft: activeTab === 'templates' ? '0px' : activeTab === 'bulk-sms' ? '4px' : '2px'
           }}
         />
-        {(['bulk-sms', 'templates', 'recharge'] as const).map(tab => (
+        {(['templates', 'bulk-sms', 'recharge'] as const).map(tab => (
           <button 
             key={tab} 
             onClick={() => setActiveTab(tab)} 
             className={`relative flex-1 py-4.5 rounded-[2rem] font-black text-[12px] uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all duration-300 z-10 ${activeTab === tab ? 'text-[#8D30F4]' : 'text-white/70 hover:text-white'}`}
           >
-            {tab === 'bulk-sms' && <Send size={18} className={activeTab === tab ? 'animate-bounce' : ''} />}
             {tab === 'templates' && <MessageSquare size={18} />}
+            {tab === 'bulk-sms' && <Send size={18} className={activeTab === tab ? 'animate-bounce' : ''} />}
             {tab === 'recharge' && <CreditCard size={18} />}
             <span className="truncate">
-              {tab === 'bulk-sms' ? t('bulk_sms', lang) : tab === 'templates' ? t('templates', lang) : t('recharge', lang)}
+              {tab === 'templates' ? t('templates', lang) : tab === 'bulk-sms' ? t('bulk_sms', lang) : t('recharge', lang)}
             </span>
           </button>
         ))}
