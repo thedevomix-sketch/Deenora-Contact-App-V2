@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { ArrowLeft, Download, Upload, Loader2, CheckCircle2, FileSpreadsheet, Table, X, AlertTriangle, FileUp } from 'lucide-react';
 import { supabase } from '../supabase';
@@ -28,8 +27,10 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
       const excelData = students.map(s => ({ 
         'Class': (s as any).classes?.class_name || 'N/A', 
         'Roll': s.roll || '', 
-        'Name': s.student_name, 
-        'Phone': s.guardian_phone 
+        'Student Name': s.student_name, 
+        'Guardian Name': s.guardian_name || '',
+        'Guardian Phone': s.guardian_phone,
+        'Guardian Phone 2': s.guardian_phone_2 || ''
       }));
       
       const ws = XLSX.utils.json_to_sheet(excelData);
@@ -64,20 +65,21 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
           const sheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 'A' }) as any[];
 
-          // Skip header row if it contains labels
+          // Skip header row
           const rows = jsonData.slice(1);
           if (rows.length === 0) throw new Error("File is empty");
 
           let successCount = 0;
           let total = rows.length;
 
-          // Process in chunks to avoid overloading
           for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
             const className = String(row.A || '').trim();
             const roll = parseInt(row.B) || null;
             const studentName = String(row.C || '').trim();
-            const phone = String(row.D || '').trim();
+            const guardianName = String(row.D || '').trim();
+            const phone = String(row.E || '').trim();
+            const phone2 = String(row.F || '').trim();
 
             if (!studentName || !phone || !className) continue;
 
@@ -102,7 +104,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
               classId = newClass.id;
             }
 
-            // 2. Insert student
+            // 2. Insert student (using upsert logic manually or handling errors)
             const { error: studentError } = await supabase
               .from('students')
               .insert({
@@ -110,7 +112,9 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
                 class_id: classId,
                 student_name: studentName,
                 roll: roll,
-                guardian_phone: phone
+                guardian_name: guardianName || null,
+                guardian_phone: phone,
+                guardian_phone_2: phone2 || null
               });
 
             if (!studentError) successCount++;
@@ -208,12 +212,14 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
           <Table size={24} />
           <h3 className="text-lg font-black font-noto">এক্সেল ফরম্যাট গাইড</h3>
         </div>
-        <p className="text-xs font-bold text-slate-400 leading-relaxed px-1">আপনার এক্সেল ফাইলটি নিচের ফরম্যাটে হতে হবে (প্রথম রো হেডার হিসেবে গন্য হবে):</p>
+        <p className="text-xs font-bold text-slate-400 leading-relaxed px-1">আপনার এক্সেল ফাইলটি নিচের ৬টি কলামের ফরম্যাটে হতে হবে:</p>
         <div className="grid grid-cols-2 gap-3">
-           <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Column A</p><p className="font-black text-[#8D30F4]">শ্রেণি</p></div>
-           <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Column B</p><p className="font-black text-[#8D30F4]">রোল</p></div>
-           <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Column C</p><p className="font-black text-[#8D30F4]">ছাত্রের নাম</p></div>
-           <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Column D</p><p className="font-black text-[#8D30F4]">মোবাইল</p></div>
+           <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Col A</p><p className="font-black text-[#8D30F4]">Class</p></div>
+           <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Col B</p><p className="font-black text-[#8D30F4]">Roll</p></div>
+           <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Col C</p><p className="font-black text-[#8D30F4]">Student Name</p></div>
+           <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Col D</p><p className="font-black text-[#8D30F4]">Guardian Name</p></div>
+           <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Col E</p><p className="font-black text-[#8D30F4]">Phone 1</p></div>
+           <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Col F</p><p className="font-black text-[#8D30F4]">Phone 2</p></div>
         </div>
       </div>
     </div>

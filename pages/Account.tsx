@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { LogOut, Camera, Loader2, Lock, User as UserIcon, ShieldCheck, Database, Phone, ChevronRight, Hash, RefreshCw, Copy, Check } from 'lucide-react';
 import { supabase } from '../supabase';
@@ -58,7 +57,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
   const handleForceUpdate = () => {
     if (confirm(lang === 'bn' ? 'আপনি কি অ্যাপটি রিফ্রেশ করতে চান?' : 'Do you want to force update the app?')) {
-      // Access the forceUpdate logic indirectly by reloading with a cache buster
       window.location.replace(window.location.origin + window.location.pathname + '?v=' + Date.now());
     }
   };
@@ -94,13 +92,13 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" />
           </div>
           <div>
-            <h2 className="text-2xl font-black text-[#2E0B5E] font-noto leading-tight">{madrasah.name}</h2>
-            <div onClick={copyId} className="mt-3 flex items-center justify-center gap-2 cursor-pointer group">
-              <Hash size={12} className="text-[#A179FF]" />
-              <p className="text-[10px] font-black text-[#A179FF] uppercase tracking-widest truncate max-w-[200px]">
+            <h2 className="text-2xl font-black text-[#2E0B5E] font-noto leading-tight">{newName || madrasah.name}</h2>
+            <div onClick={copyId} className="mt-4 bg-[#F2EBFF] px-6 py-3 rounded-2xl border border-[#8D30F4]/10 flex items-center justify-center gap-3 cursor-pointer group active:scale-95 transition-all">
+              <Hash size={16} className="text-[#8D30F4]" />
+              <p className="text-[11px] font-black text-[#8D30F4] uppercase tracking-widest truncate max-w-[180px]">
                 ID: {madrasah.id}
               </p>
-              {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} className="text-[#A179FF] opacity-0 group-hover:opacity-100 transition-opacity" />}
+              {copied ? <Check size={16} className="text-green-500" /> : <Copy size={16} className="text-[#8D30F4] opacity-40 group-hover:opacity-100" />}
             </div>
           </div>
         </div>
@@ -124,7 +122,14 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                 <ChevronRight size={24} className="text-[#8D30F4]/40 group-hover:translate-x-2 transition-transform" />
            </button>
 
-           <div className="space-y-4">
+           <div className="space-y-4 pt-4">
+              <div className="bg-[#F2EBFF] p-6 rounded-[2rem] border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all">
+                <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1 block mb-2">{t('madrasah_name', lang)}</label>
+                <div className="flex items-center gap-4">
+                  <UserIcon size={22} className="text-[#8D30F4]" />
+                  <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-lg w-full" value={newName} onChange={(e) => setNewName(e.target.value)} />
+                </div>
+              </div>
               <div className="bg-[#F2EBFF] p-6 rounded-[2rem] border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all">
                 <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1 block mb-2">{t('madrasah_code', lang)}</label>
                 <div className="flex items-center gap-4">
