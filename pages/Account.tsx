@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, Check, Smartphone, Copy, Camera, Loader2, RefreshCw, Lock, User as UserIcon, BookOpen, ShieldCheck, Database, ChevronDown, Phone } from 'lucide-react';
+import { LogOut, Check, Smartphone, Copy, Camera, Loader2, RefreshCw, Lock, User as UserIcon, BookOpen, ShieldCheck, Database, ChevronDown, Phone, Sparkles } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
@@ -33,6 +33,18 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       setNewLoginCode(initialMadrasah.login_code || '');
     }
   }, [initialMadrasah]);
+
+  const forceUpdate = async () => {
+    if (confirm(lang === 'bn' ? 'অ্যাপ আপডেট করতে ক্যাশ ক্লিয়ার হবে। নিশ্চিত?' : 'Clear cache and update app?')) {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let reg of registrations) await reg.unregister();
+      }
+      Object.keys(localStorage).forEach(k => { if(k.startsWith('cache_')) localStorage.removeItem(k); });
+      // Fix: reload() expects 0 arguments in standard TypeScript Location definition.
+      window.location.reload();
+    }
+  };
 
   const handleUpdate = async () => {
     if (!madrasah) return;
@@ -174,25 +186,40 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
           </div>
         </div>
 
-        {!isSuperAdmin && (
+        <div className="grid grid-cols-1 gap-3">
+          {!isSuperAdmin && (
+            <button 
+              onClick={() => setView('data-management')}
+              className="w-full flex items-center justify-between p-4 bg-white/10 border border-white/20 rounded-2xl hover:bg-white/20 transition-all group"
+            >
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-white/20 rounded-xl text-white group-hover:scale-110 transition-transform">
+                  <Database size={20} />
+                </div>
+                <div className="text-left">
+                  <p className="text-sm font-black text-white">{lang === 'bn' ? 'ডাটা ব্যাকআপ ও রিস্টোর' : 'Data Backup & Restore'}</p>
+                </div>
+              </div>
+              <ChevronDown size={18} className="-rotate-90 text-white/30" />
+            </button>
+          )}
+
           <button 
-            onClick={() => setView('data-management')}
+            onClick={forceUpdate}
             className="w-full flex items-center justify-between p-4 bg-white/10 border border-white/20 rounded-2xl hover:bg-white/20 transition-all group"
           >
             <div className="flex items-center gap-3">
-              <div className="p-2 bg-white/20 rounded-xl text-white group-hover:scale-110 transition-transform">
-                <Database size={20} />
+              <div className="p-2 bg-yellow-400/20 rounded-xl text-yellow-400 group-hover:scale-110 transition-transform">
+                <Sparkles size={20} />
               </div>
               <div className="text-left">
-                <p className="text-sm font-black text-white">{lang === 'bn' ? 'ডাটা ব্যাকআপ ও রিস্টোর' : 'Data Backup & Restore'}</p>
-                <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest">{lang === 'bn' ? 'এক্সপোর্ট ও ইমপোর্ট করুন' : 'Export & Import Data'}</p>
+                <p className="text-sm font-black text-white">{lang === 'bn' ? 'অ্যাপ আপডেট করুন' : 'Update App Version'}</p>
+                <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">{lang === 'bn' ? 'ক্যাশ ক্লিয়ার করুন' : 'Clear Cache & Reload'}</p>
               </div>
             </div>
-            <div className="p-2 text-white/30 group-hover:text-white transition-colors">
-               <ChevronDown size={20} className="-rotate-90" />
-            </div>
+            <RefreshCw size={18} className="text-white/30" />
           </button>
-        )}
+        </div>
 
         <div className="space-y-4 pt-2 text-left">
           <div className="space-y-3">

@@ -32,7 +32,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.1.1-GOLD-SMS";
+  const APP_VERSION = "2.1.2-GOLD-SMS";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -57,6 +57,7 @@ const App: React.FC = () => {
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('cache_')) localStorage.removeItem(key);
     });
+    // Fix: reload() expects 0 arguments in standard TypeScript Location definition.
     window.location.reload();
   };
 

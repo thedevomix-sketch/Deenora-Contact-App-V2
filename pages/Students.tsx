@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash, CheckCircle2, MessageSquare, Send, X, BookOpen, ChevronDown, Check, Trash2 } from 'lucide-react';
+import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash, CheckCircle2, MessageSquare, Send, X, BookOpen, ChevronDown, Check, Trash2, LayoutGrid } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Class, Student, Language, SMSTemplate } from '../types';
 import { t } from '../translations';
@@ -131,7 +131,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   };
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative min-h-[80vh] pb-60">
+    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative min-h-[85vh] pb-72">
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -242,37 +242,35 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
         </div>
       )}
 
-      {/* FIXED Multi-Selection Footer Action Bar */}
+      {/* Floating Action Menu (Always Visible when in Selection Mode) */}
       {isSelectionMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+90px)] left-4 right-4 z-[100] animate-in slide-in-from-bottom-10">
-          <div className="bg-white rounded-[2.5rem] p-5 shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] border border-slate-100 flex flex-col gap-4 ring-1 ring-black/5">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+100px)] left-4 right-4 z-[150] animate-in slide-in-from-bottom-10">
+          <div className="bg-white rounded-[2.5rem] p-4 shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/20 ring-4 ring-black/5 flex flex-col gap-3">
             
-            {/* Step 1: Template Selection Row */}
+            {/* Template Selector - Large & Explicit */}
             <div className="relative">
-              <label className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] ml-3 mb-2 block">
-                {lang === 'bn' ? '১. টেমপ্লেট বাছাই করুন' : '1. Select Template'}
-              </label>
               <button 
                 onClick={() => setShowTemplateMenu(!showTemplateMenu)}
-                className={`w-full flex items-center justify-between px-5 py-4 rounded-2xl text-[13px] font-black transition-all border-2 ${selectedTemplate ? 'bg-[#d35132]/5 border-[#d35132] text-[#d35132]' : 'bg-slate-100 border-slate-100 text-slate-500'}`}
+                className={`w-full flex items-center justify-between p-4 rounded-2xl text-[14px] font-black transition-all border-2 ${selectedTemplate ? 'bg-[#d35132]/5 border-[#d35132] text-[#d35132]' : 'bg-slate-100 border-slate-200 text-slate-500'}`}
               >
                 <div className="flex items-center gap-3 truncate">
-                  <BookOpen size={18} className={selectedTemplate ? 'text-[#d35132]' : 'text-slate-400'} />
-                  <span className="truncate">{selectedTemplate ? selectedTemplate.title : (lang === 'bn' ? 'টেমপ্লেট সিলেক্ট করুন' : 'Choose a template')}</span>
+                  <BookOpen size={20} className={selectedTemplate ? 'text-[#d35132]' : 'text-slate-400'} />
+                  <span className="truncate">{selectedTemplate ? selectedTemplate.title : (lang === 'bn' ? '১. টেমপ্লেট বাছাই করুন' : '1. Choose Template')}</span>
                 </div>
-                <ChevronDown size={20} className={`transition-transform duration-300 ${showTemplateMenu ? 'rotate-180' : ''} ${selectedTemplate ? 'text-[#d35132]' : 'text-slate-400'}`} />
+                <ChevronDown size={22} className={`transition-transform duration-300 ${showTemplateMenu ? 'rotate-180' : ''} ${selectedTemplate ? 'text-[#d35132]' : 'text-slate-400'}`} />
               </button>
 
               {showTemplateMenu && (
-                <div className="absolute bottom-full left-0 right-0 mb-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 max-h-64 overflow-y-auto z-[110] animate-in slide-in-from-bottom-4 p-2 ring-1 ring-black/5">
-                  <div className="px-4 py-2 border-b border-slate-50 mb-1">
+                <div className="absolute bottom-full left-0 right-0 mb-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 max-h-64 overflow-y-auto z-[160] animate-in slide-in-from-bottom-4 p-2 ring-1 ring-black/5">
+                  <div className="px-4 py-3 border-b border-slate-50 mb-1 flex items-center gap-2">
+                    <LayoutGrid size={14} className="text-slate-400" />
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Available Templates</p>
                   </div>
                   {templates.length > 0 ? templates.map(tmp => (
                     <button 
                       key={tmp.id}
                       onClick={() => { setSelectedTemplate(tmp); setShowTemplateMenu(false); }}
-                      className={`w-full text-left px-4 py-4 rounded-xl flex items-center justify-between transition-all ${selectedTemplate?.id === tmp.id ? 'bg-[#d35132] text-white shadow-lg' : 'hover:bg-slate-50 text-slate-700'}`}
+                      className={`w-full text-left px-4 py-4 rounded-xl flex items-center justify-between transition-all ${selectedTemplate?.id === tmp.id ? 'bg-[#d35132] text-white shadow-lg scale-[1.02]' : 'hover:bg-slate-50 text-slate-700 active:bg-slate-100'}`}
                     >
                       <div className="min-w-0 pr-4">
                          <div className="flex items-center gap-2 mb-1">
@@ -295,21 +293,23 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
               )}
             </div>
 
-            {/* Step 2: Action Row */}
+            {/* Bottom Row - Status & Send Button */}
             <div className="flex items-center gap-3">
-              <div className="bg-slate-100 px-4 py-3 rounded-2xl flex items-center gap-3">
-                <div className="w-8 h-8 bg-[#d35132] rounded-full flex items-center justify-center text-white shadow-md">
+              <div className="bg-slate-50 px-4 py-3 rounded-2xl flex items-center gap-3 min-w-0 flex-1 border border-slate-100">
+                <div className="w-8 h-8 bg-[#d35132] rounded-full flex items-center justify-center text-white shadow-md shrink-0">
                   <span className="text-sm font-black">{selectedIds.size}</span>
                 </div>
-                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Selected</p>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Selected</p>
+                </div>
               </div>
               
               <button 
                 onClick={sendNativeSMS}
-                className={`flex-1 py-4 rounded-2xl flex items-center justify-center gap-2 font-black text-xs uppercase shadow-xl active:scale-95 transition-all ${selectedTemplate ? 'bg-[#d35132] text-white' : 'bg-slate-200 text-slate-400 pointer-events-none'}`}
+                className={`flex-[2] py-4 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase shadow-xl active:scale-95 transition-all ${selectedTemplate ? 'bg-[#d35132] text-white' : 'bg-slate-200 text-slate-400 pointer-events-none cursor-not-allowed'}`}
               >
                 <MessageSquare size={18} fill={selectedTemplate ? "white" : "none"} strokeWidth={selectedTemplate ? 1 : 3} />
-                {t('native_sms', lang)}
+                {lang === 'bn' ? 'মেসেজ পাঠান' : 'Send SMS'}
               </button>
             </div>
           </div>
