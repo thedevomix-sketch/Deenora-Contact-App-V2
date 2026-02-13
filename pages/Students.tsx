@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Plus, Search, CheckCircle2, MessageSquare, X, BookOpen, ChevronDown, Check, PhoneCall, Smartphone, Loader2, ListChecks, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Plus, Search, CheckCircle2, MessageSquare, X, BookOpen, ChevronDown, Check, PhoneCall, Smartphone, Loader2, ListChecks, MessageCircle, Phone } from 'lucide-react';
 import { supabase, offlineApi, smsApi } from '../supabase';
 import { Class, Student, Language } from '../types';
 import { t } from '../translations';
@@ -105,8 +105,12 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
       setIsSelectionMode(false);
       setSelectedIds(new Set());
     } catch (err: any) {
-      alert(lang === 'bn' ? 'ব্যর্থ হয়েছে: ' + err.message : 'Failed: ' + err.message);
+      alert(lang === 'bn' ? 'ব্যার্থ হয়েছে: ' + err.message : 'Failed: ' + err.message);
     } finally { setSending(false); }
+  };
+
+  const initiateNormalCall = (phone: string) => {
+    window.location.href = `tel:${phone}`;
   };
 
   const initiateWhatsAppMessage = (phone: string) => {
@@ -186,8 +190,8 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
             </div>
             {!isSelectionMode && (
               <div className="flex items-center gap-2 shrink-0 ml-2">
-                <button onClick={(e) => { e.stopPropagation(); initiateWhatsAppMessage(student.guardian_phone); }} className="w-10 h-10 bg-[#25d366]/10 text-[#25d366] rounded-xl active:scale-90 transition-all border border-[#25d366]/10 flex items-center justify-center shadow-sm">
-                  <MessageCircle size={18} fill="currentColor" />
+                <button onClick={(e) => { e.stopPropagation(); initiateNormalCall(student.guardian_phone); }} className="w-10 h-10 bg-[#8D30F4]/10 text-[#8D30F4] rounded-xl active:scale-90 transition-all border border-[#8D30F4]/10 flex items-center justify-center shadow-sm">
+                  <Phone size={18} fill="currentColor" />
                 </button>
                 <button onClick={(e) => { e.stopPropagation(); initiateWhatsAppCall(student.guardian_phone); }} className="w-10 h-10 bg-[#25d366] text-white rounded-xl shadow-lg active:scale-90 transition-all flex items-center justify-center border border-white/20">
                   <PhoneCall size={18} fill="currentColor" />

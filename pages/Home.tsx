@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Clock, User as UserIcon, RefreshCw, PhoneCall, X, MessageCircle } from 'lucide-react';
+import { Search, Clock, User as UserIcon, RefreshCw, PhoneCall, X, MessageCircle, Phone } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Student, RecentCall, Language } from '../types';
 import { t } from '../translations';
@@ -58,6 +58,10 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
     const timer = setTimeout(() => handleSearch(searchQuery), 300);
     return () => clearTimeout(timer);
   }, [searchQuery, handleSearch]);
+
+  const initiateNormalCall = (phone: string) => {
+    window.location.href = `tel:${phone}`;
+  };
 
   const initiateWhatsAppCall = (phone: string) => {
      window.location.href = `https://wa.me/88${phone.replace(/\D/g, '')}`;
@@ -145,8 +149,8 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-3">
-                   <div onClick={(e) => { e.stopPropagation(); call.students && initiateWhatsAppMessage(call.students.guardian_phone) }} className="w-10 h-10 bg-[#25d366]/10 text-[#25d366] rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all border border-[#25d366]/10">
-                     <MessageCircle size={20} fill="currentColor" />
+                   <div onClick={(e) => { e.stopPropagation(); call.students && initiateNormalCall(call.students.guardian_phone) }} className="w-10 h-10 bg-[#8D30F4]/10 text-[#8D30F4] rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all border border-[#8D30F4]/10">
+                     <Phone size={20} fill="currentColor" />
                    </div>
                    <div onClick={(e) => { e.stopPropagation(); call.students && initiateWhatsAppCall(call.students.guardian_phone) }} className="w-10 h-10 bg-[#25d366] text-white rounded-xl flex items-center justify-center shadow-lg active:scale-90 transition-all border border-white/20">
                      <PhoneCall size={20} fill="currentColor" />
