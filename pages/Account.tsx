@@ -35,14 +35,23 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   }, [initialMadrasah]);
 
   const forceUpdate = async () => {
-    if (confirm(lang === 'bn' ? 'অ্যাপ আপডেট করতে ক্যাশ ক্লিয়ার হবে। নিশ্চিত?' : 'Clear cache and update app?')) {
+    const confirmed = confirm(lang === 'bn' ? 'অ্যাপ আপডেট করতে ক্যাশ ক্লিয়ার হবে। নিশ্চিত?' : 'Clear cache and update app to the latest version?');
+    if (confirmed) {
       if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (let reg of registrations) await reg.unregister();
+        try {
+          const registrations = await navigator.serviceWorker.getRegistrations();
+          for (let reg of registrations) await reg.unregister();
+        } catch (e) {
+          console.warn("SW unregistration failed", e);
+        }
       }
       
-      const cacheNames = await caches.keys();
-      await Promise.all(cacheNames.map(name => caches.delete(name)));
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      } catch (e) {
+        console.warn("Cache clearing failed", e);
+      }
       
       Object.keys(localStorage).forEach(k => { if(k.startsWith('cache_')) localStorage.removeItem(k); });
       window.location.replace(window.location.origin + window.location.pathname);
@@ -209,19 +218,20 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
           <button 
             onClick={forceUpdate}
-            className="w-full flex items-center justify-between p-4 bg-white/15 border border-white/30 rounded-2xl hover:bg-white/25 transition-all group relative overflow-hidden"
+            className="w-full flex items-center justify-between p-4 bg-white/10 border border-white/20 rounded-2xl hover:bg-white/25 transition-all group relative overflow-hidden active:bg-white/30"
           >
             <div className="flex items-center gap-3">
               <div className="p-2 bg-yellow-400/20 rounded-xl text-yellow-400 group-hover:scale-110 transition-transform relative">
                 <Sparkles size={20} />
-                <div className="absolute inset-0 bg-yellow-400/10 blur-md rounded-full animate-pulse"></div>
+                <div className="absolute inset-0 bg-yellow-400/20 blur-lg rounded-full animate-pulse"></div>
               </div>
               <div className="text-left">
                 <p className="text-sm font-black text-white">{lang === 'bn' ? 'অ্যাপ আপডেট করুন' : 'Update App Version'}</p>
                 <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">{lang === 'bn' ? 'ক্যাশ ক্লিয়ার করুন' : 'Clear Cache & Reload'}</p>
               </div>
             </div>
-            <RefreshCw size={18} className="text-white/30 active:rotate-180 transition-all" />
+            <RefreshCw size={18} className="text-white/30 active:rotate-180 transition-transform" />
+            <div className="absolute top-0 right-0 h-full w-1.5 bg-yellow-400/20"></div>
           </button>
         </div>
 

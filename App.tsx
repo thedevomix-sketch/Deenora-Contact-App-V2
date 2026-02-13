@@ -49,9 +49,13 @@ const App: React.FC = () => {
 
   const forceUpdate = async () => {
     if ('serviceWorker' in navigator) {
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      for (let registration of registrations) {
-        await registration.unregister();
+      try {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let registration of registrations) {
+          await registration.unregister();
+        }
+      } catch (e) {
+        console.warn("Service worker unregistration failed", e);
       }
     }
     
@@ -66,6 +70,7 @@ const App: React.FC = () => {
       if (key.startsWith('cache_')) localStorage.removeItem(key);
     });
     
+    // Using replace to ensure we don't carry over any old state/parameters
     window.location.replace(window.location.origin + window.location.pathname);
   };
 

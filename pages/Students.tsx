@@ -242,12 +242,12 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
         </div>
       )}
 
-      {/* Floating Action Menu (Always Visible when in Selection Mode) */}
+      {/* Floating Action Menu - Adjusted positioning to clear Nav Bar */}
       {isSelectionMode && selectedIds.size > 0 && (
-        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+80px)] left-4 right-4 z-[150] animate-in slide-in-from-bottom-10">
-          <div className="bg-white rounded-[2.5rem] p-4 shadow-[0_20px_60px_rgba(0,0,0,0.35)] border border-white/20 ring-4 ring-black/5 flex flex-col gap-3">
+        <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+86px)] left-4 right-4 z-[150] animate-in slide-in-from-bottom-10">
+          <div className="bg-white rounded-[2.5rem] p-4 shadow-[0_25px_60px_rgba(0,0,0,0.4)] border border-white/20 ring-4 ring-black/5 flex flex-col gap-3">
             
-            {/* Template Selector - Large & Explicit */}
+            {/* Template Selector */}
             <div className="relative">
               <button 
                 onClick={() => setShowTemplateMenu(!showTemplateMenu)}
@@ -293,7 +293,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
               )}
             </div>
 
-            {/* Bottom Row - Status & Send Button */}
+            {/* Bottom Row */}
             <div className="flex items-center gap-3">
               <div className="bg-slate-50 px-4 py-3 rounded-2xl flex items-center gap-3 min-w-0 flex-1 border border-slate-100">
                 <div className="w-8 h-8 bg-[#d35132] rounded-full flex items-center justify-center text-white shadow-md shrink-0">
