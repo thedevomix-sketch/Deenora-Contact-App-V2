@@ -412,23 +412,25 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
         </div>
       )}
 
-      {/* Template Modal - Fixed Layout Shifting */}
+      {/* Template Modal - Fixed Layout and Removed Black Blur Background */}
       {showTemplateModal && (
-        <div className="fixed inset-0 bg-[#d35132]/95 z-[200] flex flex-col animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-[#d35132] z-[300] flex flex-col animate-in fade-in duration-300 overflow-hidden">
+          {/* Header */}
           <div className="flex-none px-6 pt-[calc(env(safe-area-inset-top,20px)+10px)] pb-4 flex items-center justify-between border-b border-white/10">
             <h2 className="text-xl font-black text-white font-noto">
               {editingTemplate ? t('edit_class', lang) : t('new_template', lang)}
             </h2>
             <button 
               onClick={() => setShowTemplateModal(false)} 
-              className="p-2.5 bg-white/10 rounded-xl text-white active:scale-90 transition-all border border-white/10"
+              className="p-2.5 bg-white/15 rounded-xl text-white active:scale-90 transition-all border border-white/10 shadow-lg"
             >
               <X size={22} />
             </button>
           </div>
           
-          <div className="flex-1 overflow-y-auto p-6 pb-24">
-            <div className="max-w-md mx-auto">
+          {/* Scrollable Form Content */}
+          <div className="flex-1 overflow-y-auto px-6 pt-6 pb-24">
+            <div className="max-w-md mx-auto space-y-6">
               <form onSubmit={handleSaveTemplate} className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1">
@@ -456,11 +458,11 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
                     onChange={(e) => setTemplateBody(e.target.value)} 
                   />
                   <p className="text-[10px] font-black text-white/30 uppercase tracking-widest text-right px-1">
-                    {templateBody.length} characters
+                    {templateBody.length} / 160
                   </p>
                 </div>
                 
-                <div className="pt-4">
+                <div className="pt-4 space-y-3">
                   <button 
                     type="submit" 
                     disabled={savingTemplate} 
@@ -478,9 +480,9 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
                   <button 
                     type="button"
                     onClick={() => setShowTemplateModal(false)}
-                    className="w-full mt-4 py-4 text-white/40 font-black uppercase tracking-widest text-[10px] active:text-white transition-colors"
+                    className="w-full py-4 text-white/60 font-black uppercase tracking-widest text-[10px] active:text-white transition-colors flex items-center justify-center gap-2"
                   >
-                    Cancel Changes
+                    {t('cancel', lang)}
                   </button>
                 </div>
               </form>
