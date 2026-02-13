@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { Plus, ChevronRight, BookOpen, Loader2, Edit2, X } from 'lucide-react';
+import { Plus, ChevronRight, BookOpen, Loader2, Edit2, X, Trash2, AlertTriangle } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Class, Language } from '../types';
 import { t } from '../translations';
@@ -43,9 +43,12 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
   const [classes, setClasses] = useState<(Class & { student_count?: number })[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingClass, setEditingClass] = useState<Class | null>(null);
+  const [classToDelete, setClassToDelete] = useState<Class | null>(null);
   const [newClassName, setNewClassName] = useState('');
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => { fetchClasses(); }, [dataVersion]);
 
@@ -111,8 +114,36 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
     } finally { setSaving(false); }
   };
 
+  const handleDeleteClass = async () => {
+    if (!classToDelete) return;
+    setDeleting(true);
+    try {
+      if (navigator.onLine) {
+        const { error } = await supabase.from('classes').delete().eq('id', classToDelete.id);
+        if (error) throw error;
+      } else {
+        offlineApi.queueAction('classes', 'DELETE', { id: classToDelete.id });
+      }
+
+      // Cleanup associated caches
+      offlineApi.removeCache('classes_with_counts');
+      offlineApi.removeCache('classes');
+      offlineApi.removeCache(`students_list_${classToDelete.id}`);
+      offlineApi.removeCache('all_students_search');
+      
+      setShowDeleteModal(false);
+      setClassToDelete(null);
+      triggerRefresh();
+      fetchClasses(true);
+    } catch (err: any) {
+      alert(lang === 'bn' ? `ক্লাস ডিলিট করা যায়নি: ${err.message}` : `Delete failed: ${err.message}`);
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-4 duration-500">
+    <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-12">
       <div className="flex items-center justify-between px-1">
         <h1 className="text-2xl font-black text-white drop-shadow-lg font-noto">{t('classes_title', lang)}</h1>
         <button onClick={() => { setEditingClass(null); setNewClassName(''); setShowModal(true); }} className="bg-white text-[#d35132] px-4 py-2.5 rounded-xl text-[13px] font-black flex items-center gap-2 shadow-2xl active:scale-95 transition-all">
@@ -140,8 +171,11 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
                 </div>
               </div>
               <div className="flex items-center gap-2 shrink-0">
-                <button onClick={(e) => { e.stopPropagation(); setEditingClass(cls); setNewClassName(cls.class_name); setShowModal(true); }} className="p-3 bg-white/10 text-white rounded-2xl transition-all active:scale-90">
+                <button onClick={(e) => { e.stopPropagation(); setEditingClass(cls); setNewClassName(cls.class_name); setShowModal(true); }} className="p-3 bg-white/10 text-white rounded-2xl transition-all active:scale-90 hover:bg-white/20" title={t('edit', lang)}>
                   <Edit2 size={16} />
+                </button>
+                <button onClick={(e) => { e.stopPropagation(); setClassToDelete(cls); setShowDeleteModal(true); }} className="p-3 bg-red-500/20 text-red-200 rounded-2xl transition-all active:scale-90 hover:bg-red-500/40" title={t('delete', lang)}>
+                  <Trash2 size={16} />
                 </button>
                 <ChevronRight className="text-white/40" size={20} strokeWidth={3} />
               </div>
@@ -155,8 +189,9 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
         </div>
       )}
 
+      {/* Class Form Modal */}
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-6">
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-6 animate-in fade-in duration-200">
           <div className="bg-[#e57d4a] w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 border border-white/30 animate-in zoom-in-95 relative">
             <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 text-white/60 hover:text-white"><X size={24} /></button>
             <h2 className="text-2xl font-black text-white mb-6 text-center font-noto">{editingClass ? t('edit_class', lang) : t('new_class', lang)}</h2>
@@ -172,6 +207,31 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, dataVersion, trig
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[110] flex items-center justify-center p-6 animate-in fade-in zoom-in-95">
+          <div className="bg-white w-full max-w-sm rounded-[2.5rem] shadow-2xl p-8 text-center relative border border-white/20">
+            <div className="w-20 h-20 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6 text-red-500 shadow-inner">
+              <AlertTriangle size={40} />
+            </div>
+            <h2 className="text-2xl font-black text-slate-800 mb-2 font-noto">{t('confirm_delete', lang)}</h2>
+            <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest mb-8 leading-relaxed">
+              {lang === 'bn' 
+                ? 'এই ক্লাসটি ডিলিট করলে এর সকল ছাত্রের তথ্যও মুছে যাবে।' 
+                : 'Deleting this class will also remove all student records inside it.'}
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => { setShowDeleteModal(false); setClassToDelete(null); }} className="flex-1 py-4 bg-slate-100 text-slate-600 font-black text-sm rounded-2xl">
+                {t('cancel', lang)}
+              </button>
+              <button onClick={handleDeleteClass} disabled={deleting} className="flex-1 py-4 bg-red-500 text-white font-black text-sm rounded-2xl shadow-xl flex items-center justify-center gap-2">
+                {deleting ? <Loader2 className="animate-spin" size={18} /> : t('delete', lang)}
+              </button>
+            </div>
           </div>
         </div>
       )}
