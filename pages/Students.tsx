@@ -80,18 +80,27 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   };
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative pb-32">
+    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative pb-10">
       <div className="flex flex-col gap-5">
-        <div className="flex items-center gap-3">
-          <button onClick={onBack} className="p-2.5 bg-white/10 rounded-xl text-white active:scale-90 transition-all border border-white/20 backdrop-blur-md">
-            <ArrowLeft size={22} strokeWidth={2.5} />
-          </button>
-          <div className="min-w-0">
-            <h1 className="text-xl font-black text-white truncate drop-shadow-sm font-noto">{selectedClass.class_name}</h1>
-            <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">
-              {loading ? '...' : students.length} {t('students_count', lang)}
-            </p>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={onBack} className="p-2.5 bg-white/10 rounded-xl text-white active:scale-90 transition-all border border-white/20 backdrop-blur-md shrink-0">
+              <ArrowLeft size={22} strokeWidth={2.5} />
+            </button>
+            <div className="min-w-0">
+              <h1 className="text-xl font-black text-white truncate drop-shadow-sm font-noto leading-tight">{selectedClass.class_name}</h1>
+              <p className="text-[10px] font-black text-white/60 uppercase tracking-widest leading-none mt-1">
+                {loading ? '...' : students.length} {t('students_count', lang)}
+              </p>
+            </div>
           </div>
+          
+          <button 
+            onClick={onAddClick} 
+            className="shrink-0 bg-white text-[#d35132] px-4 py-2.5 rounded-xl text-[13px] font-black flex items-center gap-2 shadow-xl active:scale-95 transition-all"
+          >
+            <Plus size={16} strokeWidth={3.5} /> {t('add_student', lang)}
+          </button>
         </div>
 
         <div className="relative">
@@ -119,7 +128,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
               className="p-4 rounded-[2rem] bg-white/10 backdrop-blur-md border border-white/15 active:bg-white/20 transition-all animate-in slide-in-from-bottom-2 flex items-center justify-between shadow-lg relative overflow-hidden"
             >
               <div className="flex items-center gap-4 flex-1 min-w-0">
-                {/* Roll Number Box - Displayed instead of Photo */}
                 <div className="w-12 h-12 rounded-xl flex flex-col items-center justify-center border shrink-0 bg-white/10 border-white/10 shadow-inner text-white">
                   <span className="text-[7px] font-black opacity-40 uppercase leading-none">Roll</span>
                   <span className="text-lg font-black leading-tight">{student.roll || '-'}</span>
@@ -150,15 +158,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
           <p className="text-white/40 font-black uppercase tracking-widest text-[10px]">{t('no_students', lang)}</p>
         </div>
       )}
-
-      <div className="fixed bottom-28 right-6 z-50 pointer-events-none">
-        <button 
-          onClick={onAddClick}
-          className="pointer-events-auto bg-white text-[#d35132] p-5 rounded-full shadow-2xl active:scale-90 transition-all border-4 border-white/20 flex items-center justify-center hover:bg-white/90"
-        >
-          <Plus size={32} strokeWidth={3.5} />
-        </button>
-      </div>
     </div>
   );
 };
