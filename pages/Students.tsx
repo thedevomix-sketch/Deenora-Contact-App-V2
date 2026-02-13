@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash, CheckCircle2, MessageSquare, Send, X, BookOpen, ChevronDown, Check, Trash2, LayoutGrid, PhoneCall } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
@@ -15,7 +14,6 @@ interface StudentsProps {
   triggerRefresh: () => void;
 }
 
-// Default templates to show if no custom ones are found
 const STATIC_DEFAULTS = [
   { id: 'def-1', title: 'উপস্থিতি (Attendance)', body: 'আস-সালামু আলাইকুম, আজ আপনার সন্তান মাদরাসায় উপস্থিত হয়েছে। ধন্যবাদ।' },
   { id: 'def-2', title: 'অনুপস্থিতি (Absence)', body: 'আস-সালামু আলাইকুম, আজ আপনার সন্তান মাদরাসায় অনুপস্থিত। অনুগ্রহ করে কারণ জানান।' }
@@ -117,18 +115,20 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     const selectedStudents = students.filter(s => selectedIds.has(s.id));
     if (selectedStudents.length === 0) return;
     
-    const phoneNumbers = selectedStudents.map(s => s.guardian_phone);
+    const phoneNumbers = selectedStudents.map(s => s.guardian_phone.replace(/\D/g, ''));
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const separator = isIOS ? ';' : ',';
     const numbersStr = phoneNumbers.join(separator);
     
     const bodyParam = selectedTemplate ? `${isIOS ? '&' : '?'}body=${encodeURIComponent(selectedTemplate.body)}` : '';
+    // Use _top to ensure WebView handlers catch it
     window.location.href = `sms:${numbersStr}${bodyParam}`;
   };
 
-  const initiateCall = async (e: React.MouseEvent, student: Student) => {
+  const initiateCall = (e: React.MouseEvent, phone: string) => {
     e.stopPropagation();
-    window.location.href = `tel:${student.guardian_phone}`;
+    const cleanPhone = phone.replace(/\D/g, '');
+    window.location.href = `tel:${cleanPhone}`;
   };
 
   const formatWhatsAppNumber = (phone: string) => {
@@ -142,7 +142,8 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   const openWhatsApp = (e: React.MouseEvent, phone: string) => {
     e.stopPropagation();
     const waNumber = formatWhatsAppNumber(phone);
-    window.open(`https://wa.me/${waNumber}`, '_blank');
+    // Directly setting window.location.href is more reliable in WebViews than window.open
+    window.location.href = `https://wa.me/${waNumber}`;
   };
 
   const selectAll = () => {
@@ -246,24 +247,20 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
               </div>
               
               {!isSelectionMode && (
-                <div className="flex items-center gap-4 shrink-0 pr-1">
-                  <div className="flex items-center gap-4">
-                    <button 
-                      onClick={(e) => initiateCall(e, student)}
-                      className="bg-white text-[#d35132] p-2.5 rounded-xl shadow-[0_8px_20px_-4px_rgba(255,255,255,0.3)] active:scale-90 transition-all border border-slate-100"
-                      title="Regular Call"
-                    >
-                      <Phone size={18} strokeWidth={3} fill="currentColor" />
-                    </button>
-                    <button 
-                      onClick={(e) => openWhatsApp(e, student.guardian_phone)}
-                      className="bg-gradient-to-br from-[#128c7e] to-[#25d366] text-white p-2.5 rounded-xl shadow-[0_8px_20px_-4px_rgba(37,211,102,0.4)] active:scale-90 transition-all border border-white/20 ring-1 ring-white/10"
-                      title="WhatsApp Call"
-                    >
-                      <PhoneCall size={18} strokeWidth={3} fill="currentColor" />
-                    </button>
-                  </div>
-                  <ChevronRight size={18} className="text-white/20" />
+                <div className="flex items-center gap-3 shrink-0 pr-1">
+                  <button 
+                    onClick={(e) => initiateCall(e, student.guardian_phone)}
+                    className="bg-white text-[#d35132] p-2.5 rounded-xl shadow-[0_8px_20px_-4px_rgba(255,255,255,0.3)] active:scale-90 transition-all border border-slate-100"
+                  >
+                    <Phone size={18} strokeWidth={3} fill="currentColor" />
+                  </button>
+                  <button 
+                    onClick={(e) => openWhatsApp(e, student.guardian_phone)}
+                    className="bg-gradient-to-br from-[#128c7e] to-[#25d366] text-white p-2.5 rounded-xl shadow-[0_8px_20px_-4px_rgba(37,211,102,0.4)] active:scale-90 transition-all border border-white/20 ring-1 ring-white/10"
+                  >
+                    <PhoneCall size={18} strokeWidth={3} fill="currentColor" />
+                  </button>
+                  <ChevronRight size={18} className="text-white/20 ml-1" />
                 </div>
               )}
             </div>
@@ -275,12 +272,9 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
         </div>
       )}
 
-      {/* Floating Action Menu - Source templates from Wallet & SMS section */}
       {isSelectionMode && selectedIds.size > 0 && (
         <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+90px)] left-4 right-4 z-[150] animate-in slide-in-from-bottom-10">
           <div className="bg-white rounded-[2.5rem] p-4 shadow-[0_25px_60px_rgba(0,0,0,0.4)] border border-white/20 ring-4 ring-black/5 flex flex-col gap-3">
-            
-            {/* Template Selector */}
             <div className="relative">
               <button 
                 onClick={() => setShowTemplateMenu(!showTemplateMenu)}
@@ -295,53 +289,36 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
 
               {showTemplateMenu && (
                 <div className="absolute bottom-full left-0 right-0 mb-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 max-h-64 overflow-y-auto z-[160] animate-in slide-in-from-bottom-4 p-2 ring-1 ring-black/5">
-                  <div className="px-4 py-3 border-b border-slate-50 mb-1 flex items-center gap-2">
-                    <LayoutGrid size={14} className="text-slate-400" />
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saved Templates</p>
-                  </div>
-                  {templates.length > 0 ? templates.map(tmp => (
+                  {templates.map(tmp => (
                     <button 
                       key={tmp.id}
                       onClick={() => { setSelectedTemplate(tmp); setShowTemplateMenu(false); }}
-                      className={`w-full text-left px-4 py-4 rounded-xl flex items-center justify-between transition-all ${selectedTemplate?.id === tmp.id ? 'bg-[#d35132] text-white shadow-lg scale-[1.02]' : 'hover:bg-slate-50 text-slate-700 active:bg-slate-100'}`}
+                      className={`w-full text-left px-4 py-4 rounded-xl flex items-center justify-between transition-all ${selectedTemplate?.id === tmp.id ? 'bg-[#d35132] text-white shadow-lg' : 'hover:bg-slate-50 text-slate-700'}`}
                     >
                       <div className="min-w-0 pr-4">
-                         <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${tmp.id && typeof tmp.id === 'string' && tmp.id.startsWith('def') ? 'bg-white/20' : 'bg-slate-100'}`}>
-                              {tmp.id && typeof tmp.id === 'string' && tmp.id.startsWith('def') ? 'Default' : 'Saved'}
-                            </span>
-                            <p className="text-xs font-black truncate">{tmp.title}</p>
-                         </div>
-                         <p className={`text-[10px] truncate opacity-60 font-medium ${selectedTemplate?.id === tmp.id ? 'text-white' : 'text-slate-500'}`}>{tmp.body}</p>
+                         <p className="text-xs font-black truncate">{tmp.title}</p>
+                         <p className={`text-[10px] truncate opacity-60 ${selectedTemplate?.id === tmp.id ? 'text-white' : 'text-slate-500'}`}>{tmp.body}</p>
                       </div>
                       {selectedTemplate?.id === tmp.id && <Check size={16} strokeWidth={4} />}
                     </button>
-                  )) : (
-                    <div className="text-center py-8 text-slate-300 flex flex-col items-center gap-2">
-                       <BookOpen size={24} className="opacity-20" />
-                       <p className="text-[10px] font-black uppercase tracking-widest">No templates found</p>
-                    </div>
-                  )}
+                  ))}
                 </div>
               )}
             </div>
 
-            {/* Bottom Row */}
             <div className="flex items-center gap-3">
-              <div className="bg-slate-50 px-4 py-3 rounded-2xl flex items-center gap-3 min-w-0 flex-1 border border-slate-100">
-                <div className="w-8 h-8 bg-[#d35132] rounded-full flex items-center justify-center text-white shadow-md shrink-0">
+              <div className="bg-slate-50 px-4 py-3 rounded-2xl flex items-center gap-3 flex-1 border border-slate-100">
+                <div className="w-8 h-8 bg-[#d35132] rounded-full flex items-center justify-center text-white shadow-md">
                   <span className="text-sm font-black">{selectedIds.size}</span>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Selected</p>
-                </div>
+                <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">Selected</p>
               </div>
               
               <button 
                 onClick={sendNativeSMS}
-                className={`flex-[2] py-4 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase shadow-xl active:scale-95 transition-all ${selectedTemplate ? 'bg-[#d35132] text-white active:bg-[#e65c3b]' : 'bg-slate-200 text-slate-400 pointer-events-none cursor-not-allowed'}`}
+                className={`flex-[2] py-4 rounded-2xl flex items-center justify-center gap-3 font-black text-xs uppercase shadow-xl active:scale-95 transition-all ${selectedTemplate ? 'bg-[#d35132] text-white' : 'bg-slate-200 text-slate-400 pointer-events-none'}`}
               >
-                <MessageSquare size={18} fill={selectedTemplate ? "white" : "none"} strokeWidth={selectedTemplate ? 1 : 3} />
+                <MessageSquare size={18} fill={selectedTemplate ? "white" : "none"} />
                 {lang === 'bn' ? 'মেসেজ পাঠান' : 'Send SMS'}
               </button>
             </div>

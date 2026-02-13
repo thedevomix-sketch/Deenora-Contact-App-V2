@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Wallet, MessageSquare, Plus, Trash2, CreditCard, Loader2, Check, Save, Edit3, Send, ChevronDown, BookOpen, Users, CheckCircle2, AlertCircle, History, Smartphone } from 'lucide-react';
 import { supabase, offlineApi, smsApi } from '../supabase';
@@ -118,7 +117,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
   const handleNativeBulk = () => {
     if (!bulkMessage.trim() || classStudents.length === 0) return;
     
-    const phoneNumbers = classStudents.map(s => s.guardian_phone);
+    const phoneNumbers = classStudents.map(s => s.guardian_phone.replace(/\D/g, ''));
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const separator = isIOS ? ';' : ',';
     const numbersStr = phoneNumbers.join(separator);
@@ -385,7 +384,6 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
             </form>
           </div>
 
-          {/* Transaction History Section */}
           {recentTrans.length > 0 && (
             <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
               <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
@@ -414,10 +412,9 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
         </div>
       )}
 
-      {/* Template Modal */}
       {showTemplateModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[200] flex items-end sm:items-center justify-center p-0 sm:p-6 animate-in fade-in duration-300">
-          <div className="bg-[#e57d4a] w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] shadow-2xl p-8 border-t sm:border border-white/30 animate-in slide-in-from-bottom-10 sm:zoom-in-95 relative overflow-y-auto max-h-[90vh]">
+          <div className="bg-[#e57d4a] w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] shadow-2xl p-8 border-t sm:border border-white/30 animate-in slide-in-from-bottom-10 sm:zoom-in-95 relative overflow-y-auto max-h-[85vh]">
             <button onClick={() => setShowTemplateModal(false)} className="absolute top-6 right-6 text-white/60 hover:text-white transition-colors"><Plus className="rotate-45" size={24} /></button>
             <h2 className="text-2xl font-black text-white mb-6 font-noto">{editingTemplate ? t('edit_class', lang) : t('new_template', lang)}</h2>
             <form onSubmit={handleSaveTemplate} className="space-y-5">

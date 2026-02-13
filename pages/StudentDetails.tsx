@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { ArrowLeft, Phone, Edit3, Trash2, User as UserIcon, Smartphone, ShieldCheck, Loader2, AlertTriangle, MessageCircle, PhoneCall, UserCheck } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
@@ -41,7 +40,8 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
 
   const initiateCall = async (phoneNumber: string) => {
     await recordCall(phoneNumber);
-    window.location.href = `tel:${phoneNumber}`;
+    const cleanPhone = phoneNumber.replace(/\D/g, '');
+    window.location.href = `tel:${cleanPhone}`;
   };
 
   const formatWhatsAppNumber = (phone: string) => {
@@ -52,9 +52,10 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
     return cleaned;
   };
 
-  const openWhatsApp = (phone: string) => {
+  const openWhatsApp = async (phone: string) => {
+    await recordCall(phone);
     const waNumber = formatWhatsAppNumber(phone);
-    window.open(`https://wa.me/${waNumber}`, '_blank');
+    window.location.href = `https://wa.me/${waNumber}`;
   };
 
   const performDelete = async () => {
@@ -160,7 +161,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
                     <div className="w-10 h-10 bg-[#d35132]/10 rounded-xl flex items-center justify-center text-[#d35132]"><Smartphone size={20} /></div>
                     <span className="text-base font-black text-slate-800 tracking-wider">{student.guardian_phone}</span>
                   </div>
-                  <div className="bg-[#d35132] text-white p-2.5 rounded-xl group-active:rotate-12 transition-transform">
+                  <div className="bg-[#d35132] text-white p-2.5 rounded-xl transition-transform">
                     <Phone size={18} fill="currentColor" />
                   </div>
                 </button>
@@ -183,23 +184,20 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
             </div>
 
             {student.guardian_phone_2 && (
-              <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+              <div className="space-y-3">
                 <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] px-1">{t('guardian_phone_2', lang)}</label>
-                
-                <div className="space-y-2">
-                  <button 
-                    onClick={() => initiateCall(student.guardian_phone_2!)}
-                    className="w-full bg-white/10 backdrop-blur-md p-4 rounded-2xl flex items-center justify-between active:scale-[0.98] transition-all border border-white/20 group shadow-lg"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white"><Smartphone size={20} /></div>
-                      <span className="text-base font-black text-white tracking-wider">{student.guardian_phone_2}</span>
-                    </div>
-                    <div className="bg-white text-[#d35132] p-2.5 rounded-xl group-active:rotate-12 transition-transform">
-                      <Phone size={18} fill="currentColor" />
-                    </div>
-                  </button>
-                </div>
+                <button 
+                  onClick={() => initiateCall(student.guardian_phone_2!)}
+                  className="w-full bg-white/10 backdrop-blur-md p-4 rounded-2xl flex items-center justify-between active:scale-[0.98] transition-all border border-white/20 group shadow-lg"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center text-white"><Smartphone size={20} /></div>
+                    <span className="text-base font-black text-white tracking-wider">{student.guardian_phone_2}</span>
+                  </div>
+                  <div className="bg-white text-[#d35132] p-2.5 rounded-xl group-active:rotate-12 transition-transform">
+                    <Phone size={18} fill="currentColor" />
+                  </div>
+                </button>
               </div>
             )}
           </div>

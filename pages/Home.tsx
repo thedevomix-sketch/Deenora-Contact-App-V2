@@ -124,7 +124,9 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
 
   const initiateCall = async (student: Student) => {
     await recordCall(student);
-    window.location.href = `tel:${student.guardian_phone}`;
+    // Clean the phone number for standard tel: protocol
+    const cleanPhone = student.guardian_phone.replace(/\D/g, '');
+    window.location.href = `tel:${cleanPhone}`;
   };
 
   const formatWhatsAppNumber = (phone: string) => {
@@ -139,7 +141,8 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
     e.stopPropagation();
     await recordCall(student);
     const waNumber = formatWhatsAppNumber(student.guardian_phone);
-    window.open(`https://wa.me/${waNumber}`, '_blank');
+    // WebViews often block window.open, using window.location.href is more reliable
+    window.location.href = `https://wa.me/${waNumber}`;
   };
 
   return (
