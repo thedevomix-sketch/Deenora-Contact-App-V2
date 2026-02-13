@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'madrasah-app-v2';
+const CACHE_NAME = 'madrasah-app-v3';
 const ASSETS = [
   './',
   './index.html',
@@ -20,8 +20,12 @@ self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name))
+        cacheNames
+          .filter((name) => name !== CACHE_NAME)
+          .map((name) => caches.delete(name))
       );
+    }).then(() => {
+      return self.clients.claim();
     })
   );
 });
@@ -29,8 +33,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // EXCEPTION: Never cache Supabase API calls
-  if (url.hostname.includes('supabase.co')) {
+  // EXCEPTION: Never cache Supabase API calls or external dynamic resources
+  if (url.hostname.includes('supabase.co') || url.hostname.includes('google.com')) {
     return event.respondWith(fetch(event.request));
   }
 

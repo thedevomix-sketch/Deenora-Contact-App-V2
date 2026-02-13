@@ -16,26 +16,40 @@ root.render(
 );
 
 /**
- * SERVICE WORKER REGISTRATION
- * Note: Cloud-based preview environments (like AI Studio) often block Service Workers 
- * due to origin/sandboxing restrictions. The app's core data-level offline functionality 
- * is handled via offlineApi (LocalStorage) in supabase.ts, which works regardless of SW.
+ * SERVICE WORKER REGISTRATION WITH UPDATE DETECTION
  */
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    // Check if we are in a context that typically allows Service Workers
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const isSecureContext = window.isSecureContext;
     
-    // Only attempt registration if the environment is suitable
     if (isSecureContext || isLocalhost) {
       navigator.serviceWorker.register('./sw.js')
         .then(registration => {
           console.log('SW registered:', registration.scope);
+          
+          // Listen for updates
+          registration.onupdatefound = () => {
+            const installingWorker = registration.installing;
+            if (installingWorker == null) return;
+            
+            installingWorker.onstatechange = () => {
+              if (installingWorker.state === 'installed') {
+                if (navigator.serviceWorker.controller) {
+                  // New content is available; please refresh.
+                  console.log('New content is available; please refresh.');
+                  // Optionally show a "Refresh" toast here.
+                  // For now, we'll force a reload after a short delay to apply updates.
+                  setTimeout(() => {
+                    window.location.reload();
+                  }, 1000);
+                }
+              }
+            };
+          };
         })
         .catch(err => {
-          // Log as warning rather than error to avoid flooding consoles in restricted environments
-          console.warn('Service Worker registration skipped (Environment limitation). Offline data still active via LocalStorage.', err.message);
+          console.warn('Service Worker registration skipped (Environment limitation).', err.message);
         });
     }
   });
