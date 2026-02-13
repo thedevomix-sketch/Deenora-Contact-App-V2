@@ -1,7 +1,10 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V4)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V5 - FINAL)
 -- ======================================================
+
+-- Enable UUID extension
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 -- ১. মাদরাসা প্রোফাইল টেবিল
 CREATE TABLE IF NOT EXISTS public.madrasahs (
@@ -81,8 +84,14 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ৮. বাল্ক এসএমএস পাঠানোর আরপিসি (RPC) ফাংশন
--- এই ফাংশনটি ছাড়া অ্যাপ থেকে এসএমএস যাবে না
+-- ৮. অ্যাডমিন এসএমএস স্টক টেবিল
+CREATE TABLE IF NOT EXISTS public.admin_sms_stock (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    remaining_sms INTEGER DEFAULT 0,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+-- ৯. বাল্ক এসএমএস পাঠানোর আরপিসি (RPC) ফাংশন
 CREATE OR REPLACE FUNCTION public.send_bulk_sms_rpc(
   p_madrasah_id UUID,
   p_student_ids UUID[],
@@ -97,7 +106,7 @@ BEGIN
     -- ব্যালেন্স চেক
     SELECT sms_balance INTO v_balance FROM public.madrasahs WHERE id = p_madrasah_id;
     
-    IF v_balance < v_sms_count THEN
+    IF v_balance IS NULL OR v_balance < v_sms_count THEN
         RETURN json_build_object('success', false, 'error', 'Insufficient SMS balance');
     END IF;
 
@@ -106,7 +115,7 @@ BEGIN
     SET sms_balance = sms_balance - v_sms_count 
     WHERE id = p_madrasah_id;
 
-    -- লগ তৈরি (সহজ করার জন্য লুপ ব্যবহার করা যেতে পারে, তবে এখানে বেসিক রাখছি)
+    -- লগ তৈরি
     INSERT INTO public.sms_logs (madrasah_id, recipient_phone, message, status)
     SELECT p_madrasah_id, guardian_phone, p_message, 'sent'
     FROM public.students
@@ -116,5 +125,25 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ৯. সুপাবেস ক্যাশ রিফ্রেশ
+-- ১০. পেমেন্ট এপ্রুভাল এবং এসএমএস ক্রেডিটিং আরপিসি (RPC) ফাংশন
+CREATE OR REPLACE FUNCTION public.approve_payment_with_sms(
+  t_id UUID,
+  m_id UUID,
+  sms_to_give INTEGER
+) RETURNS JSON AS $$
+BEGIN
+    -- ১. ট্রানজ্যাকশন স্ট্যাটাস আপডেট করুন
+    UPDATE public.transactions SET status = 'approved' WHERE id = t_id;
+
+    -- ২. মাদরাসার এসএমএস ব্যালেন্স আপডেট করুন
+    UPDATE public.madrasahs SET sms_balance = COALESCE(sms_balance, 0) + sms_to_give WHERE id = m_id;
+
+    -- ৩. অ্যাডমিন স্টক আপডেট করুন
+    UPDATE public.admin_sms_stock SET remaining_sms = COALESCE(remaining_sms, 0) - sms_to_give;
+
+    RETURN json_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ১১. সুপাবেস ক্যাশ রিফ্রেশ
 NOTIFY pgrst, 'reload schema';

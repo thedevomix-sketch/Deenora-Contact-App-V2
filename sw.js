@@ -1,5 +1,5 @@
 
-const CACHE_NAME = 'madrasah-app-v6';
+const CACHE_NAME = 'madrasah-app-v7';
 const ASSETS = [
   './',
   './index.html',
@@ -38,7 +38,6 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Always try network first for the main entry points
   if (ASSETS.includes(url.pathname) || url.pathname === '/' || url.pathname.endsWith('.html')) {
     event.respondWith(
       fetch(event.request)
