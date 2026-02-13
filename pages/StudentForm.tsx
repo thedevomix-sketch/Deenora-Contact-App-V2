@@ -36,7 +36,6 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
   }, []);
 
   const fetchClasses = async () => {
-    // Check cache first
     const cached = offlineApi.getCache('classes');
     if (cached) setClasses(sortMadrasahClasses(cached));
 
@@ -95,6 +94,17 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
       return;
     }
 
+    // Phone validation
+    if (phone.length !== 11) {
+      setErrorModal({ show: true, message: t('invalid_phone', lang) });
+      return;
+    }
+
+    if (phone2 && phone2.length !== 11) {
+      setErrorModal({ show: true, message: t('invalid_phone', lang) });
+      return;
+    }
+
     setLoading(true);
     try {
       const payload = {
@@ -129,10 +139,14 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
     } finally { setLoading(false); }
   };
 
+  const handlePhoneChange = (val: string, setter: (v: string) => void) => {
+    const numericValue = val.replace(/\D/g, '').slice(0, 11);
+    setter(numericValue);
+  };
+
   return (
     <div className="animate-in slide-in-from-bottom-6 duration-500 pb-24 space-y-8">
       <div className="flex items-center gap-5">
-        {/* Fix: removed non-existent 'onBack' and used 'onCancel' instead */}
         <button onClick={onCancel} className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white active:scale-95 transition-all border border-white/20 shadow-xl">
           <ArrowLeft size={28} strokeWidth={3} />
         </button>
@@ -152,25 +166,21 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
           </div>
 
           <div className="space-y-5">
-             {/* Student Name */}
              <div className="space-y-2">
                <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><UserIcon size={14} className="text-[#8D30F4]" /> {t('student_name', lang)}</label>
                <input type="text" required className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4] transition-all" value={name} onChange={(e) => setName(e.target.value)} />
              </div>
 
-             {/* Guardian Name */}
              <div className="space-y-2">
                <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><UserCheck size={14} className="text-[#8D30F4]" /> {t('guardian_name', lang)}</label>
                <input type="text" className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4] transition-all" value={guardianName} onChange={(e) => setGuardianName(e.target.value)} />
              </div>
              
              <div className="grid grid-cols-2 gap-4">
-                {/* Roll */}
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Hash size={14} className="text-[#8D30F4]" /> Roll</label>
                   <input type="number" className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] text-[#2D3142] font-black text-xl outline-none text-center focus:border-[#8D30F4] transition-all" value={roll} onChange={(e) => setRoll(e.target.value)} />
                 </div>
-                {/* Class Select */}
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><List size={14} className="text-[#8D30F4]" /> Class</label>
                   <div onClick={() => setShowClassModal(true)} className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all">
@@ -181,15 +191,13 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
              </div>
 
              <div className="grid grid-cols-2 gap-4">
-                {/* Phone 1 */}
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Phone size={14} className="text-[#8D30F4]" /> Primary Phone</label>
-                  <input type="tel" required className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4] transition-all" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} />
+                  <input type="tel" required className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4] transition-all" value={phone} onChange={(e) => handlePhoneChange(e.target.value, setPhone)} />
                 </div>
-                {/* Phone 2 */}
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Phone size={14} className="text-[#8D30F4]" /> Phone 2</label>
-                  <input type="tel" className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4] transition-all" value={phone2} onChange={(e) => setPhone2(e.target.value.replace(/\D/g, ''))} />
+                  <input type="tel" className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4] transition-all" value={phone2} onChange={(e) => handlePhoneChange(e.target.value, setPhone2)} />
                 </div>
              </div>
           </div>

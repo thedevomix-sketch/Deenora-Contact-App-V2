@@ -25,6 +25,13 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
   const handleUpdate = async () => {
     if (!madrasah) return;
+    
+    // Phone validation (if provided)
+    if (newPhone && newPhone.length !== 11) {
+      alert(t('invalid_phone', lang));
+      return;
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase
@@ -59,6 +66,11 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     if (confirm(lang === 'bn' ? 'আপনি কি অ্যাপটি রিফ্রেশ করতে চান?' : 'Do you want to force update the app?')) {
       window.location.replace(window.location.origin + window.location.pathname + '?v=' + Date.now());
     }
+  };
+
+  const handlePhoneChange = (val: string) => {
+    const numericValue = val.replace(/\D/g, '').slice(0, 11);
+    setNewPhone(numericValue);
   };
 
   if (!madrasah) return (
@@ -141,7 +153,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                 <label className="text-[11px] font-black text-slate-400 uppercase tracking-widest px-1 block mb-2">{t('madrasah_phone', lang)}</label>
                 <div className="flex items-center gap-4">
                   <Phone size={22} className="text-[#8D30F4]" />
-                  <input type="tel" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-lg w-full" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+                  <input type="tel" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-lg w-full" value={newPhone} onChange={(e) => handlePhoneChange(e.target.value)} />
                 </div>
               </div>
            </div>
