@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { LogOut, Check, Smartphone, Copy, Camera, Loader2, Hash, AlertCircle, RefreshCw, Lock, History, User as UserIcon, BookOpen, ShieldCheck, Database, ChevronDown, Upload } from 'lucide-react';
+import { LogOut, Check, Smartphone, Copy, Camera, Loader2, RefreshCw, Lock, User as UserIcon, BookOpen, ShieldCheck, Database, ChevronDown, Phone } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
-import { Madrasah, Language, View, Transaction } from '../types';
+import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
 
 interface AccountProps {
@@ -23,7 +23,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [newLoginCode, setNewLoginCode] = useState(initialMadrasah?.login_code || '');
   const [showSuccess, setShowSuccess] = useState(false);
   const [copying, setCopying] = useState<string | null>(null);
-  const [transactions, setTransactions] = useState<Transaction[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -34,23 +33,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       setNewLoginCode(initialMadrasah.login_code || '');
     }
   }, [initialMadrasah]);
-
-  useEffect(() => {
-    if (!isSuperAdmin && initialMadrasah) fetchTransactions();
-  }, [isSuperAdmin, initialMadrasah]);
-
-  const fetchTransactions = async () => {
-    try {
-      const { data } = await supabase
-        .from('transactions')
-        .select('*')
-        .order('created_at', { ascending: false })
-        .limit(5);
-      if (data) setTransactions(data);
-    } catch (err) { 
-      console.error("Trans fetch error:", err); 
-    }
-  };
 
   const handleUpdate = async () => {
     if (!madrasah) return;
@@ -233,6 +215,14 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
             </div>
 
             <div className="bg-white/10 p-4 rounded-3xl border border-white/10 focus-within:bg-white/20 transition-all">
+              <p className="text-[9px] font-black text-white/30 uppercase mb-1 px-1">{lang === 'bn' ? 'মোবাইল নম্বর' : 'Mobile Number'}</p>
+              <div className="flex items-center gap-3">
+                <Phone size={18} className="text-white/30" />
+                <input type="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="017XXXXXXXX" className="bg-transparent border-none outline-none text-white font-black w-full text-base" />
+              </div>
+            </div>
+
+            <div className="bg-white/10 p-4 rounded-3xl border border-white/10 focus-within:bg-white/20 transition-all">
               <p className="text-[9px] font-black text-white/30 uppercase mb-1 px-1">{lang === 'bn' ? 'লগইন পাসওয়ার্ড' : 'Login Password'}</p>
               <div className="flex items-center gap-3">
                 <Lock size={18} className="text-white/30" />
@@ -245,25 +235,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         <button onClick={handleUpdate} disabled={saving} className="w-full py-5 bg-white text-[#d35132] font-black rounded-[2rem] shadow-2xl active:scale-95 transition-all text-sm flex items-center justify-center gap-3 border border-white/50">
           {saving ? <Loader2 className="animate-spin" size={20} /> : showSuccess ? <><Check size={20} /> SAVED</> : <><RefreshCw size={18} /> {t('update_info', lang)}</>}
         </button>
-
-        {!isSuperAdmin && transactions.length > 0 && (
-           <div className="space-y-3 pt-4 border-t border-white/10 text-left">
-             <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
-               <History size={12} /> {t('history', lang)}
-             </h3>
-             {transactions.map(tr => (
-               <div key={tr.id} className="bg-white/5 p-4 rounded-2xl border border-white/5 flex items-center justify-between text-white transition-all">
-                  <div className="min-w-0 flex-1 pr-3">
-                    <span className="text-xs font-black truncate block font-noto">{tr.description}</span>
-                    <span className="text-[9px] font-bold text-white/30 block mt-0.5">{new Date(tr.created_at).toLocaleDateString()}</span>
-                  </div>
-                  <span className={`text-sm font-black whitespace-nowrap ${tr.type === 'credit' ? 'text-green-400' : 'text-red-400'}`}>
-                    {tr.type === 'credit' ? '+' : '-'}{tr.amount} ৳
-                  </span>
-               </div>
-             ))}
-           </div>
-        )}
       </div>
 
       <div className="grid grid-cols-2 gap-4">

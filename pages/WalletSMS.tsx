@@ -1,6 +1,6 @@
 
-import React, { useState, useEffect, useMemo } from 'react';
-import { Wallet, MessageSquare, Plus, Trash2, CreditCard, History, Loader2, Check, Phone, Save, Edit3, AlertTriangle, Send, ChevronDown, BookOpen, Users, CheckCircle2 } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Wallet, MessageSquare, Plus, Trash2, CreditCard, Loader2, Check, Save, Edit3, Send, ChevronDown, BookOpen, Users, CheckCircle2, AlertCircle, History } from 'lucide-react';
 import { supabase, offlineApi, smsApi } from '../supabase';
 import { SMSTemplate, Language, Madrasah, Transaction, Class, Student } from '../types';
 import { t } from '../translations';
@@ -26,7 +26,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
   const [bulkSuccess, setBulkSuccess] = useState(false);
   const [classStudents, setClassStudents] = useState<Student[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(false);
-  const [showTemplateSelect, setShowTemplateSelect] = useState(false);
+  const [showTemplateDropdown, setShowTemplateDropdown] = useState(false);
 
   // Template Modal State
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -115,6 +115,11 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
     }
   };
 
+  const selectTemplate = (tmp: SMSTemplate) => {
+    setBulkMessage(tmp.body);
+    setShowTemplateDropdown(false);
+  };
+
   const handleSaveTemplate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!templateTitle.trim() || !templateBody.trim() || !madrasah) return;
@@ -142,7 +147,12 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
   const fetchRecentTransactions = async () => {
     if (!madrasah) return;
     try {
-      const { data } = await supabase.from('transactions').select('*').eq('madrasah_id', madrasah.id).order('created_at', { ascending: false }).limit(10);
+      const { data } = await supabase
+        .from('transactions')
+        .select('*')
+        .eq('madrasah_id', madrasah.id)
+        .order('created_at', { ascending: false })
+        .limit(10);
       if (data) setRecentTrans(data);
     } catch (err) { console.error(err); }
   };
@@ -226,36 +236,41 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between px-1">
-                  <label className="text-[10px] font-black text-white/50 uppercase tracking-widest">মেসেজ বক্স</label>
-                  <button 
-                    onClick={() => setShowTemplateSelect(!showTemplateSelect)}
-                    className="text-[10px] font-black text-white/80 uppercase tracking-widest flex items-center gap-1 hover:text-white transition-colors"
-                  >
-                    <BookOpen size={12} /> {lang === 'bn' ? 'টেমপ্লেট থেকে নিন' : 'Use Template'}
-                  </button>
-                </div>
-                
-                {showTemplateSelect && (
-                  <div className="bg-white/10 border border-white/10 rounded-2xl p-2 space-y-1 animate-in slide-in-from-top-2">
+              <div className="space-y-1.5 relative">
+                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1 mb-2 block">টেমপ্লেট থেকে বাছাই করুন</label>
+                <button 
+                  onClick={() => setShowTemplateDropdown(!showTemplateDropdown)}
+                  className="w-full flex items-center justify-between px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white/80 text-xs font-bold active:bg-white/20 transition-all"
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <BookOpen size={14} className="text-yellow-400" />
+                    <span>{lang === 'bn' ? 'সংরক্ষিত টেমপ্লেট' : 'Select Template'}</span>
+                  </div>
+                  <ChevronDown size={16} className={`transition-transform ${showTemplateDropdown ? 'rotate-180' : ''}`} />
+                </button>
+
+                {showTemplateDropdown && (
+                  <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl border border-white/30 z-[60] max-h-56 overflow-y-auto animate-in slide-in-from-top-2">
                     {templates.length > 0 ? templates.map(tmp => (
                       <button 
                         key={tmp.id}
-                        onClick={() => { setBulkMessage(tmp.body); setShowTemplateSelect(false); }}
-                        className="w-full text-left p-3 hover:bg-white/10 rounded-xl transition-all"
+                        onClick={() => selectTemplate(tmp)}
+                        className="w-full text-left px-5 py-3.5 border-b border-slate-100 last:border-0 hover:bg-slate-50 transition-colors"
                       >
-                        <p className="text-[10px] font-black text-[#d35132] uppercase">{tmp.title}</p>
-                        <p className="text-[11px] text-white/60 truncate">{tmp.body}</p>
+                        <p className="text-[10px] font-black text-[#d35132] uppercase mb-0.5">{tmp.title}</p>
+                        <p className="text-xs font-bold text-slate-600 truncate">{tmp.body}</p>
                       </button>
                     )) : (
-                      <p className="text-center py-4 text-white/30 text-[10px] uppercase">No templates found</p>
+                      <p className="text-center py-5 text-slate-400 text-xs font-bold">কোনো টেমপ্লেট নেই</p>
                     )}
                   </div>
                 )}
+              </div>
 
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-black text-white/50 uppercase tracking-widest px-1">মেসেজ বক্স</label>
                 <textarea 
-                  className="w-full h-40 px-5 py-4 bg-white/10 border border-white/20 rounded-2xl text-white font-medium outline-none focus:bg-white/20 transition-all resize-none shadow-inner" 
+                  className="w-full h-32 px-5 py-4 bg-white/10 border border-white/20 rounded-2xl text-white font-medium outline-none focus:bg-white/20 transition-all resize-none shadow-inner" 
                   placeholder="আপনার বার্তা এখানে লিখুন..."
                   value={bulkMessage}
                   onChange={(e) => setBulkMessage(e.target.value)}
@@ -347,6 +362,33 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
               </button>
             </form>
           </div>
+
+          {/* Transaction History Section */}
+          {recentTrans.length > 0 && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-bottom-2">
+              <h3 className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
+                <History size={12} /> {t('history', lang)}
+              </h3>
+              <div className="space-y-2">
+                {recentTrans.map(tr => (
+                  <div key={tr.id} className="bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 flex items-center justify-between text-white transition-all shadow-lg">
+                    <div className="min-w-0 flex-1 pr-3">
+                      <p className="text-xs font-black truncate block font-noto leading-tight">{tr.description}</p>
+                      <p className="text-[9px] font-bold text-white/30 block mt-1">{new Date(tr.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-sm font-black whitespace-nowrap ${tr.type === 'credit' ? 'text-green-400' : 'text-red-400'}`}>
+                        {tr.type === 'credit' ? '+' : '-'}{tr.amount} ৳
+                      </span>
+                      {tr.status === 'pending' && (
+                        <p className="text-[8px] font-black text-yellow-400 uppercase mt-0.5 tracking-tighter italic">Pending Approval</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

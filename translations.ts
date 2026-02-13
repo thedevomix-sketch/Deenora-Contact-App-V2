@@ -70,7 +70,7 @@ export const translations = {
     duplicate_roll: 'এই রোল নম্বরটি এই ক্লাসে ইতিমধ্যে ব্যবহৃত হয়েছে!',
     balance: 'ব্যালেন্স',
     send_sms: 'এসএমএস পাঠান',
-    bulk_sms: 'একসাথে সবাইকে এসএমএস',
+    bulk_sms: 'বাল্ক এসএমএস',
     insufficient_balance: 'পর্যাপ্ত ব্যালেন্স নেই!',
     sms_cost: 'খরচ',
     sms_success: 'এসএমএস সফলভাবে পাঠানো হয়েছে',

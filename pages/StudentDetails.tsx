@@ -1,9 +1,10 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Phone, Edit3, Trash2, User as UserIcon, Smartphone, ShieldCheck, Loader2, AlertTriangle, MessageCircle, PhoneCall, UserCheck } from 'lucide-react';
+import { ArrowLeft, Phone, Edit3, Trash2, User as UserIcon, Smartphone, ShieldCheck, Loader2, AlertTriangle, MessageCircle, PhoneCall, UserCheck, Send } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Student, Language, Madrasah } from '../types';
 import { t } from '../translations';
+import SMSModal from '../components/SMSModal';
 
 interface StudentDetailsProps {
   student: Student;
@@ -16,6 +17,7 @@ interface StudentDetailsProps {
 const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack, lang, triggerRefresh }) => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showSMSModal, setShowSMSModal] = useState(false);
   const [madrasah, setMadrasah] = useState<Madrasah | null>(null);
 
   useEffect(() => {
@@ -145,11 +147,10 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
             </div>
           </div>
 
-          {/* Contact Section... (rest remains identical) */}
           <div className="space-y-6 pt-2">
             <div className="space-y-3">
               <label className="text-[9px] font-black text-white/40 uppercase tracking-[0.2em] px-1">
-                {t('guardian_phone', lang)} {lang === 'bn' ? '(হোয়াটসঅ্যাপ)' : '(WhatsApp)'}
+                {t('guardian_phone', lang)}
               </label>
               
               <div className="space-y-2">
@@ -166,18 +167,24 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
                   </div>
                 </button>
 
-                <div className="grid grid-cols-2 gap-2">
+                <div className="grid grid-cols-3 gap-2">
                   <button 
                     onClick={() => openWhatsApp(student.guardian_phone)}
                     className="bg-[#25D366] py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md text-white font-black text-[10px] uppercase"
                   >
-                    <MessageCircle size={16} /> {lang === 'bn' ? 'মেসেজ' : 'Message'}
+                    <MessageCircle size={16} /> {lang === 'bn' ? 'WhatsApp' : 'WA Message'}
                   </button>
                   <button 
                     onClick={() => openWhatsApp(student.guardian_phone)}
                     className="bg-[#128C7E] py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md text-white font-black text-[10px] uppercase"
                   >
-                    <PhoneCall size={16} /> {lang === 'bn' ? 'কল করুন' : 'WA Call'}
+                    <PhoneCall size={16} /> {lang === 'bn' ? 'WA কল' : 'WA Call'}
+                  </button>
+                  <button 
+                    onClick={() => setShowSMSModal(true)}
+                    className="bg-blue-500 py-3 rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all shadow-md text-white font-black text-[10px] uppercase"
+                  >
+                    <Send size={16} /> {lang === 'bn' ? 'এসএমএস' : 'App SMS'}
                   </button>
                 </div>
               </div>
@@ -218,6 +225,16 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
             </div>
           </div>
         </div>
+      )}
+
+      {showSMSModal && madrasah && (
+        <SMSModal 
+          students={[student]} 
+          madrasah={madrasah} 
+          lang={lang} 
+          onClose={() => setShowSMSModal(false)} 
+          onSuccess={() => triggerRefresh()} 
+        />
       )}
     </div>
   );
