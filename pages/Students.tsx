@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash, CheckCircle2, MessageSquare, Send, X } from 'lucide-react';
+import { ArrowLeft, Plus, Phone, Search, ChevronRight, Hash, CheckCircle2, MessageSquare, Send, X, BookOpen, ChevronDown } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
-import { Class, Student, Language } from '../types';
+import { Class, Student, Language, SMSTemplate } from '../types';
 import { t } from '../translations';
 
 interface StudentsProps {
@@ -21,11 +21,15 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   const [searchQuery, setSearchQuery] = useState('');
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [templates, setTemplates] = useState<SMSTemplate[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<SMSTemplate | null>(null);
+  const [showTemplateMenu, setShowTemplateMenu] = useState(false);
 
   const cacheKey = `students_list_${selectedClass.id}`;
 
   useEffect(() => {
     fetchStudents();
+    fetchTemplates();
   }, [selectedClass.id, dataVersion]);
 
   const filteredStudents = useMemo(() => {
@@ -36,6 +40,26 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     }
     return list;
   }, [searchQuery, students]);
+
+  const fetchTemplates = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    
+    const cached = offlineApi.getCache('sms_templates');
+    if (cached) setTemplates(cached);
+
+    if (navigator.onLine) {
+      const { data } = await supabase
+        .from('sms_templates')
+        .select('*')
+        .eq('madrasah_id', user.id)
+        .order('created_at', { ascending: false });
+      if (data) {
+        setTemplates(data);
+        offlineApi.setCache('sms_templates', data);
+      }
+    }
+  };
 
   const fetchStudents = async () => {
     setLoading(true);
@@ -86,13 +110,15 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     const phoneNumbers = selectedStudents.map(s => s.guardian_phone);
     
     // Multi-recipient SMS URI Logic
-    // iOS uses ; as separator, Android uses , as separator
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
     const separator = isIOS ? ';' : ',';
     const numbersStr = phoneNumbers.join(separator);
     
+    // Body encoding
+    const bodyParam = selectedTemplate ? `${isIOS ? '&' : '?'}body=${encodeURIComponent(selectedTemplate.body)}` : '';
+    
     // Open system SMS app
-    window.location.href = `sms:${numbersStr}`;
+    window.location.href = `sms:${numbersStr}${bodyParam}`;
   };
 
   const recordCall = async (student: Student) => {
@@ -111,7 +137,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   };
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative pb-32">
+    <div className="space-y-6 animate-in slide-in-from-right-4 duration-300 relative pb-40">
       <div className="flex flex-col gap-5">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-3 min-w-0">
@@ -130,7 +156,10 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
             <button 
               onClick={() => {
                 setIsSelectionMode(!isSelectionMode);
-                if (isSelectionMode) setSelectedIds(new Set());
+                if (isSelectionMode) {
+                  setSelectedIds(new Set());
+                  setSelectedTemplate(null);
+                }
               }}
               className={`shrink-0 p-2.5 rounded-xl transition-all active:scale-95 border ${isSelectionMode ? 'bg-white text-[#d35132] border-white' : 'bg-white/10 text-white border-white/20'}`}
             >
@@ -212,21 +241,54 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
       {/* Multi-Selection Footer Action Bar */}
       {isSelectionMode && selectedIds.size > 0 && (
         <div className="fixed bottom-24 left-4 right-4 animate-in slide-in-from-bottom-10 z-[70]">
-          <div className="bg-white rounded-[2.2rem] p-4 flex items-center justify-between shadow-2xl border border-white/20 ring-1 ring-black/5">
-            <div className="flex items-center gap-3 pl-2">
-              <div className="w-10 h-10 bg-[#d35132]/10 rounded-full flex items-center justify-center text-[#d35132]">
-                <span className="text-lg font-black">{selectedIds.size}</span>
-              </div>
-              <p className="text-xs font-black text-slate-800 uppercase tracking-widest">{t('selected', lang)}</p>
-            </div>
+          <div className="bg-white rounded-[2.2rem] p-4 flex flex-col gap-3 shadow-2xl border border-white/20 ring-1 ring-black/5">
             
-            <button 
-              onClick={sendNativeSMS}
-              className="bg-[#d35132] text-white px-6 py-3.5 rounded-2xl flex items-center gap-2 font-black text-xs uppercase shadow-xl active:scale-95 transition-all"
-            >
-              <MessageSquare size={16} fill="white" />
-              {t('native_sms', lang)}
-            </button>
+            {/* Template Selector for Native SMS */}
+            <div className="relative">
+              <button 
+                onClick={() => setShowTemplateMenu(!showTemplateMenu)}
+                className="w-full flex items-center justify-between px-4 py-2.5 bg-slate-100 rounded-xl text-slate-700 text-xs font-bold"
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <BookOpen size={14} className="text-[#d35132]" />
+                  <span className="truncate">{selectedTemplate ? selectedTemplate.title : (lang === 'bn' ? 'টেমপ্লেট বাছাই করুন' : 'Select Template')}</span>
+                </div>
+                <ChevronDown size={16} className={`transition-transform ${showTemplateMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showTemplateMenu && (
+                <div className="absolute bottom-full left-0 right-0 mb-2 bg-white rounded-2xl shadow-2xl border border-slate-100 max-h-40 overflow-y-auto animate-in slide-in-from-bottom-2">
+                  {templates.length > 0 ? templates.map(tmp => (
+                    <button 
+                      key={tmp.id}
+                      onClick={() => { setSelectedTemplate(tmp); setShowTemplateMenu(false); }}
+                      className="w-full text-left px-5 py-3 border-b border-slate-50 last:border-0 hover:bg-slate-50 text-xs font-bold text-slate-600"
+                    >
+                      {tmp.title}
+                    </button>
+                  )) : (
+                    <p className="text-center py-4 text-slate-400 text-[10px]">{lang === 'bn' ? 'কোনো টেমপ্লেট নেই' : 'No templates'}</p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3 pl-2">
+                <div className="w-10 h-10 bg-[#d35132]/10 rounded-full flex items-center justify-center text-[#d35132]">
+                  <span className="text-lg font-black">{selectedIds.size}</span>
+                </div>
+                <p className="text-xs font-black text-slate-800 uppercase tracking-widest">{t('selected', lang)}</p>
+              </div>
+              
+              <button 
+                onClick={sendNativeSMS}
+                className="bg-[#d35132] text-white px-6 py-3.5 rounded-2xl flex items-center gap-2 font-black text-xs uppercase shadow-xl active:scale-95 transition-all"
+              >
+                <MessageSquare size={16} fill="white" />
+                {t('native_sms', lang)}
+              </button>
+            </div>
           </div>
         </div>
       )}
