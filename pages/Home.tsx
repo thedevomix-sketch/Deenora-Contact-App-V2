@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Phone, Clock, User as UserIcon, RefreshCw } from 'lucide-react';
+import { Search, Phone, Clock, User as UserIcon, RefreshCw, PhoneCall } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Student, RecentCall, Language } from '../types';
 import { t } from '../translations';
@@ -127,6 +127,21 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
     window.location.href = `tel:${student.guardian_phone}`;
   };
 
+  const formatWhatsAppNumber = (phone: string) => {
+    let cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 11 && cleaned.startsWith('0')) {
+      return '88' + cleaned;
+    }
+    return cleaned;
+  };
+
+  const openWhatsApp = async (e: React.MouseEvent, student: Student) => {
+    e.stopPropagation();
+    await recordCall(student);
+    const waNumber = formatWhatsAppNumber(student.guardian_phone);
+    window.open(`https://wa.me/${waNumber}`, '_blank');
+  };
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       <div className="relative">
@@ -157,9 +172,20 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
                   </h3>
                   <p className="text-[10px] text-white/60 font-black uppercase mt-0.5">{student.classes?.class_name || 'N/A'}</p>
                 </div>
-                <button onClick={() => initiateCall(student)} className="bg-white text-[#d35132] p-3 rounded-2xl active:scale-90 transition-all shadow-lg shrink-0">
-                  <Phone size={18} strokeWidth={3} />
-                </button>
+                <div className="flex items-center gap-3 shrink-0">
+                  <button 
+                    onClick={() => initiateCall(student)} 
+                    className="bg-white text-[#d35132] p-2.5 rounded-xl active:scale-90 transition-all shadow-lg border border-slate-100"
+                  >
+                    <Phone size={18} strokeWidth={3} fill="currentColor" />
+                  </button>
+                  <button 
+                    onClick={(e) => openWhatsApp(e, student)} 
+                    className="bg-gradient-to-br from-[#128c7e] to-[#25d366] text-white p-2.5 rounded-xl shadow-[0_8px_20px_-4px_rgba(37,211,102,0.4)] active:scale-90 transition-all border border-white/20"
+                  >
+                    <PhoneCall size={18} strokeWidth={3} fill="currentColor" />
+                  </button>
+                </div>
               </div>
             ))
           ) : (
@@ -198,9 +224,20 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
                   </div>
                 </div>
               </div>
-              <button onClick={() => call.students && initiateCall(call.students)} className="bg-white text-[#d35132] p-2.5 rounded-xl shrink-0 active:scale-90 transition-transform shadow-md">
-                <Phone size={16} strokeWidth={3} />
-              </button>
+              <div className="flex items-center gap-4 shrink-0 px-1">
+                <button 
+                  onClick={() => call.students && initiateCall(call.students)} 
+                  className="bg-white text-[#d35132] p-2.5 rounded-xl active:scale-90 transition-transform shadow-md border border-slate-100"
+                >
+                  <Phone size={16} strokeWidth={3} fill="currentColor" />
+                </button>
+                <button 
+                  onClick={(e) => call.students && openWhatsApp(e, call.students)} 
+                  className="bg-gradient-to-br from-[#128c7e] to-[#25d366] text-white p-2.5 rounded-xl shadow-[0_8px_20px_-4px_rgba(37,211,102,0.3)] active:scale-90 transition-all border border-white/20"
+                >
+                  <PhoneCall size={16} strokeWidth={3} fill="currentColor" />
+                </button>
+              </div>
             </div>
           ))
         ) : (
