@@ -15,11 +15,10 @@ interface StudentsProps {
   triggerRefresh: () => void;
 }
 
-const DEFAULT_TEMPLATES = [
+// Default templates to show if no custom ones are found
+const STATIC_DEFAULTS = [
   { id: 'def-1', title: 'উপস্থিতি (Attendance)', body: 'আস-সালামু আলাইকুম, আজ আপনার সন্তান মাদরাসায় উপস্থিত হয়েছে। ধন্যবাদ।' },
-  { id: 'def-2', title: 'অনুপস্থিতি (Absence)', body: 'আস-সালামু আলাইকুম, আজ আপনার সন্তান মাদরাসায় অনুপস্থিত। অনুগ্রহ করে কারণ জানান।' },
-  { id: 'def-3', title: 'ফি বকেয়া (Fees)', body: 'আস-সালামু আলাইকুম, আপনার সন্তানের মাদরাসার মাসিক ফি বকেয়া রয়েছে। অনুগ্রহ করে দ্রুত পরিশোধ করুন।' },
-  { id: 'def-4', title: 'ছুটির নোটিশ (Holiday)', body: 'আস-সালামু আলাইকুম, বিশেষ কারণে আগামী কাল মাদরাসা বন্ধ থাকবে। ইনশাআল্লাহ আগামী পরশু যথারীতি খুলবে।' }
+  { id: 'def-2', title: 'অনুপস্থিতি (Absence)', body: 'আস-সালামু আলাইকুম, আজ আপনার সন্তান মাদরাসায় অনুপস্থিত। অনুগ্রহ করে কারণ জানান।' }
 ];
 
 const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAddClick, onBack, lang, dataVersion, triggerRefresh }) => {
@@ -49,17 +48,28 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   }, [searchQuery, students]);
 
   const fetchTemplates = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    let dbTemplates: any[] = [];
-    if (navigator.onLine && user) {
-      const { data } = await supabase
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
         .from('sms_templates')
         .select('*')
         .eq('madrasah_id', user.id)
         .order('created_at', { ascending: false });
-      if (data) dbTemplates = data;
+      
+      if (error) throw error;
+      
+      // Merge custom templates from "Wallet & SMS" with some standard defaults
+      if (data && data.length > 0) {
+        setTemplates(data);
+      } else {
+        setTemplates(STATIC_DEFAULTS);
+      }
+    } catch (err) {
+      console.error("Templates fetch error:", err);
+      setTemplates(STATIC_DEFAULTS);
     }
-    setTemplates([...DEFAULT_TEMPLATES, ...dbTemplates]);
   };
 
   const fetchStudents = async () => {
@@ -242,7 +252,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
         </div>
       )}
 
-      {/* Floating Action Menu - Adjusted bottom to 90px to ensure clearance */}
+      {/* Floating Action Menu - Source templates from Wallet & SMS section */}
       {isSelectionMode && selectedIds.size > 0 && (
         <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+90px)] left-4 right-4 z-[150] animate-in slide-in-from-bottom-10">
           <div className="bg-white rounded-[2.5rem] p-4 shadow-[0_25px_60px_rgba(0,0,0,0.4)] border border-white/20 ring-4 ring-black/5 flex flex-col gap-3">
@@ -261,10 +271,10 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
               </button>
 
               {showTemplateMenu && (
-                <div className="absolute bottom-full left-0 right-0 mb-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 max-h-64 overflow-y-auto z-160 animate-in slide-in-from-bottom-4 p-2 ring-1 ring-black/5">
+                <div className="absolute bottom-full left-0 right-0 mb-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 max-h-64 overflow-y-auto z-[160] animate-in slide-in-from-bottom-4 p-2 ring-1 ring-black/5">
                   <div className="px-4 py-3 border-b border-slate-50 mb-1 flex items-center gap-2">
                     <LayoutGrid size={14} className="text-slate-400" />
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Available Templates</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Saved Templates</p>
                   </div>
                   {templates.length > 0 ? templates.map(tmp => (
                     <button 
@@ -274,8 +284,8 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
                     >
                       <div className="min-w-0 pr-4">
                          <div className="flex items-center gap-2 mb-1">
-                            <span className={`text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${selectedTemplate?.id === tmp.id ? 'bg-white/20' : 'bg-slate-100'}`}>
-                              {tmp.id.startsWith('def') ? 'Free' : 'Custom'}
+                            <span className={`text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded ${tmp.id && typeof tmp.id === 'string' && tmp.id.startsWith('def') ? 'bg-white/20' : 'bg-slate-100'}`}>
+                              {tmp.id && typeof tmp.id === 'string' && tmp.id.startsWith('def') ? 'Default' : 'Saved'}
                             </span>
                             <p className="text-xs font-black truncate">{tmp.title}</p>
                          </div>
