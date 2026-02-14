@@ -50,15 +50,23 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
       const fileName = `${madrasah.name.replace(/\s+/g, '_')}_students.xlsx`;
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-      // Direct download logic as requested using URL.createObjectURL
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', fileName);
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      // Upload file to Supabase Storage as requested for better Android WebView compatibility
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('exports')
+        .upload(`exports/${Date.now()}_${fileName}`, blob, {
+          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        });
+
+      if (uploadError) throw uploadError;
+
+      // Get public URL
+      const { data: publicUrlData } = supabase
+        .storage
+        .from('exports')
+        .getPublicUrl(uploadData.path);
+
+      // Redirect browser (Android WebView will detect this and trigger native download)
+      window.location.href = publicUrlData.publicUrl;
 
       setStatus({
         type: 'success',
