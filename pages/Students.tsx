@@ -229,27 +229,27 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3.5">
+            <div className="grid grid-cols-2 gap-3">
               <button 
                 onClick={handlePremiumSMS} 
                 disabled={sending || !selectedTemplate} 
-                className={`h-[52px] rounded-full flex items-center justify-center gap-2 font-black text-[11px] uppercase shadow-lg transition-all ${selectedTemplate ? 'bg-[#8D30F4] text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}
+                className={`h-[48px] rounded-full flex items-center justify-center gap-2 font-black text-[10px] tracking-tight uppercase shadow-lg transition-all ${selectedTemplate ? 'bg-[#8D30F4] text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}
               >
                 {sending ? <Loader2 className="animate-spin" size={16} /> : <MessageSquare size={16} fill="currentColor" />} 
-                {lang === 'bn' ? 'সিস্টেম SMS' : 'System SMS'}
+                SYSTEM SMS
               </button>
               <button 
                 onClick={handleNativeSMS} 
                 disabled={!selectedTemplate} 
-                className={`h-[52px] rounded-full flex items-center justify-center gap-2 font-black text-[11px] uppercase shadow-lg transition-all ${selectedTemplate ? 'bg-[#1A0B2E] text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}
+                className={`h-[48px] rounded-full flex items-center justify-center gap-2 font-black text-[10px] tracking-tight uppercase shadow-lg transition-all ${selectedTemplate ? 'bg-[#1A0B2E] text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}
               >
-                <Smartphone size={16} /> {t('native_sms', lang)}
+                <Smartphone size={16} fill="currentColor" /> SIM SMS (FREE)
               </button>
             </div>
             
             <div className="flex items-center justify-center gap-2 pt-0.5">
               <div className="w-1.5 h-1.5 rounded-full bg-[#8D30F4] animate-pulse"></div>
-              <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-[0.2em]">{selectedIds.size} {t('selected', lang)}</p>
+              <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-[0.2em]">{selectedIds.size} SELECTED</p>
             </div>
           </div>
         </div>
