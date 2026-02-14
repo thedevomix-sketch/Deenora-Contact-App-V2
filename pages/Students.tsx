@@ -209,20 +209,20 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
 
       {isSelectionMode && selectedIds.size > 0 && (
         <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+95px)] left-1/2 -translate-x-1/2 w-[94%] max-w-md z-[150] animate-in slide-in-from-bottom-10">
-          <div className="bg-white/95 backdrop-blur-xl rounded-[2.2rem] p-4.5 shadow-[0_30px_70px_rgba(46,11,94,0.5)] border border-[#8D30F4]/20 flex flex-col gap-3.5">
-            <button onClick={() => setShowTemplateMenu(!showTemplateMenu)} className={`w-full flex items-center justify-between p-4 rounded-[1.2rem] text-xs font-black transition-all border-2 ${selectedTemplate ? 'bg-[#8D30F4]/5 border-[#8D30F4] text-[#8D30F4]' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+          <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] p-5 shadow-[0_30px_70px_rgba(46,11,94,0.5)] border border-[#8D30F4]/20 flex flex-col gap-4">
+            <button onClick={() => setShowTemplateMenu(!showTemplateMenu)} className={`w-full h-[60px] flex items-center justify-between px-6 rounded-2xl text-sm font-black transition-all border-2 ${selectedTemplate ? 'bg-[#8D30F4]/5 border-[#8D30F4]/30 text-[#8D30F4]' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
               <div className="flex items-center gap-3 truncate">
                 <BookOpen size={20} className="text-[#8D30F4]" />
-                <span className="truncate">{selectedTemplate ? selectedTemplate.title : (lang === 'bn' ? 'মেসেজ টেমপ্লেট' : 'Message Template')}</span>
+                <span className="truncate font-noto">{selectedTemplate ? selectedTemplate.title : (lang === 'bn' ? 'মেসেজ টেমপ্লেট' : 'Message Template')}</span>
               </div>
               <ChevronDown size={20} className={`transition-transform duration-300 ${showTemplateMenu ? 'rotate-180' : ''}`} />
             </button>
 
             {showTemplateMenu && (
-              <div className="absolute bottom-full left-0 right-0 mb-3 bg-white rounded-[1.8rem] shadow-2xl border border-slate-100 max-h-64 overflow-y-auto z-[160] p-2 animate-in slide-in-from-bottom-5">
+              <div className="absolute bottom-[calc(100%-40px)] left-0 right-0 mb-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 max-h-60 overflow-y-auto z-[160] p-2 animate-in slide-in-from-bottom-5">
                 {templates.map(tmp => (
                   <button key={tmp.id} onClick={() => { setSelectedTemplate(tmp); setShowTemplateMenu(false); }} className={`w-full text-left px-5 py-3.5 rounded-xl flex items-center justify-between transition-all mb-1 ${selectedTemplate?.id === tmp.id ? 'bg-[#8D30F4] text-white shadow-xl' : 'hover:bg-slate-50 text-[#2E0B5E]'}`}>
-                    <div className="min-w-0"><p className="text-xs font-black truncate">{tmp.title}</p></div>
+                    <div className="min-w-0"><p className="text-xs font-black truncate font-noto">{tmp.title}</p></div>
                     {selectedTemplate?.id === tmp.id && <Check size={18} strokeWidth={4} />}
                   </button>
                 ))}
@@ -230,11 +230,19 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
             )}
 
             <div className="grid grid-cols-2 gap-3.5">
-              <button onClick={handlePremiumSMS} disabled={sending || !selectedTemplate} className={`py-4.5 rounded-[1.2rem] flex items-center justify-center gap-2 font-black text-[11px] uppercase shadow-xl transition-all ${selectedTemplate ? 'premium-btn text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}>
+              <button 
+                onClick={handlePremiumSMS} 
+                disabled={sending || !selectedTemplate} 
+                className={`h-[52px] rounded-full flex items-center justify-center gap-2 font-black text-[11px] uppercase shadow-lg transition-all ${selectedTemplate ? 'bg-[#8D30F4] text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}
+              >
                 {sending ? <Loader2 className="animate-spin" size={16} /> : <MessageSquare size={16} fill="currentColor" />} 
                 {lang === 'bn' ? 'সিস্টেম SMS' : 'System SMS'}
               </button>
-              <button onClick={handleNativeSMS} disabled={!selectedTemplate} className={`py-4.5 rounded-[1.2rem] flex items-center justify-center gap-2 font-black text-[11px] uppercase shadow-xl transition-all ${selectedTemplate ? 'bg-[#2E0B5E] text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}>
+              <button 
+                onClick={handleNativeSMS} 
+                disabled={!selectedTemplate} 
+                className={`h-[52px] rounded-full flex items-center justify-center gap-2 font-black text-[11px] uppercase shadow-lg transition-all ${selectedTemplate ? 'bg-[#1A0B2E] text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}
+              >
                 <Smartphone size={16} /> {t('native_sms', lang)}
               </button>
             </div>
