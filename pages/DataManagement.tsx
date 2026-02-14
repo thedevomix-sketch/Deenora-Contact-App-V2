@@ -50,30 +50,30 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
       const fileName = `${madrasah.name.replace(/\s+/g, '_')}_students.xlsx`;
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-      // Upload file to Supabase Storage as requested for better Android WebView compatibility
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('exports')
-        .upload(`exports/${Date.now()}_${fileName}`, blob, {
-          contentType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+      // Using Base64 Data URL approach to fix 'Bucket not found' 
+      // This is highly compatible with Android WebViews and doesn't require Supabase Storage
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result as string;
+        const link = document.createElement('a');
+        link.href = base64data;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        setStatus({
+          type: 'success',
+          message: lang === 'bn'
+            ? 'সফলভাবে ডাউনলোড হয়েছে'
+            : 'Downloaded Successfully'
         });
+      };
+      reader.onerror = () => {
+        throw new Error(lang === 'bn' ? 'ফাইল প্রসেস করতে সমস্যা হয়েছে' : 'Error processing file');
+      };
+      reader.readAsDataURL(blob);
 
-      if (uploadError) throw uploadError;
-
-      // Get public URL
-      const { data: publicUrlData } = supabase
-        .storage
-        .from('exports')
-        .getPublicUrl(uploadData.path);
-
-      // Redirect browser (Android WebView will detect this and trigger native download)
-      window.location.href = publicUrlData.publicUrl;
-
-      setStatus({
-        type: 'success',
-        message: lang === 'bn'
-          ? 'সফলভাবে ডাউনলোড হয়েছে'
-          : 'Downloaded Successfully'
-      });
     } catch (err: any) { 
       setStatus({ type: 'error', message: err.message }); 
     } finally { 
