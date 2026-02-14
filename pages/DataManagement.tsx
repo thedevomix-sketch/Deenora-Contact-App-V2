@@ -17,7 +17,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
   const [status, setStatus] = useState<{ type: 'success' | 'error' | 'idle', message: string }>({ type: 'idle', message: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleExportExcel = async () => {
+  const handleExportExcel = async (mode: 'download' | 'share' = 'download') => {
     if (!madrasah) return;
     setLoading(true);
     setStatus({ type: 'idle', message: '' });
@@ -46,15 +46,12 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
       const wb = XLSX.utils.book_new(); 
       XLSX.utils.book_append_sheet(wb, ws, "Students");
       
-      // Generate Excel as binary array
       const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const fileName = `${madrasah.name.replace(/\s+/g, '_')}_students.xlsx`;
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-      // MOBILE FIX: Check if Web Share API is available for better Android Support
-      const file = new File([blob], fileName, { type: blob.type });
-      
-      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      if (mode === 'share' && navigator.canShare && navigator.canShare({ files: [new File([blob], fileName, { type: blob.type })] })) {
+        const file = new File([blob], fileName, { type: blob.type });
         try {
           await navigator.share({
             files: [file],
@@ -63,22 +60,23 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
           });
           setStatus({ type: 'success', message: lang === 'bn' ? 'সফলভাবে শেয়ার করা হয়েছে' : 'Shared Successfully' });
         } catch (shareError: any) {
-          // If user cancels sharing, we don't necessarily treat it as an error
-          if (shareError.name !== 'AbortError') {
-            throw shareError;
-          }
+          if (shareError.name !== 'AbortError') throw shareError;
         }
       } else {
-        // Fallback for Desktop or browsers that don't support file sharing
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-        setStatus({ type: 'success', message: lang === 'bn' ? 'সফলভাবে ডাউনলোড হয়েছে' : 'Downloaded Successfully' });
+        // DIRECT DOWNLOAD LOGIC FOR ANDROID WEBVIEW COMPATIBILITY
+        // Using Data URL (Base64) instead of Blob URL as it's often more reliable in hybrid apps
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64data = reader.result as string;
+          const link = document.createElement('a');
+          link.href = base64data;
+          link.setAttribute('download', fileName);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setStatus({ type: 'success', message: lang === 'bn' ? 'সফলভাবে ডাউনলোড হয়েছে' : 'Downloaded Successfully' });
+        };
+        reader.readAsDataURL(blob);
       }
     } catch (err: any) { 
       setStatus({ type: 'error', message: err.message }); 
@@ -202,14 +200,21 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
             </div>
             <div>
               <h3 className="text-2xl font-black text-[#2E0B5E] font-noto leading-tight">ডাটা এক্সপোর্ট</h3>
-              <p className="text-[11px] font-black text-[#A179FF] uppercase tracking-widest mt-1.5">Save Student List</p>
+              <p className="text-[11px] font-black text-[#A179FF] uppercase tracking-widest mt-1.5">Direct Download File</p>
             </div>
           </div>
-          <button onClick={handleExportExcel} disabled={loading} className="w-full py-6 premium-btn text-white font-black rounded-[2rem] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4 text-xl disabled:opacity-50">
-            {loading ? <Loader2 className="animate-spin" size={28} /> : (
-              <><Share2 size={28} /> {lang === 'bn' ? 'এক্সেল এক্সপোর্ট' : 'Excel Export'}</>
-            )}
-          </button>
+          
+          <div className="flex flex-col gap-4">
+            <button onClick={() => handleExportExcel('download')} disabled={loading} className="w-full h-[64px] premium-btn text-white font-black rounded-full shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4 text-xl disabled:opacity-50">
+              {loading ? <Loader2 className="animate-spin" size={28} /> : (
+                <><Download size={28} /> {lang === 'bn' ? 'এক্সেল ডাউনলোড' : 'Excel Download'}</>
+              )}
+            </button>
+            
+            <button onClick={() => handleExportExcel('share')} disabled={loading} className="w-full h-[54px] bg-[#1A0B2E] text-white font-black rounded-full active:scale-95 transition-all flex items-center justify-center gap-3 text-sm shadow-xl disabled:opacity-50">
+               <Share2 size={20} /> {lang === 'bn' ? 'সরাসরি শেয়ার করুন' : 'Share File Directly'}
+            </button>
+          </div>
         </div>
 
         <div className="bg-white/95 backdrop-blur-xl rounded-[3rem] border border-white p-10 shadow-2xl relative overflow-hidden group">
@@ -235,7 +240,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
                    <Loader2 size={80} className="animate-spin absolute inset-0 opacity-20" />
                    <div className="absolute inset-0 flex items-center justify-center text-xl font-black">{progress}%</div>
                 </div>
-                <span className="font-noto text-lg">আপলোড হচ্ছে, দয়া করে অপেক্ষা করুন...</span>
+                <span className="font-noto text-lg text-center px-4">আপলোড হচ্ছে, দয়া করে অপেক্ষা করুন...</span>
               </>
             ) : (
               <>
