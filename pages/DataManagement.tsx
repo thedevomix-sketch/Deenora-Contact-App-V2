@@ -1,5 +1,6 @@
+
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, Download, Upload, Loader2, CheckCircle2, FileSpreadsheet, Table, X, AlertTriangle, FileUp, Share2 } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Loader2, CheckCircle2, Table, AlertTriangle, FileUp } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Madrasah, Language } from '../types';
 import * as XLSX from 'xlsx';
@@ -17,7 +18,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
   const [status, setStatus] = useState<{ type: 'success' | 'error' | 'idle', message: string }>({ type: 'idle', message: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleExportExcel = async (mode: 'download' | 'share' = 'download') => {
+  const handleExportExcel = async () => {
     if (!madrasah) return;
     setLoading(true);
     setStatus({ type: 'idle', message: '' });
@@ -50,34 +51,19 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
       const fileName = `${madrasah.name.replace(/\s+/g, '_')}_students.xlsx`;
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-      if (mode === 'share' && navigator.canShare && navigator.canShare({ files: [new File([blob], fileName, { type: blob.type })] })) {
-        const file = new File([blob], fileName, { type: blob.type });
-        try {
-          await navigator.share({
-            files: [file],
-            title: lang === 'bn' ? 'ছাত্র তালিকা' : 'Student List',
-            text: lang === 'bn' ? `${madrasah.name} এর ছাত্র তালিকা` : `Student list of ${madrasah.name}`
-          });
-          setStatus({ type: 'success', message: lang === 'bn' ? 'সফলভাবে শেয়ার করা হয়েছে' : 'Shared Successfully' });
-        } catch (shareError: any) {
-          if (shareError.name !== 'AbortError') throw shareError;
-        }
-      } else {
-        // DIRECT DOWNLOAD LOGIC FOR ANDROID WEBVIEW COMPATIBILITY
-        // Using Data URL (Base64) instead of Blob URL as it's often more reliable in hybrid apps
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64data = reader.result as string;
-          const link = document.createElement('a');
-          link.href = base64data;
-          link.setAttribute('download', fileName);
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          setStatus({ type: 'success', message: lang === 'bn' ? 'সফলভাবে ডাউনলোড হয়েছে' : 'Downloaded Successfully' });
-        };
-        reader.readAsDataURL(blob);
-      }
+      // DIRECT DOWNLOAD LOGIC FOR ANDROID WEBVIEW COMPATIBILITY
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64data = reader.result as string;
+        const link = document.createElement('a');
+        link.href = base64data;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        setStatus({ type: 'success', message: lang === 'bn' ? 'সফলভাবে ডাউনলোড হয়েছে' : 'Downloaded Successfully' });
+      };
+      reader.readAsDataURL(blob);
     } catch (err: any) { 
       setStatus({ type: 'error', message: err.message }); 
     } finally { 
@@ -141,6 +127,7 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
               classId = newClass.id;
             }
 
+            // Fix: Removed duplicate 'guardian_phone' property to resolve syntax error
             const { error: studentError } = await supabase
               .from('students')
               .insert({
@@ -205,14 +192,10 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
           </div>
           
           <div className="flex flex-col gap-4">
-            <button onClick={() => handleExportExcel('download')} disabled={loading} className="w-full h-[64px] premium-btn text-white font-black rounded-full shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4 text-xl disabled:opacity-50">
+            <button onClick={handleExportExcel} disabled={loading} className="w-full h-[64px] premium-btn text-white font-black rounded-full shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4 text-xl disabled:opacity-50">
               {loading ? <Loader2 className="animate-spin" size={28} /> : (
                 <><Download size={28} /> {lang === 'bn' ? 'এক্সেল ডাউনলোড' : 'Excel Download'}</>
               )}
-            </button>
-            
-            <button onClick={() => handleExportExcel('share')} disabled={loading} className="w-full h-[54px] bg-[#1A0B2E] text-white font-black rounded-full active:scale-95 transition-all flex items-center justify-center gap-3 text-sm shadow-xl disabled:opacity-50">
-               <Share2 size={20} /> {lang === 'bn' ? 'সরাসরি শেয়ার করুন' : 'Share File Directly'}
             </button>
           </div>
         </div>
