@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Loader2, Send, ChevronDown, BookOpen, Users, CheckCircle2, MessageSquare, Plus, Edit3, Trash2, Smartphone, X, Check, Sparkles, LayoutList, History, Zap, AlertTriangle } from 'lucide-react';
+import { CreditCard, Loader2, Send, ChevronDown, BookOpen, Users, CheckCircle2, MessageSquare, Plus, Edit3, Trash2, Smartphone, X, Check, Sparkles, LayoutList, History, Zap, AlertTriangle, IndianRupee } from 'lucide-react';
 import { supabase, offlineApi, smsApi } from '../supabase';
 import { SMSTemplate, Language, Madrasah, Transaction, Class, Student } from '../types';
 import { t } from '../translations';
@@ -397,17 +397,17 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
 
               <div className="space-y-5">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3">টাকার পরিমাণ</label>
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6">টাকার পরিমাণ</label>
                   <div className="relative">
-                    <input type="number" className="w-full px-6 py-4.5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] text-[#2D3142] font-black text-xl outline-none focus:border-[#8D30F4]/20 transition-all pl-12" placeholder="000" />
+                    <input type="number" className="w-full h-[60px] px-14 bg-slate-50 border-2 border-slate-100 rounded-full text-[#2D3142] font-black text-xl outline-none focus:border-[#8D30F4]/20 transition-all" placeholder="000" />
                     <span className="absolute left-6 top-1/2 -translate-y-1/2 font-black text-[#8D30F4] text-xl">৳</span>
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-3">ট্রানজ্যাকশন আইডি (TrxID)</label>
-                  <input type="text" className="w-full px-6 py-4.5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] text-[#2D3142] font-black text-lg outline-none focus:border-[#8D30F4]/20 transition-all uppercase placeholder:normal-case" placeholder="যেমন: 8X23M1..." />
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6">ট্রানজ্যাকশন আইডি (TrxID)</label>
+                  <input type="text" className="w-full h-[60px] px-8 bg-slate-50 border-2 border-slate-100 rounded-full text-[#2D3142] font-black text-lg outline-none focus:border-[#8D30F4]/20 transition-all uppercase placeholder:normal-case" placeholder="যেমন: 8X23M1..." />
                 </div>
-                <button className="w-full py-5.5 premium-btn text-white font-black rounded-[1.8rem] shadow-2xl active:scale-[0.98] transition-all text-xl mt-2">রিচার্জ রিকোয়েস্ট পাঠান</button>
+                <button className="w-full h-[64px] premium-btn text-white font-black rounded-full shadow-[0_15px_40px_rgba(141,48,244,0.4)] active:scale-[0.98] transition-all text-xl mt-2">রিচার্জ রিকোয়েস্ট পাঠান</button>
               </div>
 
               <div className="flex items-center justify-center gap-2.5 pt-4">
