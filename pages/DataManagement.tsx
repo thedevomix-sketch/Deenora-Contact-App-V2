@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { ArrowLeft, Download, Upload, Loader2, CheckCircle2, Table, AlertTriangle, FileUp } from 'lucide-react';
 import { supabase } from '../supabase';
@@ -51,19 +50,22 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
       const fileName = `${madrasah.name.replace(/\s+/g, '_')}_students.xlsx`;
       const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
-      // DIRECT DOWNLOAD LOGIC FOR ANDROID WEBVIEW COMPATIBILITY
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64data = reader.result as string;
-        const link = document.createElement('a');
-        link.href = base64data;
-        link.setAttribute('download', fileName);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        setStatus({ type: 'success', message: lang === 'bn' ? 'সফলভাবে ডাউনলোড হয়েছে' : 'Downloaded Successfully' });
-      };
-      reader.readAsDataURL(blob);
+      // Direct download logic as requested using URL.createObjectURL
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', fileName);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      setStatus({
+        type: 'success',
+        message: lang === 'bn'
+          ? 'সফলভাবে ডাউনলোড হয়েছে'
+          : 'Downloaded Successfully'
+      });
     } catch (err: any) { 
       setStatus({ type: 'error', message: err.message }); 
     } finally { 
@@ -127,7 +129,6 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
               classId = newClass.id;
             }
 
-            // Fix: Removed duplicate 'guardian_phone' property to resolve syntax error
             const { error: studentError } = await supabase
               .from('students')
               .insert({
