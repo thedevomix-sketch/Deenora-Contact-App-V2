@@ -104,13 +104,18 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
             {loadingSearch ? (lang === 'bn' ? 'খোঁজা হচ্ছে...' : 'Searching...') : (lang === 'bn' ? 'সার্চ ফলাফল' : 'Search Results')}
           </h2>
           {searchResults.map(student => (
-            <div key={student.id} onClick={() => onStudentClick(student)} className="bg-white/95 p-4 rounded-[1.5rem] border-l-4 border-l-[#8D30F4] border border-white/20 flex items-center justify-between shadow-lg active:scale-[0.98] transition-all">
+            <div key={student.id} onClick={() => onStudentClick(student)} className="bg-white/95 p-4 rounded-[1.8rem] border-l-4 border-l-[#8D30F4] border border-white/40 flex items-center justify-between shadow-xl active:scale-[0.98] transition-all group backdrop-blur-lg">
               <div className="min-w-0 flex-1">
                 <h3 className="font-black text-[#4B168A] text-[16px] font-noto truncate leading-tight tracking-tight">{student.student_name}</h3>
                 <p className="text-[9px] text-[#A179FF] font-black uppercase mt-1 tracking-widest">{student.classes?.class_name || 'N/A'}</p>
               </div>
-              <div className="w-9 h-9 bg-[#F2EBFF] text-[#8D30F4] rounded-xl flex items-center justify-center shadow-sm shrink-0 ml-3">
-                <MessageCircle size={18} fill="currentColor" />
+              <div className="flex items-center gap-2 shrink-0 ml-3">
+                 <div onClick={(e) => { e.stopPropagation(); initiateNormalCall(student.guardian_phone) }} className="w-10 h-10 bg-[#8D30F4]/10 text-[#8D30F4] rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all border border-[#8D30F4]/10">
+                   <Phone size={20} fill="currentColor" />
+                 </div>
+                 <div onClick={(e) => { e.stopPropagation(); initiateWhatsAppCall(student.guardian_phone) }} className="w-10 h-10 bg-[#25d366] text-white rounded-xl flex items-center justify-center shadow-lg active:scale-90 transition-all border border-white/20">
+                   <PhoneCall size={20} fill="currentColor" />
+                 </div>
               </div>
             </div>
           ))}
