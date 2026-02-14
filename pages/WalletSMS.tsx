@@ -200,7 +200,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
               <div className="relative">
                 <button 
                   onClick={() => setShowClassDropdown(!showClassDropdown)}
-                  className={`w-full px-6 py-4.5 rounded-[1.5rem] border-2 transition-all flex items-center justify-between group ${selectedClassId ? 'bg-[#8D30F4]/5 border-[#8D30F4]/30' : 'bg-slate-50 border-slate-100'}`}
+                  className={`w-full h-[60px] px-6 rounded-[1.5rem] border-2 transition-all flex items-center justify-between group ${selectedClassId ? 'bg-[#8D30F4]/5 border-[#8D30F4]/30' : 'bg-slate-50 border-slate-100'}`}
                 >
                   <div className="flex items-center gap-4">
                     <LayoutList size={20} className={selectedClassId ? 'text-[#8D30F4]' : 'text-slate-300'} />
@@ -254,7 +254,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
               <div className="relative">
                 <button 
                   onClick={() => setShowTemplateDropdown(!showTemplateDropdown)} 
-                  className={`w-full flex items-center justify-between px-6 py-4 rounded-[1.2rem] text-sm font-black transition-all border-2 ${bulkMessage ? 'bg-[#F2EBFF] border-[#8D30F4]/20 text-[#2E0B5E]' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+                  className={`w-full h-[60px] flex items-center justify-between px-6 rounded-[1.2rem] text-sm font-black transition-all border-2 ${bulkMessage ? 'bg-[#F2EBFF] border-[#8D30F4]/20 text-[#2E0B5E]' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
                 >
                   <div className="flex items-center gap-3">
                     <BookOpen size={18} className="text-[#8D30F4]" />
