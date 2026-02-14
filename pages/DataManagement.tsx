@@ -1,6 +1,5 @@
-
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, Download, Upload, Loader2, CheckCircle2, Table, AlertTriangle, FileUp } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Loader2, CheckCircle2, Table, AlertTriangle, FileUp, FileSpreadsheet } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Madrasah, Language } from '../types';
 import * as XLSX from 'xlsx';
@@ -26,6 +25,52 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
   const [progress, setProgress] = useState(0);
   const [status, setStatus] = useState<{ type: 'success' | 'error' | 'idle', message: string }>({ type: 'idle', message: '' });
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const downloadFileNative = (blob: Blob, fileName: string, mimeType: string) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const base64data = reader.result as string;
+      if (window.AndroidInterface && typeof window.AndroidInterface.downloadFile === 'function') {
+        const base64Content = base64data.split(',')[1];
+        window.AndroidInterface.downloadFile(base64Content, fileName, mimeType);
+      } else {
+        const link = document.createElement('a');
+        link.href = base64data;
+        link.setAttribute('download', fileName);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+      }
+    };
+    reader.readAsDataURL(blob);
+  };
+
+  const handleDownloadSample = () => {
+    const sampleData = [
+      {
+        'Class': 'Class 1',
+        'Roll': 1,
+        'Student Name': 'Abdur Rahman',
+        'Guardian Name': 'Abdullah',
+        'Phone 1': '01700000000',
+        'Phone 2': ''
+      }
+    ];
+    
+    const ws = XLSX.utils.json_to_sheet(sampleData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Sample");
+    const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    
+    downloadFileNative(blob, 'madrasah_sample_template.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    
+    setStatus({
+      type: 'success',
+      message: lang === 'bn' ? 'স্যাম্পল ফাইল ডাউনলোড হয়েছে' : 'Sample file downloaded'
+    });
+    setTimeout(() => setStatus({ type: 'idle', message: '' }), 3000);
+  };
 
   const handleExportExcel = async () => {
     if (!madrasah) return;
@@ -61,37 +106,12 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
       const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
       const blob = new Blob([excelBuffer], { type: mimeType });
 
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const base64data = reader.result as string;
-        
-        // 1. Check for Android Native Bridge
-        if (window.AndroidInterface && typeof window.AndroidInterface.downloadFile === 'function') {
-          // Send raw base64 (remove prefix)
-          const base64Content = base64data.split(',')[1];
-          window.AndroidInterface.downloadFile(base64Content, fileName, mimeType);
-        } else {
-          // 2. Standard Browser Fallback
-          const link = document.createElement('a');
-          link.href = base64data;
-          link.setAttribute('download', fileName);
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-        }
-        
-        setStatus({
-          type: 'success',
-          message: lang === 'bn'
-            ? 'সফলভাবে ডাউনলোড হয়েছে'
-            : 'Downloaded Successfully'
-        });
-      };
-      reader.onerror = () => {
-        throw new Error(lang === 'bn' ? 'ফাইল প্রসেস করতে সমস্যা হয়েছে' : 'Error processing file');
-      };
-      reader.readAsDataURL(blob);
+      downloadFileNative(blob, fileName, mimeType);
 
+      setStatus({
+        type: 'success',
+        message: lang === 'bn' ? 'সফলভাবে ডাউনলোড হয়েছে' : 'Downloaded Successfully'
+      });
     } catch (err: any) { 
       setStatus({ type: 'error', message: err.message }); 
     } finally { 
@@ -263,11 +283,19 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
       </div>
 
       <div className="bg-white/90 p-8 rounded-[3rem] border border-white shadow-xl space-y-5">
-        <div className="flex items-center gap-4 text-[#2E0B5E]">
-          <Table size={24} />
-          <h3 className="text-lg font-black font-noto">এক্সেল ফরম্যাট গাইড</h3>
+        <div className="flex items-center justify-between gap-4 text-[#2E0B5E] px-1">
+          <div className="flex items-center gap-4">
+            <Table size={24} />
+            <h3 className="text-lg font-black font-noto">এক্সেল ফরম্যাট গাইড</h3>
+          </div>
+          <button 
+            onClick={handleDownloadSample}
+            className="flex items-center gap-2 px-4 py-2 bg-[#8D30F4]/10 text-[#8D30F4] rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-[#8D30F4]/20 transition-all border border-[#8D30F4]/10"
+          >
+            <FileSpreadsheet size={16} /> স্যাম্পল ফাইল
+          </button>
         </div>
-        <p className="text-xs font-bold text-slate-400 leading-relaxed px-1">আপনার এক্সেল ফাইলটি নিচের ৬টি কলামের ফরম্যাটে হতে হবে:</p>
+        <p className="text-xs font-bold text-slate-400 leading-relaxed px-1">আপনার এক্সেল ফাইলটি নিচের ৬টি কলামের ফরম্যাটে হতে হবে (অথবা স্যাম্পল ফাইলটি ডাউনলোড করুন):</p>
         <div className="grid grid-cols-2 gap-3">
            <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Col A</p><p className="font-black text-[#8D30F4]">Class</p></div>
            <div className="bg-[#F2EBFF] p-4 rounded-2xl text-center"><p className="text-[10px] font-black text-slate-400 uppercase mb-1">Col B</p><p className="font-black text-[#8D30F4]">Roll</p></div>
