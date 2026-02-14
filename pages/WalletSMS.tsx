@@ -145,25 +145,25 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-24">
-      {/* Premium Sliding Tab Navigation */}
-      <div className="relative p-1.5 bg-white/10 backdrop-blur-2xl rounded-[2.5rem] border border-white/20 shadow-2xl flex items-center">
+      {/* Enhanced Large Sliding Tab Navigation */}
+      <div className="relative p-2 bg-white/10 backdrop-blur-3xl rounded-[3rem] border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.2)] flex items-center h-20">
         <div 
-          className="absolute h-[calc(100%-12px)] rounded-[2rem] bg-white shadow-lg transition-all duration-500 ease-out z-0"
+          className="absolute h-[calc(100%-16px)] rounded-[2.5rem] bg-white shadow-[0_8px_30px_rgba(141,48,244,0.3)] transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) z-0"
           style={{ 
-            width: 'calc(33.33% - 8px)',
-            left: activeTab === 'templates' ? '6px' : activeTab === 'bulk-sms' ? '33.33%' : '66.66%',
-            marginLeft: activeTab === 'templates' ? '0px' : activeTab === 'bulk-sms' ? '4px' : '2px'
+            width: 'calc(33.33% - 12px)',
+            left: activeTab === 'templates' ? '8px' : activeTab === 'bulk-sms' ? '33.33%' : '66.66%',
+            marginLeft: activeTab === 'templates' ? '0px' : activeTab === 'bulk-sms' ? '4px' : '4px'
           }}
         />
         {(['templates', 'bulk-sms', 'recharge'] as const).map(tab => (
           <button 
             key={tab} 
             onClick={() => setActiveTab(tab)} 
-            className={`relative flex-1 py-4.5 rounded-[2rem] font-black text-[12px] uppercase tracking-wider flex items-center justify-center gap-2.5 transition-all duration-300 z-10 ${activeTab === tab ? 'text-[#8D30F4]' : 'text-white/70 hover:text-white'}`}
+            className={`relative flex-1 h-full rounded-[2.5rem] font-black text-[13px] uppercase tracking-wider flex items-center justify-center gap-3 transition-all duration-300 z-10 ${activeTab === tab ? 'text-[#8D30F4]' : 'text-white/70 hover:text-white'}`}
           >
-            {tab === 'templates' && <MessageSquare size={18} />}
-            {tab === 'bulk-sms' && <Send size={18} className={activeTab === tab ? 'animate-bounce' : ''} />}
-            {tab === 'recharge' && <CreditCard size={18} />}
+            {tab === 'templates' && <MessageSquare size={22} strokeWidth={2.5} />}
+            {tab === 'bulk-sms' && <Send size={22} strokeWidth={2.5} className={activeTab === tab ? 'animate-bounce' : ''} />}
+            {tab === 'recharge' && <CreditCard size={22} strokeWidth={2.5} />}
             <span className="truncate">
               {tab === 'templates' ? t('templates', lang) : tab === 'bulk-sms' ? t('bulk_sms', lang) : t('recharge', lang)}
             </span>
