@@ -463,7 +463,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
 
       {/* Delete Template Confirmation Modal */}
       {showDeleteTemplateConfirm && (
-        <div className="fixed inset-0 bg-red-900/40 backdrop-blur-xl z-[600] flex items-center justify-center p-8 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/60 z-[600] flex items-center justify-center p-8 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border-2 border-red-50 text-center space-y-6 animate-in zoom-in-95">
              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
                 <AlertTriangle size={32} />
