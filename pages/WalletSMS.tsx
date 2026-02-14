@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { CreditCard, Loader2, Send, ChevronDown, BookOpen, Users, CheckCircle2, MessageSquare, Plus, Edit3, Trash2, Smartphone, X, Check, Sparkles, LayoutList, History, Zap, AlertTriangle, IndianRupee } from 'lucide-react';
 import { supabase, offlineApi, smsApi } from '../supabase';
@@ -144,9 +145,9 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-24">
-      {/* Enhanced Large Sliding Tab Navigation - Fixed Overflow & Alignment */}
-      <div className="relative p-1.5 bg-white/10 backdrop-blur-3xl rounded-[3rem] border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.2)] flex items-center h-16 sm:h-20">
+    <div className="space-y-4 animate-in fade-in duration-500 pb-24">
+      {/* Enhanced Large Sliding Tab Navigation */}
+      <div className="relative p-1.5 bg-white/10 backdrop-blur-3xl rounded-[3rem] border border-white/20 shadow-[0_20px_50px_rgba(0,0,0,0.2)] flex items-center h-16 sm:h-20 mb-2">
         <div 
           className="absolute h-[calc(100%-12px)] rounded-[2.5rem] bg-white shadow-[0_8px_30px_rgba(141,48,244,0.3)] transition-all duration-500 cubic-bezier(0.34, 1.56, 0.64, 1) z-0"
           style={{ 
@@ -260,7 +261,8 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
                     <BookOpen size={18} className="text-[#8D30F4]" />
                     <span className="truncate">{bulkMessage ? 'টেমপ্লেট লোড হয়েছে' : 'টেমপ্লেট থেকে বাছাই করুন'}</span>
                   </div>
-                  <ChevronDown size={18} className={`text-slate-300 transition-transform ${showTemplateDropdown ? 'rotate-180' : ''}`} />
+                  {/* Fixed duplicate size attribute below */}
+                  <ChevronDown className={`text-slate-300 transition-transform ${showTemplateDropdown ? 'rotate-180' : ''}`} size={20} />
                 </button>
                 {showTemplateDropdown && (
                   <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.1)] border border-slate-100 z-[90] p-2 animate-in slide-in-from-top-4 max-h-52 overflow-y-auto">
@@ -317,14 +319,14 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
       )}
 
       {activeTab === 'templates' && (
-        <div className="space-y-6 animate-in slide-in-from-bottom-5">
-          <div className="flex items-center justify-between px-3">
+        <div className="space-y-5 animate-in slide-in-from-bottom-5">
+          <div className="flex items-center justify-between px-3 mt-1">
             <div>
-              <h2 className="text-2xl font-black text-white font-noto drop-shadow-md">মেসেজ টেমপ্লেট</h2>
-              <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mt-1">Manage saved responses</p>
+              <h2 className="text-[20px] font-black text-white font-noto drop-shadow-md">মেসেজ টেমপ্লেট</h2>
+              <p className="text-[9px] font-black text-white/50 uppercase tracking-widest mt-0.5">Manage saved responses</p>
             </div>
-            <button onClick={() => { setEditingId(null); setTempTitle(''); setTempBody(''); setShowAddModal(true); }} className="w-14 h-14 bg-white text-[#8D30F4] rounded-[1.5rem] shadow-2xl flex items-center justify-center active:scale-90 transition-all border-4 border-[#8D30F4]/10">
-              <Plus size={28} strokeWidth={3} />
+            <button onClick={() => { setEditingId(null); setTempTitle(''); setTempBody(''); setShowAddModal(true); }} className="w-12 h-12 bg-white text-[#8D30F4] rounded-[1.2rem] shadow-2xl flex items-center justify-center active:scale-90 transition-all border-4 border-[#8D30F4]/10">
+              <Plus size={24} strokeWidth={3} />
             </button>
           </div>
           
@@ -337,27 +339,27 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
               {templates.map(tmp => (
                 <div key={tmp.id} className="bg-white/95 backdrop-blur-md p-5 rounded-[2rem] border border-white shadow-xl flex flex-col gap-3 group">
                   <div className="flex items-center justify-between">
-                     <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 bg-[#F2EBFF] rounded-lg flex items-center justify-center text-[#8D30F4]">
+                     <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <div className="w-8 h-8 bg-[#F2EBFF] rounded-lg flex items-center justify-center text-[#8D30F4] shrink-0">
                            <MessageSquare size={16} />
                         </div>
-                        <h3 className="font-black text-[#2E0B5E] text-[16px] font-noto truncate max-w-[180px]">{tmp.title}</h3>
+                        <h3 className="font-black text-[#2E0B5E] text-[15px] font-noto truncate">{tmp.title}</h3>
                      </div>
-                     <div className="flex gap-2">
-                       <button onClick={() => { setEditingId(tmp.id); setTempTitle(tmp.title); setTempBody(tmp.body); setShowAddModal(true); }} className="w-9 h-9 bg-slate-50 text-slate-400 rounded-xl flex items-center justify-center border border-slate-100 active:scale-90 transition-all hover:bg-[#8D30F4] hover:text-white hover:border-[#8D30F4]">
-                         <Edit3 size={16} />
+                     <div className="flex gap-2 shrink-0 ml-2">
+                       <button onClick={() => { setEditingId(tmp.id); setTempTitle(tmp.title); setTempBody(tmp.body); setShowAddModal(true); }} className="w-8 h-8 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center border border-slate-100 active:scale-90 transition-all">
+                         <Edit3 size={14} />
                        </button>
-                       <button onClick={() => setShowDeleteTemplateConfirm(tmp.id)} className="w-9 h-9 bg-slate-50 text-red-300 rounded-xl flex items-center justify-center border border-slate-100 active:scale-90 transition-all hover:bg-red-500 hover:text-white hover:border-red-500">
-                         <Trash2 size={16} />
+                       <button onClick={() => setShowDeleteTemplateConfirm(tmp.id)} className="w-8 h-8 bg-slate-50 text-red-300 rounded-lg flex items-center justify-center border border-slate-100 active:scale-90 transition-all">
+                         <Trash2 size={14} />
                        </button>
                      </div>
                   </div>
-                  <p className="text-sm text-slate-500 leading-relaxed font-bold font-noto px-1">{tmp.body}</p>
+                  <p className="text-[13px] text-slate-500 leading-relaxed font-bold font-noto px-1">{tmp.body}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-center py-20 bg-white/10 rounded-[3rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
+            <div className="text-center py-12 bg-white/10 rounded-[2.5rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
               <p className="text-white/60 font-black text-[11px] uppercase tracking-widest">No templates found</p>
             </div>
           )}
@@ -463,7 +465,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
 
       {/* Delete Template Confirmation Modal */}
       {showDeleteTemplateConfirm && (
-        <div className="fixed inset-0 bg-slate-900/60 z-[600] flex items-center justify-center p-8 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[600] flex items-center justify-center p-8 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border-2 border-red-50 text-center space-y-6 animate-in zoom-in-95">
              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
                 <AlertTriangle size={32} />

@@ -30,20 +30,20 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
 
   return (
     <div className="flex flex-col overflow-hidden w-full relative" style={{ height: 'var(--app-height, 100%)' }}>
-      {/* Soft Header */}
-      <header className="flex-none px-6 pt-[calc(env(safe-area-inset-top)+12px)] pb-4 flex items-center justify-between z-50">
+      {/* Soft Header - Reduced top padding from 12px to 4px */}
+      <header className="flex-none px-6 pt-[calc(env(safe-area-inset-top)+4px)] pb-3 flex items-center justify-between z-50">
         <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-[1.2rem] flex items-center justify-center bg-white shadow-sm border border-white/20 shrink-0 overflow-hidden">
+          <div className="w-11 h-11 rounded-[1rem] flex items-center justify-center bg-white shadow-sm border border-white/20 shrink-0 overflow-hidden">
             {isSuperAdmin ? (
-               <ShieldCheck size={26} className="text-[#8D30F4]" />
+               <ShieldCheck size={24} className="text-[#8D30F4]" />
             ) : madrasah?.logo_url ? (
               <img src={madrasah.logo_url} className="w-full h-full object-cover" alt="Logo" />
             ) : (
-              <BookOpen size={24} className="text-[#8D30F4]" />
+              <BookOpen size={22} className="text-[#8D30F4]" />
             )}
           </div>
           <div className="min-w-0">
-            <h1 className="text-[18px] font-black text-white truncate leading-none tracking-tight font-noto drop-shadow-md">
+            <h1 className="text-[17px] font-black text-white truncate leading-none tracking-tight font-noto drop-shadow-md">
               {isSuperAdmin ? (lang === 'bn' ? 'সুপার অ্যাডমিন' : 'Super Admin') : (madrasah?.name || 'মাদরাসা কন্টাক্ট')}
             </h1>
             <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.2em] mt-1.5 drop-shadow-sm">
@@ -52,13 +52,13 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
           </div>
         </div>
         
-        <button onClick={onUpdateClick} className="p-3 bg-white/20 backdrop-blur-md rounded-[1.2rem] text-white active:scale-95 transition-all border border-white/20 shadow-xl">
-          <RefreshCw size={20} />
+        <button onClick={onUpdateClick} className="p-2.5 bg-white/20 backdrop-blur-md rounded-[1rem] text-white active:scale-95 transition-all border border-white/20 shadow-xl">
+          <RefreshCw size={18} />
         </button>
       </header>
 
       {/* Content Area */}
-      <main className="flex-1 overflow-y-auto px-5 pt-4 pb-32 w-full max-w-md mx-auto scroll-smooth relative z-10">
+      <main className="flex-1 overflow-y-auto px-5 pt-2 pb-32 w-full max-w-md mx-auto scroll-smooth relative z-10">
         {children}
       </main>
 
