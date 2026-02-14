@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Camera, Loader2, Lock, User as UserIcon, ShieldCheck, Database, Phone, ChevronRight, Hash, RefreshCw, Copy, Check } from 'lucide-react';
+import { LogOut, Camera, Loader2, Lock, User as UserIcon, ShieldCheck, Database, Phone, ChevronRight, Hash, Copy, Check } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
@@ -62,12 +62,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     }
   };
 
-  const handleForceUpdate = () => {
-    if (confirm(lang === 'bn' ? 'আপনি কি অ্যাপটি রিফ্রেশ করতে চান?' : 'Do you want to force update the app?')) {
-      window.location.replace(window.location.origin + window.location.pathname + '?v=' + Date.now());
-    }
-  };
-
   const handlePhoneChange = (val: string) => {
     const numericValue = val.replace(/\D/g, '').slice(0, 11);
     setNewPhone(numericValue);
@@ -125,14 +119,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                 <ChevronRight size={24} className="text-[#8D30F4]/40 group-hover:translate-x-2 transition-transform" />
              </button>
            )}
-
-           <button onClick={handleForceUpdate} className="w-full bg-[#F2EBFF] p-6 rounded-[2.2rem] border-2 border-[#8D30F4]/5 flex items-center justify-between group active:scale-[0.98] transition-all shadow-sm">
-                <div className="flex items-center gap-5">
-                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-[#8D30F4] shadow-md border border-[#8D30F4]/10"><RefreshCw size={24} /></div>
-                  <span className="text-lg font-black text-[#2E0B5E]">{lang === 'bn' ? 'অ্যাপ আপডেট চেক' : 'Check for Updates'}</span>
-                </div>
-                <ChevronRight size={24} className="text-[#8D30F4]/40 group-hover:translate-x-2 transition-transform" />
-           </button>
 
            <div className="space-y-4 pt-4">
               <div className="bg-[#F2EBFF] p-6 rounded-[2rem] border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all">
