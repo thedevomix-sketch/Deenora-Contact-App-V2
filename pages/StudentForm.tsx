@@ -168,23 +168,31 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
           <div className="space-y-5">
              <div className="space-y-2">
                <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><UserIcon size={14} className="text-[#8D30F4]" /> {t('student_name', lang)}</label>
-               <input type="text" required className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4] transition-all" value={name} onChange={(e) => setName(e.target.value)} />
+               <input type="text" required className="w-full h-[60px] px-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4] transition-all" value={name} onChange={(e) => setName(e.target.value)} />
              </div>
 
              <div className="space-y-2">
                <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><UserCheck size={14} className="text-[#8D30F4]" /> {t('guardian_name', lang)}</label>
-               <input type="text" className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4] transition-all" value={guardianName} onChange={(e) => setGuardianName(e.target.value)} />
+               <input type="text" className="w-full h-[60px] px-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4] transition-all" value={guardianName} onChange={(e) => setGuardianName(e.target.value)} />
              </div>
              
              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Hash size={14} className="text-[#8D30F4]" /> Roll</label>
-                  <input type="number" className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] text-[#2D3142] font-black text-xl outline-none text-center focus:border-[#8D30F4] transition-all" value={roll} onChange={(e) => setRoll(e.target.value)} />
+                  <input 
+                    type="number" 
+                    className="w-full h-[60px] px-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] text-[#2D3142] font-black text-xl outline-none text-center focus:border-[#8D30F4] transition-all" 
+                    value={roll} 
+                    onChange={(e) => setRoll(e.target.value)} 
+                  />
                 </div>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><List size={14} className="text-[#8D30F4]" /> Class</label>
-                  <div onClick={() => setShowClassModal(true)} className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all">
-                    <span className="font-black text-[#2D3142] truncate text-sm">{getSelectedClassName()}</span>
+                  <div 
+                    onClick={() => setShowClassModal(true)} 
+                    className="w-full h-[60px] px-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all"
+                  >
+                    <span className="font-black text-[#2D3142] truncate text-base leading-none">{getSelectedClassName()}</span>
                     <ChevronDown size={18} className="text-[#8D30F4] shrink-0" />
                   </div>
                 </div>
@@ -193,11 +201,11 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Phone size={14} className="text-[#8D30F4]" /> Primary Phone</label>
-                  <input type="tel" required className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4] transition-all" value={phone} onChange={(e) => handlePhoneChange(e.target.value, setPhone)} />
+                  <input type="tel" required className="w-full h-[60px] px-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4] transition-all" value={phone} onChange={(e) => handlePhoneChange(e.target.value, setPhone)} />
                 </div>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Phone size={14} className="text-[#8D30F4]" /> Phone 2</label>
-                  <input type="tel" className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4] transition-all" value={phone2} onChange={(e) => handlePhoneChange(e.target.value, setPhone2)} />
+                  <input type="tel" className="w-full h-[60px] px-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4] transition-all" value={phone2} onChange={(e) => handlePhoneChange(e.target.value, setPhone2)} />
                 </div>
              </div>
           </div>
