@@ -295,11 +295,11 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
               </div>
             </div>
 
-            <div className="flex flex-col gap-3.5 pt-2">
+            <div className="flex flex-col gap-3 pt-2">
               <button 
                 onClick={handleSendBulk} 
                 disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId} 
-                className="w-full py-5 premium-btn text-white font-black rounded-[1.8rem] shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-40"
+                className="w-full h-[64px] premium-btn text-white font-black rounded-full shadow-[0_15px_40px_rgba(141,48,244,0.3)] active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-lg disabled:opacity-40"
               >
                 {sendingBulk ? <Loader2 className="animate-spin" size={24} /> : bulkSuccess ? <><CheckCircle2 size={24} /> পাঠানো হয়েছে</> : <><Send size={20} /> বাল্ক এসএমএস পাঠান</>}
               </button>
@@ -307,9 +307,9 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
               <button 
                 onClick={handleSendNativeBulk} 
                 disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId} 
-                className="w-full py-4.5 bg-[#2E0B5E] text-white font-black rounded-[1.8rem] active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-base border border-white/10 disabled:opacity-40"
+                className="w-full h-[48px] bg-[#1A0B2E] text-white font-black rounded-full active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-sm shadow-lg disabled:opacity-40"
               >
-                <Smartphone size={20} /> {t('native_sms', lang)}
+                <Smartphone size={18} fill="currentColor" /> SIM SMS (FREE)
               </button>
             </div>
           </div>
