@@ -1,8 +1,18 @@
+
 import React, { useState, useRef } from 'react';
 import { ArrowLeft, Download, Upload, Loader2, CheckCircle2, Table, AlertTriangle, FileUp } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Madrasah, Language } from '../types';
 import * as XLSX from 'xlsx';
+
+// Declare the Android interface for TypeScript
+declare global {
+  interface Window {
+    AndroidInterface?: {
+      downloadFile: (base64: string, fileName: string, mimeType: string) => void;
+    };
+  }
+}
 
 interface DataManagementProps {
   lang: Language;
@@ -48,19 +58,27 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
       
       const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
       const fileName = `${madrasah.name.replace(/\s+/g, '_')}_students.xlsx`;
-      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+      const blob = new Blob([excelBuffer], { type: mimeType });
 
-      // Using Base64 Data URL approach to fix 'Bucket not found' 
-      // This is highly compatible with Android WebViews and doesn't require Supabase Storage
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64data = reader.result as string;
-        const link = document.createElement('a');
-        link.href = base64data;
-        link.setAttribute('download', fileName);
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        
+        // 1. Check for Android Native Bridge
+        if (window.AndroidInterface && typeof window.AndroidInterface.downloadFile === 'function') {
+          // Send raw base64 (remove prefix)
+          const base64Content = base64data.split(',')[1];
+          window.AndroidInterface.downloadFile(base64Content, fileName, mimeType);
+        } else {
+          // 2. Standard Browser Fallback
+          const link = document.createElement('a');
+          link.href = base64data;
+          link.setAttribute('download', fileName);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        }
         
         setStatus({
           type: 'success',
