@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { ArrowLeft, Download, Upload, Loader2, CheckCircle2, FileSpreadsheet, Table, X, AlertTriangle, FileUp } from 'lucide-react';
+import { ArrowLeft, Download, Upload, Loader2, CheckCircle2, FileSpreadsheet, Table, X, AlertTriangle, FileUp, Share2 } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Madrasah, Language } from '../types';
 import * as XLSX from 'xlsx';
@@ -20,9 +20,18 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
   const handleExportExcel = async () => {
     if (!madrasah) return;
     setLoading(true);
+    setStatus({ type: 'idle', message: '' });
+    
     try {
-      const { data: students } = await supabase.from('students').select('*, classes(class_name)').eq('madrasah_id', madrasah.id);
-      if (!students) throw new Error("No data found");
+      const { data: students, error: fetchError } = await supabase
+        .from('students')
+        .select('*, classes(class_name)')
+        .eq('madrasah_id', madrasah.id);
+        
+      if (fetchError) throw fetchError;
+      if (!students || students.length === 0) {
+        throw new Error(lang === 'bn' ? "কোনো ছাত্রের তথ্য পাওয়া যায়নি" : "No student data found");
+      }
       
       const excelData = students.map(s => ({ 
         'Class': (s as any).classes?.class_name || 'N/A', 
@@ -36,14 +45,46 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
       const ws = XLSX.utils.json_to_sheet(excelData);
       const wb = XLSX.utils.book_new(); 
       XLSX.utils.book_append_sheet(wb, ws, "Students");
-      XLSX.writeFile(wb, `${madrasah.name}_students.xlsx`);
       
-      setStatus({ type: 'success', message: lang === 'bn' ? 'সফলভাবে ডাউনলোড হয়েছে' : 'Downloaded Successfully' });
+      // Generate Excel as binary array
+      const excelBuffer = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+      const fileName = `${madrasah.name.replace(/\s+/g, '_')}_students.xlsx`;
+      const blob = new Blob([excelBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+      // MOBILE FIX: Check if Web Share API is available for better Android Support
+      const file = new File([blob], fileName, { type: blob.type });
+      
+      if (navigator.canShare && navigator.canShare({ files: [file] })) {
+        try {
+          await navigator.share({
+            files: [file],
+            title: lang === 'bn' ? 'ছাত্র তালিকা' : 'Student List',
+            text: lang === 'bn' ? `${madrasah.name} এর ছাত্র তালিকা` : `Student list of ${madrasah.name}`
+          });
+          setStatus({ type: 'success', message: lang === 'bn' ? 'সফলভাবে শেয়ার করা হয়েছে' : 'Shared Successfully' });
+        } catch (shareError: any) {
+          // If user cancels sharing, we don't necessarily treat it as an error
+          if (shareError.name !== 'AbortError') {
+            throw shareError;
+          }
+        }
+      } else {
+        // Fallback for Desktop or browsers that don't support file sharing
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+        setStatus({ type: 'success', message: lang === 'bn' ? 'সফলভাবে ডাউনলোড হয়েছে' : 'Downloaded Successfully' });
+      }
     } catch (err: any) { 
       setStatus({ type: 'error', message: err.message }); 
     } finally { 
       setLoading(false); 
-      setTimeout(() => setStatus({ type: 'idle', message: '' }), 3000);
+      setTimeout(() => setStatus({ type: 'idle', message: '' }), 4000);
     }
   };
 
@@ -65,7 +106,6 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
           const sheet = workbook.Sheets[sheetName];
           const jsonData = XLSX.utils.sheet_to_json(sheet, { header: 'A' }) as any[];
 
-          // Skip header row
           const rows = jsonData.slice(1);
           if (rows.length === 0) throw new Error("File is empty");
 
@@ -83,7 +123,6 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
 
             if (!studentName || !phone || !className) continue;
 
-            // 1. Get or create class
             let classId = '';
             const { data: existingClass } = await supabase
               .from('classes')
@@ -104,7 +143,6 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
               classId = newClass.id;
             }
 
-            // 2. Insert student (using upsert logic manually or handling errors)
             const { error: studentError } = await supabase
               .from('students')
               .insert({
@@ -164,11 +202,13 @@ const DataManagement: React.FC<DataManagementProps> = ({ lang, madrasah, onBack,
             </div>
             <div>
               <h3 className="text-2xl font-black text-[#2E0B5E] font-noto leading-tight">ডাটা এক্সপোর্ট</h3>
-              <p className="text-[11px] font-black text-[#A179FF] uppercase tracking-widest mt-1.5">Download Student List</p>
+              <p className="text-[11px] font-black text-[#A179FF] uppercase tracking-widest mt-1.5">Save Student List</p>
             </div>
           </div>
           <button onClick={handleExportExcel} disabled={loading} className="w-full py-6 premium-btn text-white font-black rounded-[2rem] shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-4 text-xl disabled:opacity-50">
-            {loading ? <Loader2 className="animate-spin" size={28} /> : <><FileSpreadsheet size={28} /> Excel Export</>}
+            {loading ? <Loader2 className="animate-spin" size={28} /> : (
+              <><Share2 size={28} /> {lang === 'bn' ? 'এক্সেল এক্সপোর্ট' : 'Excel Export'}</>
+            )}
           </button>
         </div>
 
