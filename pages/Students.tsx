@@ -1,10 +1,9 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { ArrowLeft, Plus, Search, CheckCircle2, MessageSquare, X, BookOpen, ChevronDown, Check, PhoneCall, Smartphone, Loader2, ListChecks, MessageCircle, Phone, Sparkles } from 'lucide-react';
+import { ArrowLeft, Plus, Search, CheckCircle2, MessageSquare, X, BookOpen, ChevronDown, Check, PhoneCall, Smartphone, Loader2, ListChecks, MessageCircle, Phone } from 'lucide-react';
 import { supabase, offlineApi, smsApi } from '../supabase';
 import { Class, Student, Language, Teacher } from '../types';
 import { t } from '../translations';
-import { GoogleGenAI } from "@google/genai";
 
 interface StudentsProps {
   selectedClass: Class;
@@ -35,7 +34,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   const [selectedTemplate, setSelectedTemplate] = useState<any | null>(null);
   const [showTemplateMenu, setShowTemplateMenu] = useState(false);
   const [sending, setSending] = useState(false);
-  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
   useEffect(() => {
     fetchStudents();
@@ -132,28 +130,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     } catch (err: any) {
       alert(lang === 'bn' ? 'ব্যার্থ হয়েছে: ' + err.message : 'Failed: ' + err.message);
     } finally { setSending(false); }
-  };
-
-  const handleAIGenerate = async () => {
-    setIsGeneratingAI(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: "Create a very short and polite Madrasah information or attendance SMS in Bengali for parents. Keep it within 160 characters. Return only the SMS text without any extra chat.",
-      });
-      const aiText = response.text;
-      if (aiText) {
-        const newTemp = { id: 'ai-' + Date.now(), title: 'AI Generated', body: aiText.trim() };
-        setSelectedTemplate(newTemp);
-        setShowTemplateMenu(false);
-      }
-    } catch (err) {
-      console.error("AI Generation Error:", err);
-      alert("AI generation failed. Please try again.");
-    } finally {
-      setIsGeneratingAI(false);
-    }
   };
 
   const initiateNormalCall = async (studentId: string, phone: string) => {
@@ -259,19 +235,12 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
         <div className="fixed bottom-[calc(env(safe-area-inset-bottom,0px)+95px)] left-1/2 -translate-x-1/2 w-[94%] max-w-md z-[150] animate-in slide-in-from-bottom-10">
           <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] p-5 shadow-[0_30px_70px_rgba(46,11,94,0.5)] border border-[#8D30F4]/20 flex flex-col gap-4">
             <div className="flex gap-2">
-              <button onClick={() => setShowTemplateMenu(!showTemplateMenu)} className={`flex-1 h-[60px] flex items-center justify-between px-6 rounded-2xl text-sm font-black transition-all border-2 ${selectedTemplate ? 'bg-[#8D30F4]/5 border-[#8D30F4]/30 text-[#8D30F4]' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+              <button onClick={() => setShowTemplateMenu(!showTemplateMenu)} className={`w-full h-[60px] flex items-center justify-between px-6 rounded-2xl text-sm font-black transition-all border-2 ${selectedTemplate ? 'bg-[#8D30F4]/5 border-[#8D30F4]/30 text-[#8D30F4]' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
                 <div className="flex items-center gap-3 truncate">
                   <BookOpen size={20} className="text-[#8D30F4]" />
                   <span className="truncate font-noto">{selectedTemplate ? selectedTemplate.title : (lang === 'bn' ? 'মেসেজ টেমপ্লেট' : 'Message Template')}</span>
                 </div>
                 <ChevronDown size={20} className={`transition-transform duration-300 ${showTemplateMenu ? 'rotate-180' : ''}`} />
-              </button>
-              <button 
-                onClick={handleAIGenerate}
-                disabled={isGeneratingAI}
-                className="w-14 h-[60px] bg-gradient-to-br from-[#8D30F4] to-[#A179FF] rounded-2xl flex items-center justify-center text-white shadow-lg active:scale-90 transition-all shrink-0"
-              >
-                {isGeneratingAI ? <Loader2 className="animate-spin" size={24} /> : <Sparkles size={24} />}
               </button>
             </div>
 
