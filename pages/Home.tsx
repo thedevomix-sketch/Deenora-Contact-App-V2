@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Clock, User as UserIcon, RefreshCw, PhoneCall, X, MessageCircle, Phone } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
@@ -9,9 +10,10 @@ interface HomeProps {
   lang: Language;
   dataVersion: number;
   triggerRefresh: () => void;
+  madrasahId?: string;
 }
 
-const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerRefresh }) => {
+const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerRefresh, madrasahId }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<Student[]>([]);
   const [recentCalls, setRecentCalls] = useState<RecentCall[]>([]);
@@ -20,6 +22,8 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
 
   const fetchRecentCalls = async (isManual = false) => {
     if (isManual) setLoadingRecent(true);
+    if (!madrasahId) return;
+    
     const cached = offlineApi.getCache('recent_calls');
     if (cached) setRecentCalls(cached);
 
@@ -28,6 +32,7 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
         const { data, error } = await supabase
           .from('recent_calls')
           .select('*, students(*, classes(*))')
+          .eq('madrasah_id', madrasahId) // Crucial filter for teachers
           .order('called_at', { ascending: false })
           .limit(10);
         if (!error && data) {
@@ -38,21 +43,28 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
     } else { setLoadingRecent(false); }
   };
 
-  useEffect(() => { fetchRecentCalls(); }, [dataVersion]);
+  useEffect(() => { fetchRecentCalls(); }, [dataVersion, madrasahId]);
 
   const handleSearch = useCallback(async (query: string) => {
-    if (!query.trim()) { setSearchResults([]); return; }
+    if (!query.trim() || !madrasahId) { setSearchResults([]); return; }
+    
     if (!navigator.onLine) {
       const all = offlineApi.getCache('all_students_search') || [];
       setSearchResults(all.filter((s: Student) => s.student_name.toLowerCase().includes(query.toLowerCase())).slice(0, 10));
       return;
     }
+    
     setLoadingSearch(true);
     try {
-      const { data } = await supabase.from('students').select('*, classes(*)').ilike('student_name', `%${query}%`).limit(10);
+      const { data } = await supabase
+        .from('students')
+        .select('*, classes(*)')
+        .eq('madrasah_id', madrasahId) // Explicitly filter by madrasah
+        .ilike('student_name', `%${query}%`)
+        .limit(10);
       if (data) setSearchResults(data);
     } catch (err) { console.error(err); } finally { setLoadingSearch(false); }
-  }, []);
+  }, [madrasahId]);
 
   useEffect(() => {
     const timer = setTimeout(() => handleSearch(searchQuery), 300);
@@ -67,13 +79,8 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
      window.location.href = `https://wa.me/88${phone.replace(/\D/g, '')}`;
   }
 
-  const initiateWhatsAppMessage = (phone: string) => {
-     window.location.href = `https://wa.me/88${phone.replace(/\D/g, '')}?text=${encodeURIComponent('আস-সালামু আলাইকুম')}`;
-  }
-
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Redesigned Premium Search Bar */}
       <div className="relative z-20 group px-1">
         <div className="absolute -inset-1 bg-gradient-to-r from-[#8D30F4] to-[#A179FF] rounded-[2.2rem] blur opacity-10 group-focus-within:opacity-30 transition duration-500"></div>
         <div className="relative flex items-center">
@@ -122,7 +129,6 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
         </div>
       )}
 
-      {/* Recent Activity - Reduced Size Cards */}
       <div className="space-y-3.5 px-1">
         <div className="flex items-center justify-between px-3">
           <h2 className="text-[10px] font-black text-white uppercase tracking-[0.3em] drop-shadow-md opacity-80">{t('recent_calls', lang)}</h2>

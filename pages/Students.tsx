@@ -4,7 +4,6 @@ import { ArrowLeft, Plus, Search, CheckCircle2, MessageSquare, X, BookOpen, Chev
 import { supabase, offlineApi, smsApi } from '../supabase';
 import { Class, Student, Language } from '../types';
 import { t } from '../translations';
-// FIX: Import GoogleGenAI for AI-powered SMS generation
 import { GoogleGenAI } from "@google/genai";
 
 interface StudentsProps {
@@ -15,9 +14,9 @@ interface StudentsProps {
   lang: Language;
   dataVersion: number;
   triggerRefresh: () => void;
-  // Added permission props to fix property mismatch error in App.tsx
   canAdd?: boolean;
   canSendSMS?: boolean;
+  madrasahId?: string;
 }
 
 const STATIC_DEFAULTS = [
@@ -25,7 +24,7 @@ const STATIC_DEFAULTS = [
   { id: 'def-2', title: 'অনুপস্থিতি (Absence)', body: 'আস-সালামু আলাইকুম, আজ আপনার সন্তান মাদরাসায় অনুপস্থিত। অনুগ্রহ করে কারণ জানান।' }
 ];
 
-const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAddClick, onBack, lang, dataVersion, triggerRefresh, canAdd, canSendSMS }) => {
+const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAddClick, onBack, lang, dataVersion, triggerRefresh, canAdd, canSendSMS, madrasahId }) => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -40,7 +39,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   useEffect(() => {
     fetchStudents();
     fetchTemplates();
-  }, [selectedClass.id, dataVersion]);
+  }, [selectedClass.id, dataVersion, madrasahId]);
 
   const filteredStudents = useMemo(() => {
     let list = students;
@@ -57,20 +56,28 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   }, [filteredStudents, selectedIds]);
 
   const fetchTemplates = async () => {
+    if (!madrasahId) return;
     try {
-      // FIX: Cast supabase.auth to any to fix "Property 'getUser' does not exist" error
-      const { data: { user } } = await (supabase.auth as any).getUser();
-      if (!user) return;
-      const { data } = await supabase.from('sms_templates').select('*').eq('madrasah_id', user.id).order('created_at', { ascending: false });
+      const { data } = await supabase
+        .from('sms_templates')
+        .select('*')
+        .eq('madrasah_id', madrasahId)
+        .order('created_at', { ascending: false });
       setTemplates(data && data.length > 0 ? data : STATIC_DEFAULTS);
     } catch (err) { setTemplates(STATIC_DEFAULTS); }
   };
 
   const fetchStudents = async () => {
+    if (!madrasahId) return;
     setLoading(true);
     if (navigator.onLine) {
       try {
-        const { data } = await supabase.from('students').select('*, classes(*)').eq('class_id', selectedClass.id).order('roll', { ascending: true, nullsFirst: false });
+        const { data } = await supabase
+          .from('students')
+          .select('*, classes(*)')
+          .eq('madrasah_id', madrasahId)
+          .eq('class_id', selectedClass.id)
+          .order('roll', { ascending: true, nullsFirst: false });
         if (data) setStudents(data);
       } catch (err) { console.error(err); } finally { setLoading(false); }
     } else { setLoading(false); }
@@ -102,14 +109,12 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   };
 
   const handlePremiumSMS = async () => {
-    if (!selectedTemplate || selectedIds.size === 0) return;
+    if (!selectedTemplate || selectedIds.size === 0 || !madrasahId) return;
+    // Fix: setSending instead of setSendingBulk as setSendingBulk is not defined.
     setSending(true);
     try {
-      // FIX: Cast supabase.auth to any to fix "Property 'getUser' does not exist" error
-      const { data: { user } } = await (supabase.auth as any).getUser();
-      if (!user) throw new Error("Not logged in");
       const selectedStudents = students.filter(s => selectedIds.has(s.id));
-      await smsApi.sendBulk(user.id, selectedStudents, selectedTemplate.body);
+      await smsApi.sendBulk(madrasahId, selectedStudents, selectedTemplate.body);
       alert(lang === 'bn' ? 'এসএমএস সফলভাবে পাঠানো হয়েছে' : 'SMS sent successfully');
       setIsSelectionMode(false);
       setSelectedIds(new Set());
@@ -118,7 +123,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     } finally { setSending(false); }
   };
 
-  // FIX: Added AI Smart Message generation using Gemini API
   const handleAIGenerate = async () => {
     setIsGeneratingAI(true);
     try {
@@ -145,10 +149,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     window.location.href = `tel:${phone}`;
   };
 
-  const initiateWhatsAppMessage = (phone: string) => {
-     window.location.href = `https://wa.me/88${phone.replace(/\D/g, '')}?text=${encodeURIComponent('আস-সালামু আলাইকুম')}`;
-  }
-
   const initiateWhatsAppCall = (phone: string) => {
      window.location.href = `https://wa.me/88${phone.replace(/\D/g, '')}`;
   }
@@ -173,7 +173,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
           </div>
           
           <div className="flex items-center gap-2">
-            {/* Only show selection mode tools if canSendSMS is permitted */}
             {canSendSMS && (
               <>
                 {isSelectionMode && (
@@ -255,7 +254,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
                 </div>
                 <ChevronDown size={20} className={`transition-transform duration-300 ${showTemplateMenu ? 'rotate-180' : ''}`} />
               </button>
-              {/* AI Generation Button */}
               <button 
                 onClick={handleAIGenerate}
                 disabled={isGeneratingAI}

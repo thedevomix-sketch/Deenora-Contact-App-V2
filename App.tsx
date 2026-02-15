@@ -33,7 +33,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.4.6-PREMIUM";
+  const APP_VERSION = "2.4.7-PREMIUM";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -49,12 +49,42 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // Sync teacher session from DB to ensure latest permissions
+  const syncTeacherProfile = async (id: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('teachers')
+        .select('*, madrasahs(name, logo_url)')
+        .eq('id', id)
+        .maybeSingle();
+      
+      if (data && data.is_active) {
+        setTeacher(data);
+        localStorage.setItem('teacher_session', JSON.stringify(data));
+        setMadrasah({ 
+          id: data.madrasah_id, 
+          name: data.madrasahs?.name || 'মাদরাসা কন্টাক্ট', 
+          logo_url: data.madrasahs?.logo_url,
+          is_super_admin: false,
+          balance: 0,
+          sms_balance: 0,
+          is_active: true,
+          created_at: data.created_at
+        } as Madrasah);
+      } else if (data && !data.is_active) {
+        logout();
+      }
+    } catch (e) {
+      console.error("Profile Sync Error", e);
+    }
+  };
+
   useEffect(() => {
     const initializeSession = async () => {
-      // Check for teacher session first
       const savedTeacher = localStorage.getItem('teacher_session');
       if (savedTeacher) {
         const teacherData = JSON.parse(savedTeacher);
+        // Set initial state from storage
         setTeacher(teacherData);
         setMadrasah({ 
           id: teacherData.madrasah_id, 
@@ -66,11 +96,14 @@ const App: React.FC = () => {
           is_active: true,
           created_at: teacherData.created_at
         } as Madrasah);
+        
+        // Background sync latest permissions
+        if (navigator.onLine) await syncTeacherProfile(teacherData.id);
+        
         setLoading(false);
         return;
       }
 
-      // If no teacher session, check for admin session
       const { data: { session: currentSession } } = await (supabase.auth as any).getSession();
       setSession(currentSession);
       if (currentSession) {
@@ -116,18 +149,17 @@ const App: React.FC = () => {
   };
 
   const logout = () => {
-    if (teacher) {
-      localStorage.removeItem('teacher_session');
-      window.location.reload();
-    } else {
+    localStorage.removeItem('teacher_session');
+    if (session) {
       (supabase.auth as any).signOut();
+    } else {
+      window.location.reload();
     }
   };
 
   const navigateTo = (newView: View) => {
     if (teacher) {
       const perms = teacher.permissions;
-      // Strict access control
       if (newView === 'classes' && !perms.can_manage_classes && !perms.can_manage_students) return;
       if (newView === 'wallet-sms' && !perms.can_send_sms) return;
       if (['admin-panel', 'admin-dashboard', 'admin-approvals', 'teachers', 'data-management'].includes(newView)) return;
@@ -166,7 +198,13 @@ const App: React.FC = () => {
       >
         {view === 'home' && (
           isSuperAdmin ? <AdminPanel lang={lang} currentView="list" /> : 
-          <Home onStudentClick={(s) => { setSelectedStudent(s); setView('student-details'); }} lang={lang} dataVersion={dataVersion} triggerRefresh={triggerRefresh} />
+          <Home 
+            onStudentClick={(s) => { setSelectedStudent(s); setView('student-details'); }} 
+            lang={lang} 
+            dataVersion={dataVersion} 
+            triggerRefresh={triggerRefresh}
+            madrasahId={madrasah?.id}
+          />
         )}
         
         {view === 'classes' && (
@@ -191,6 +229,7 @@ const App: React.FC = () => {
             triggerRefresh={triggerRefresh}
             canAdd={!teacher || teacher.permissions.can_manage_students}
             canSendSMS={!teacher || teacher.permissions.can_send_sms}
+            madrasahId={madrasah?.id}
           />
         )}
 
