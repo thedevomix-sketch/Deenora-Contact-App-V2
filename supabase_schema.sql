@@ -1,6 +1,6 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V14 - BALANCE SYNC FIX)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V15 - ROBUST BALANCE)
 -- ======================================================
 
 -- Enable UUID extension
@@ -110,6 +110,10 @@ CREATE TABLE IF NOT EXISTS public.admin_sms_stock (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- নিশ্চিত করুন যে স্টক টেবিলে একটি রো আছে
+INSERT INTO public.admin_sms_stock (remaining_sms) 
+SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM public.admin_sms_stock);
+
 -- ৭. সিস্টেম সেটিংস টেবিল
 CREATE TABLE IF NOT EXISTS public.system_settings (
     id UUID PRIMARY KEY DEFAULT '00000000-0000-0000-0000-000000000001',
@@ -121,8 +125,12 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- ৮. বাল্ক এসএমএস আরপিসি (UPDATED)
--- এখন এটি একই সাথে মাদরাসার ব্যালেন্স এবং অ্যাডমিন স্টক থেকে এসএমএস কমাবে
+-- নিশ্চিত করুন যে সেটিংস টেবিলে একটি রো আছে
+INSERT INTO public.system_settings (id, bkash_number) 
+SELECT '00000000-0000-0000-0000-000000000001', '017XXXXXXXX' 
+WHERE NOT EXISTS (SELECT 1 FROM public.system_settings WHERE id = '00000000-0000-0000-0000-000000000001');
+
+-- ৮. বাল্ক এসএমএস আরপিসি (UPDATED WITH COALESCE)
 CREATE OR REPLACE FUNCTION public.send_bulk_sms_rpc(
   p_madrasah_id UUID,
   p_student_ids UUID[],
@@ -135,20 +143,20 @@ BEGIN
     v_sms_count := array_length(p_student_ids, 1);
     
     -- ইউজার ব্যালেন্স চেক
-    SELECT sms_balance INTO v_balance FROM public.madrasahs WHERE id = p_madrasah_id;
+    SELECT COALESCE(sms_balance, 0) INTO v_balance FROM public.madrasahs WHERE id = p_madrasah_id;
     
-    IF v_balance IS NULL OR v_balance < v_sms_count THEN
+    IF v_balance < v_sms_count THEN
         RETURN json_build_object('success', false, 'error', 'Insufficient SMS balance');
     END IF;
 
     -- ১. ইউজারের ব্যালেন্স কমানো
     UPDATE public.madrasahs 
-    SET sms_balance = sms_balance - v_sms_count 
+    SET sms_balance = COALESCE(sms_balance, 0) - v_sms_count 
     WHERE id = p_madrasah_id;
 
     -- ২. অ্যাডমিন স্টক থেকেও কমানো (গ্লোবাল ট্র্যাকিং এর জন্য)
     UPDATE public.admin_sms_stock 
-    SET remaining_sms = remaining_sms - v_sms_count 
+    SET remaining_sms = COALESCE(remaining_sms, 0) - v_sms_count 
     WHERE id IS NOT NULL;
 
     -- ৩. লগ ইনসার্ট করা
