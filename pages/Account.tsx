@@ -138,7 +138,8 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         </div>
       </div>
 
-      <button onClick={() => supabase.auth.signOut()} className="w-full py-6 bg-red-500 text-white font-black rounded-[2.2rem] shadow-xl active:scale-[0.95] transition-all flex items-center justify-center gap-4 text-lg border-2 border-red-400">
+      {/* FIX: Cast supabase.auth to any to fix "Property 'signOut' does not exist" error */}
+      <button onClick={() => (supabase.auth as any).signOut()} className="w-full py-6 bg-red-500 text-white font-black rounded-[2.2rem] shadow-xl active:scale-[0.95] transition-all flex items-center justify-center gap-4 text-lg border-2 border-red-400">
         <LogOut size={26} /> {t('logout', lang)}
       </button>
     </div>

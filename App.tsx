@@ -81,7 +81,8 @@ const App: React.FC = () => {
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+    // FIX: Cast supabase.auth to any to fix "Property 'getSession' does not exist" error
+    (supabase.auth as any).getSession().then(({ data: { session: currentSession } }: any) => {
       setSession(currentSession);
       if (currentSession) {
         fetchMadrasahProfileWithRetry(currentSession.user.id);
@@ -90,7 +91,8 @@ const App: React.FC = () => {
       }
     });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    // FIX: Cast supabase.auth to any to fix "Property 'onAuthStateChange' does not exist" error
+    const { data: { subscription } } = (supabase.auth as any).onAuthStateChange((_event: any, session: any) => {
       setSession(session);
       if (session) {
         fetchMadrasahProfileWithRetry(session.user.id);
@@ -174,7 +176,8 @@ const App: React.FC = () => {
            দুঃখিত, আপনার মাদরাসার অ্যাকাউন্টটি বর্তমানে অ্যাডমিন কর্তৃক ব্লক করা হয়েছে। বিস্তারিত জানতে বা অ্যাকাউন্ট সক্রিয় করতে আমাদের সাথে যোগাযোগ করুন।
         </p>
         <button 
-          onClick={() => supabase.auth.signOut()} 
+          // FIX: Cast supabase.auth to any to fix "Property 'signOut' does not exist" error
+          onClick={() => (supabase.auth as any).signOut()} 
           className="bg-white text-red-500 px-10 py-4 rounded-full font-black shadow-2xl active:scale-95 transition-all"
         >
           লগ আউট করুন

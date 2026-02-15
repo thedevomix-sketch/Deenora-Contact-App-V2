@@ -1,6 +1,6 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V13 - RECURSION FIX)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V14 - BALANCE SYNC FIX)
 -- ======================================================
 
 -- Enable UUID extension
@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
 -- RLS Enable
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
--- রিকারশন এড়ানোর জন্য সিকিউরিটি ডিফাইনার ফাংশন
+-- সিকিউরিটি ডিফাইনার ফাংশন
 CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
@@ -38,10 +38,10 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Madrasahs Policies (Fixed Recursion)
-DROP POLICY IF EXISTS "Allow public select for validation" ON public.madrasahs;
-DROP POLICY IF EXISTS "Allow individual update" ON public.madrasahs;
-DROP POLICY IF EXISTS "Super Admin Full Access" ON public.madrasahs;
+-- Madrasahs Policies
+DROP POLICY IF EXISTS "madrasah_select_policy" ON public.madrasahs;
+DROP POLICY IF EXISTS "madrasah_update_own" ON public.madrasahs;
+DROP POLICY IF EXISTS "madrasah_admin_policy" ON public.madrasahs;
 
 CREATE POLICY "madrasah_select_policy" ON public.madrasahs FOR SELECT USING (true);
 CREATE POLICY "madrasah_update_own" ON public.madrasahs FOR UPDATE USING (auth.uid() = id);
@@ -56,10 +56,6 @@ CREATE TABLE IF NOT EXISTS public.classes (
 );
 
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users can see own classes" ON public.classes;
-DROP POLICY IF EXISTS "Users can manage own classes" ON public.classes;
-DROP POLICY IF EXISTS "Super Admin View All Classes" ON public.classes;
-
 CREATE POLICY "class_select_policy" ON public.classes FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "class_manage_policy" ON public.classes FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
@@ -79,10 +75,6 @@ CREATE TABLE IF NOT EXISTS public.students (
 );
 
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users can see own students" ON public.students;
-DROP POLICY IF EXISTS "Users can manage own students" ON public.students;
-DROP POLICY IF EXISTS "Super Admin View All Students" ON public.students;
-
 CREATE POLICY "student_select_policy" ON public.students FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "student_manage_policy" ON public.students FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
@@ -100,10 +92,6 @@ CREATE TABLE IF NOT EXISTS public.transactions (
 );
 
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
-DROP POLICY IF EXISTS "Users can see own transactions" ON public.transactions;
-DROP POLICY IF EXISTS "Users can request recharge" ON public.transactions;
-DROP POLICY IF EXISTS "Super Admin Manage Transactions" ON public.transactions;
-
 CREATE POLICY "trans_select_policy" ON public.transactions FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "trans_insert_policy" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = madrasah_id);
 CREATE POLICY "trans_admin_policy" ON public.transactions FOR ALL USING (public.is_admin(auth.uid()));
@@ -133,7 +121,8 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- ৮. বাল্ক এসএমএস আরপিসি
+-- ৮. বাল্ক এসএমএস আরপিসি (UPDATED)
+-- এখন এটি একই সাথে মাদরাসার ব্যালেন্স এবং অ্যাডমিন স্টক থেকে এসএমএস কমাবে
 CREATE OR REPLACE FUNCTION public.send_bulk_sms_rpc(
   p_madrasah_id UUID,
   p_student_ids UUID[],
@@ -144,16 +133,25 @@ DECLARE
     v_balance INTEGER;
 BEGIN
     v_sms_count := array_length(p_student_ids, 1);
+    
+    -- ইউজার ব্যালেন্স চেক
     SELECT sms_balance INTO v_balance FROM public.madrasahs WHERE id = p_madrasah_id;
     
     IF v_balance IS NULL OR v_balance < v_sms_count THEN
         RETURN json_build_object('success', false, 'error', 'Insufficient SMS balance');
     END IF;
 
+    -- ১. ইউজারের ব্যালেন্স কমানো
     UPDATE public.madrasahs 
     SET sms_balance = sms_balance - v_sms_count 
     WHERE id = p_madrasah_id;
 
+    -- ২. অ্যাডমিন স্টক থেকেও কমানো (গ্লোবাল ট্র্যাকিং এর জন্য)
+    UPDATE public.admin_sms_stock 
+    SET remaining_sms = remaining_sms - v_sms_count 
+    WHERE id IS NOT NULL;
+
+    -- ৩. লগ ইনসার্ট করা
     INSERT INTO public.sms_logs (madrasah_id, recipient_phone, message, status)
     SELECT p_madrasah_id, guardian_phone, p_message, 'sent'
     FROM public.students
