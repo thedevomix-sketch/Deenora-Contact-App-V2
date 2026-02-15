@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Camera, Loader2, Lock, User as UserIcon, ShieldCheck, Database, Phone, ChevronRight, Hash, Copy, Check, MessageSquare, Zap, Globe } from 'lucide-react';
+import { LogOut, Camera, Loader2, Lock, User as UserIcon, ShieldCheck, Database, Phone, ChevronRight, Hash, Copy, Check, MessageSquare, Zap, Globe, Smartphone } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
@@ -83,14 +83,26 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
           </div>
         </div>
 
-        <div className="space-y-6">
+        <div className="space-y-5">
           <div className="bg-slate-50 p-6 rounded-[2rem] border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block mb-2">মাদরাসার নাম</label>
-            <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-sm w-full font-noto" value={newName} onChange={(e) => setNewName(e.target.value)} />
+            <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block mb-2">
+              <UserIcon size={14} className="text-[#8D30F4]" /> মাদরাসার নাম
+            </label>
+            <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full font-noto" value={newName} onChange={(e) => setNewName(e.target.value)} />
           </div>
+
           <div className="bg-slate-50 p-6 rounded-[2rem] border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all">
-            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block mb-2">লগইন কোড/পাসওয়ার্ড</label>
-            <input type="password" title="Login Code" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-sm w-full" value={newLoginCode} onChange={(e) => setNewLoginCode(e.target.value)} />
+            <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block mb-2">
+              <Smartphone size={14} className="text-[#8D30F4]" /> মাদরাসার মোবাইল নম্বর
+            </label>
+            <input type="tel" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} placeholder="017XXXXXXXX" />
+          </div>
+
+          <div className="bg-slate-50 p-6 rounded-[2rem] border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all">
+            <label className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest px-1 block mb-2">
+              <Lock size={14} className="text-[#8D30F4]" /> লগইন কোড/পাসওয়ার্ড
+            </label>
+            <input type="password" title="Login Code" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full" value={newLoginCode} onChange={(e) => setNewLoginCode(e.target.value)} />
           </div>
         </div>
 
