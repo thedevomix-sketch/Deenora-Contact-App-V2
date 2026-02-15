@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, Clock, User as UserIcon, RefreshCw, PhoneCall, X, MessageCircle, Phone } from 'lucide-react';
+import { Search, Clock, User as UserIcon, RefreshCw, PhoneCall, X, MessageCircle, Phone, AlertCircle } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Student, RecentCall, Language } from '../types';
 import { t } from '../translations';
@@ -9,7 +9,7 @@ interface HomeProps {
   onStudentClick: (student: Student) => void;
   lang: Language;
   dataVersion: number;
-  triggerRefresh: () => void;
+  triggerRefresh: void;
   madrasahId?: string;
 }
 
@@ -19,6 +19,7 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
   const [recentCalls, setRecentCalls] = useState<RecentCall[]>([]);
   const [loadingSearch, setLoadingSearch] = useState(false);
   const [loadingRecent, setLoadingRecent] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
 
   const fetchRecentCalls = async (isManual = false) => {
     if (!madrasahId) {
@@ -26,29 +27,75 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
       return;
     }
     
-    if (isManual) setLoadingRecent(true);
+    if (isManual) {
+      setLoadingRecent(true);
+      setFetchError(null);
+      // Clear cache on manual refresh to ensure we get fresh data
+      offlineApi.removeCache('recent_calls');
+    }
     
+    // Check cache first for faster loading
     const cached = offlineApi.getCache('recent_calls');
-    if (cached && !isManual) setRecentCalls(cached);
+    if (cached && !isManual) {
+      setRecentCalls(cached);
+      setLoadingRecent(false);
+    }
 
     if (navigator.onLine) {
       try {
+        // Querying recent_calls with related student and class data
         const { data, error } = await supabase
           .from('recent_calls')
-          .select('*, students(*, classes(*))')
+          .select(`
+            id,
+            madrasah_id,
+            student_id,
+            called_at,
+            students (
+              id,
+              student_name,
+              guardian_phone,
+              roll,
+              photo_url,
+              classes (
+                id,
+                class_name
+              )
+            )
+          `)
           .eq('madrasah_id', madrasahId)
           .order('called_at', { ascending: false })
-          .limit(15);
+          .limit(20);
         
         if (error) throw error;
         
         if (data) {
-          const validCalls = data.filter(call => call.students);
+          // Fix for TypeScript type mismatch: Supabase join results can sometimes be returned as arrays.
+          // We normalize these to single objects to match our interface definitions.
+          const formattedCalls: RecentCall[] = (data as any[]).map(call => {
+            const rawStudent = Array.isArray(call.students) ? call.students[0] : call.students;
+            if (rawStudent) {
+              const rawClass = Array.isArray(rawStudent.classes) ? rawStudent.classes[0] : rawStudent.classes;
+              return {
+                ...call,
+                students: {
+                  ...rawStudent,
+                  classes: rawClass
+                }
+              };
+            }
+            return { ...call, students: undefined };
+          });
+
+          // Filter out entries where student data might be missing or restricted
+          const validCalls = formattedCalls.filter(call => call.students);
           setRecentCalls(validCalls);
           offlineApi.setCache('recent_calls', validCalls);
+          console.log("Fetched recent calls:", validCalls.length);
         }
-      } catch (err) { 
-        console.error("Recent Calls Fetch Error:", err); 
+      } catch (err: any) { 
+        console.error("Recent Calls Fetch Error:", err.message);
+        setFetchError(err.message);
       } finally { 
         setLoadingRecent(false); 
       }
@@ -64,15 +111,19 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
   const recordCall = async (studentId: string) => {
     if (!madrasahId || !studentId) return;
     try {
-      // Return the promise to await it in caller functions
       const { error } = await supabase.from('recent_calls').insert({
         madrasah_id: madrasahId,
         student_id: studentId,
         called_at: new Date().toISOString()
       });
       
-      if (error) console.error("Error saving call record:", error);
-      triggerRefresh();
+      if (error) {
+        console.error("Error saving call record:", error.message);
+      } else {
+        // Automatically refresh history after recording a call
+        fetchRecentCalls();
+        triggerRefresh();
+      }
     } catch (e) {
       console.error("recordCall Exception:", e);
     }
@@ -81,21 +132,28 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
   const handleSearch = useCallback(async (query: string) => {
     if (!query.trim() || !madrasahId) { setSearchResults([]); return; }
     
-    if (!navigator.onLine) {
-      const all = offlineApi.getCache('all_students_search') || [];
-      setSearchResults(all.filter((s: Student) => s.student_name.toLowerCase().includes(query.toLowerCase())).slice(0, 10));
-      return;
-    }
-    
     setLoadingSearch(true);
     try {
-      const { data } = await supabase
-        .from('students')
-        .select('*, classes(*)')
-        .eq('madrasah_id', madrasahId)
-        .ilike('student_name', `%${query}%`)
-        .limit(10);
-      if (data) setSearchResults(data);
+      if (navigator.onLine) {
+        const { data } = await supabase
+          .from('students')
+          .select('*, classes(*)')
+          .eq('madrasah_id', madrasahId)
+          .ilike('student_name', `%${query}%`)
+          .limit(10);
+        
+        if (data) {
+          // Normalize joined classes data (Supabase may return it as an array)
+          const formattedResults = (data as any[]).map(s => ({
+            ...s,
+            classes: Array.isArray(s.classes) ? s.classes[0] : s.classes
+          })) as Student[];
+          setSearchResults(formattedResults);
+        }
+      } else {
+        const all = offlineApi.getCache('all_students_search') || [];
+        setSearchResults(all.filter((s: Student) => s.student_name.toLowerCase().includes(query.toLowerCase())).slice(0, 10));
+      }
     } catch (err) { console.error(err); } finally { setLoadingSearch(false); }
   }, [madrasahId]);
 
@@ -105,7 +163,6 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
   }, [searchQuery, handleSearch]);
 
   const initiateNormalCall = async (studentId: string, phone: string) => {
-    // Crucial: Wait for the record to be saved before navigating away
     await recordCall(studentId);
     window.location.href = `tel:${phone}`;
   };
@@ -168,22 +225,39 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
       <div className="space-y-3.5 px-1">
         <div className="flex items-center justify-between px-3">
           <h2 className="text-[10px] font-black text-white uppercase tracking-[0.3em] drop-shadow-md opacity-80">{t('recent_calls', lang)}</h2>
-          <button onClick={() => fetchRecentCalls(true)} className="p-2 bg-white/20 rounded-xl text-white backdrop-blur-md active:scale-95 transition-all">
+          <button 
+            onClick={() => fetchRecentCalls(true)} 
+            className="p-2 bg-white/20 rounded-xl text-white backdrop-blur-md active:scale-95 transition-all flex items-center gap-2 px-3"
+          >
+            <span className="text-[9px] font-black uppercase tracking-widest">{loadingRecent ? '...' : (lang === 'bn' ? 'রিফ্রেশ' : 'Refresh')}</span>
             <RefreshCw size={14} strokeWidth={3} className={loadingRecent ? 'animate-spin' : ''} />
           </button>
         </div>
         
+        {fetchError && (
+          <div className="mx-2 p-3 bg-red-500/20 backdrop-blur-md border border-red-500/30 rounded-2xl flex items-center gap-3 text-white text-[10px] font-black uppercase tracking-wider">
+            <AlertCircle size={16} className="shrink-0" />
+            <span>Error: {fetchError}</span>
+          </div>
+        )}
+
         {loadingRecent && recentCalls.length === 0 ? (
           <div className="space-y-3">
-            {[1, 2, 3].map(i => <div key={i} className="h-16 bg-white/30 animate-pulse rounded-[1.8rem]"></div>)}
+            {[1, 2, 3, 4].map(i => (
+              <div key={i} className="h-20 bg-white/10 animate-pulse rounded-[1.8rem] border border-white/5"></div>
+            ))}
           </div>
         ) : recentCalls.length > 0 ? (
           <div className="space-y-2.5">
             {recentCalls.map(call => (
               <div key={call.id} onClick={() => call.students && onStudentClick(call.students)} className="bg-white/95 p-4 rounded-[1.8rem] border border-white/40 flex items-center justify-between shadow-xl active:scale-[0.98] transition-all group backdrop-blur-lg">
                 <div className="flex items-center gap-4 min-w-0 flex-1">
-                  <div className="w-11 h-11 bg-gradient-to-br from-[#F2EBFF] to-white rounded-2xl flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
-                    <UserIcon size={24} strokeWidth={2.5} />
+                  <div className="w-11 h-11 bg-gradient-to-br from-[#F2EBFF] to-white rounded-2xl flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner overflow-hidden">
+                    {call.students?.photo_url ? (
+                      <img src={call.students.photo_url} className="w-full h-full object-cover" alt="Student" />
+                    ) : (
+                      <UserIcon size={24} strokeWidth={2.5} />
+                    )}
                   </div>
                   <div className="min-w-0">
                     <h3 className="font-black text-[#4B168A] text-[16px] font-noto truncate leading-tight tracking-tight">{call.students?.student_name || 'অজানা'}</h3>
@@ -191,6 +265,8 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
                        <Clock size={11} className="text-[#A179FF]" />
                        <span className="text-[9px] font-black text-[#A179FF] uppercase tracking-[0.05em]">
                          {new Date(call.called_at).toLocaleTimeString(lang === 'bn' ? 'bn-BD' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
+                         {" • "}
+                         {new Date(call.called_at).toLocaleDateString(lang === 'bn' ? 'bn-BD' : 'en-US', { day: 'numeric', month: 'short' })}
                        </span>
                     </div>
                   </div>
@@ -207,10 +283,14 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
             ))}
           </div>
         ) : (
-          <div className="text-center py-16 bg-white/10 rounded-[3rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
+          <div className="text-center py-20 bg-white/10 rounded-[3rem] border-2 border-dashed border-white/30 backdrop-blur-sm mx-2">
+            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4 border border-white/10">
+              <Clock size={32} className="text-white/20" />
+            </div>
             <p className="text-white/60 text-[10px] font-black uppercase tracking-[0.2em] drop-shadow-sm">
               No History Found
             </p>
+            <p className="text-white/30 text-[8px] font-bold uppercase tracking-widest mt-2">Try refreshing or calling a student</p>
           </div>
         )}
       </div>
