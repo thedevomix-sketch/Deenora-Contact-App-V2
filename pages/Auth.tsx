@@ -35,7 +35,7 @@ const Auth: React.FC<AuthProps> = ({ lang }) => {
       });
       if (signInError) throw signInError;
       if (data.user) {
-        localStorage.removeItem('teacher_session'); // Clear any teacher session
+        localStorage.removeItem('teacher_session');
         offlineApi.removeCache('profile');
         const { data: profile } = await supabase.from('madrasahs').select('name').eq('id', data.user.id).single();
         if (profile) localStorage.setItem('m_name', profile.name);
@@ -53,22 +53,30 @@ const Auth: React.FC<AuthProps> = ({ lang }) => {
     setError('');
 
     try {
-      // Find teacher in the database
+      // Clean phone number (remove spaces, dashes, etc.)
+      const cleanPhone = phone.replace(/\D/g, '');
+      // If the number is 11 digits (BD local), it's standard.
+      
       const { data, error: fetchError } = await supabase
         .from('teachers')
         .select('*, madrasahs(name, logo_url)')
-        .eq('phone', phone.trim())
+        .eq('phone', cleanPhone)
         .eq('login_code', code.trim())
         .eq('is_active', true)
         .maybeSingle();
 
-      if (fetchError || !data) {
+      if (fetchError) {
+        console.error("Teacher Login Fetch Error:", fetchError);
+        throw new Error(lang === 'bn' ? 'সার্ভার সংযোগে সমস্যা হচ্ছে' : 'Server connection error');
+      }
+
+      if (!data) {
         throw new Error(lang === 'bn' ? 'ভুল মোবাইল নম্বর অথবা পিন কোড!' : 'Invalid Phone or PIN!');
       }
 
-      // Store teacher session locally since they don't have a Supabase Auth user
+      // Success - Store session
       localStorage.setItem('teacher_session', JSON.stringify(data));
-      window.location.reload(); // Reload to update App state
+      window.location.reload(); 
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -92,15 +100,14 @@ const Auth: React.FC<AuthProps> = ({ lang }) => {
         </div>
 
         <div className="w-full space-y-6">
-          {/* Login Type Toggle */}
           <div className="flex p-1.5 bg-white/10 backdrop-blur-md rounded-2xl border border-white/20 relative">
             <div 
               className={`absolute h-[calc(100%-12px)] w-[calc(50%-6px)] bg-white rounded-xl shadow-lg transition-all duration-300 ${loginType === 'teacher' ? 'translate-x-full' : 'translate-x-0'}`}
             />
-            <button onClick={() => setLoginType('admin')} className={`flex-1 py-3 text-[11px] font-black uppercase tracking-widest relative z-10 transition-colors ${loginType === 'admin' ? 'text-[#8D30F4]' : 'text-white'}`}>
+            <button onClick={() => { setLoginType('admin'); setError(''); }} className={`flex-1 py-3 text-[11px] font-black uppercase tracking-widest relative z-10 transition-colors ${loginType === 'admin' ? 'text-[#8D30F4]' : 'text-white'}`}>
               Admin
             </button>
-            <button onClick={() => setLoginType('teacher')} className={`flex-1 py-3 text-[11px] font-black uppercase tracking-widest relative z-10 transition-colors ${loginType === 'teacher' ? 'text-[#8D30F4]' : 'text-white'}`}>
+            <button onClick={() => { setLoginType('teacher'); setError(''); }} className={`flex-1 py-3 text-[11px] font-black uppercase tracking-widest relative z-10 transition-colors ${loginType === 'teacher' ? 'text-[#8D30F4]' : 'text-white'}`}>
               Teacher
             </button>
           </div>
