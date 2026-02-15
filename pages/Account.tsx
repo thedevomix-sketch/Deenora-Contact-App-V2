@@ -125,47 +125,47 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-24">
-      {/* Stats Summary Area - More Compact Grid */}
+      {/* Stats Summary Area - Enhanced Grid for 5 items */}
       {!isSuperAdmin && (
-        <div className="grid grid-cols-2 gap-2 px-1">
-          <div className="bg-white/95 backdrop-blur-md p-3 rounded-2xl border border-white shadow-lg flex flex-col items-center text-center">
-            <div className="w-8 h-8 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center mb-1.5 shadow-inner">
-               <Users size={16} />
+        <div className="grid grid-cols-2 gap-3 px-1">
+          <div className="bg-white/95 backdrop-blur-md p-4 rounded-[2rem] border border-white shadow-xl flex flex-col items-center text-center">
+            <div className="w-11 h-11 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+               <Users size={22} />
             </div>
-            <p className="text-base font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.students}</p>
-            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">{t('students', lang)}</p>
+            <p className="text-xl font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.students}</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{t('students', lang)}</p>
           </div>
           
-          <div className="bg-white/95 backdrop-blur-md p-3 rounded-2xl border border-white shadow-lg flex flex-col items-center text-center">
-            <div className="w-8 h-8 bg-purple-50 text-purple-500 rounded-xl flex items-center justify-center mb-1.5 shadow-inner">
-               <Layers size={16} />
+          <div className="bg-white/95 backdrop-blur-md p-4 rounded-[2rem] border border-white shadow-xl flex flex-col items-center text-center">
+            <div className="w-11 h-11 bg-purple-50 text-purple-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+               <Layers size={22} />
             </div>
-            <p className="text-base font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.classes}</p>
-            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">{t('classes', lang)}</p>
+            <p className="text-xl font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.classes}</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{t('classes', lang)}</p>
           </div>
 
-          <div className="bg-white/95 backdrop-blur-md p-3 rounded-2xl border border-white shadow-lg flex flex-col items-center text-center">
-            <div className="w-8 h-8 bg-indigo-50 text-indigo-500 rounded-xl flex items-center justify-center mb-1.5 shadow-inner">
-               <UserPlus size={16} />
+          <div className="bg-white/95 backdrop-blur-md p-4 rounded-[2rem] border border-white shadow-xl flex flex-col items-center text-center">
+            <div className="w-11 h-11 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+               <UserPlus size={22} />
             </div>
-            <p className="text-base font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.teachers}</p>
-            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">{t('teachers', lang)}</p>
+            <p className="text-xl font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.teachers}</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{t('teachers', lang)}</p>
           </div>
 
-          <div className="bg-white/95 backdrop-blur-md p-3 rounded-2xl border border-white shadow-lg flex flex-col items-center text-center">
-            <div className="w-8 h-8 bg-rose-50 text-rose-500 rounded-xl flex items-center justify-center mb-1.5 shadow-inner">
-               <History size={16} />
+          <div className="bg-white/95 backdrop-blur-md p-4 rounded-[2rem] border border-white shadow-xl flex flex-col items-center text-center">
+            <div className="w-11 h-11 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+               <History size={22} />
             </div>
-            <p className="text-base font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.usedSms}</p>
-            <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">{lang === 'bn' ? 'ব্যবহৃত এসএমএস' : 'Total Used SMS'}</p>
+            <p className="text-xl font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.usedSms}</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{lang === 'bn' ? 'ব্যবহৃত এসএমএস' : 'Total Used SMS'}</p>
           </div>
 
-          <div className="bg-white/95 backdrop-blur-md p-3.5 rounded-2xl border border-white shadow-lg flex flex-col items-center text-center col-span-2">
-            <div className="w-9 h-9 bg-emerald-50 text-emerald-500 rounded-xl flex items-center justify-center mb-1.5 shadow-inner">
-               <Zap size={18} />
+          <div className="bg-white/95 backdrop-blur-md p-5 rounded-[2.5rem] border border-white shadow-xl flex flex-col items-center text-center col-span-2">
+            <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+               <Zap size={24} />
             </div>
-            <p className="text-xl font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : (madrasah.sms_balance || 0)}</p>
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">{lang === 'bn' ? 'অবশিষ্ট ব্যালেন্স' : 'Available Balance'}</p>
+            <p className="text-2xl font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : (madrasah.sms_balance || 0)}</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">{lang === 'bn' ? 'অবশিষ্ট ব্যালেন্স' : 'Available Balance'}</p>
           </div>
         </div>
       )}
