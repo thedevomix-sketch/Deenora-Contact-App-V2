@@ -1,6 +1,6 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V5 - FINAL)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V6 - SMS FIX)
 -- ======================================================
 
 -- Enable UUID extension
@@ -17,6 +17,11 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     balance DECIMAL DEFAULT 0,
     sms_balance INTEGER DEFAULT 0,
     login_code TEXT,
+    -- REVE SMS Columns for Masking
+    reve_api_key TEXT,
+    reve_secret_key TEXT,
+    reve_caller_id TEXT,
+    reve_client_id TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
@@ -91,7 +96,18 @@ CREATE TABLE IF NOT EXISTS public.admin_sms_stock (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ৯. বাল্ক এসএমএস পাঠানোর আরপিসি (RPC) ফাংশন
+-- ৯. সিস্টেম সেটিংস টেবিল (Global SMS/Gateway Settings for Non-Masking)
+CREATE TABLE IF NOT EXISTS public.system_settings (
+    id UUID PRIMARY KEY DEFAULT '00000000-0000-0000-0000-000000000001',
+    reve_api_key TEXT,
+    reve_secret_key TEXT,
+    reve_caller_id TEXT,
+    reve_client_id TEXT,
+    bkash_number TEXT,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
+);
+
+-- ১০. বাল্ক এসএমএস পাঠানোর আরপিসি (RPC) ফাংশন
 CREATE OR REPLACE FUNCTION public.send_bulk_sms_rpc(
   p_madrasah_id UUID,
   p_student_ids UUID[],
@@ -125,7 +141,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ১০. পেমেন্ট এপ্রুভাল এবং এসএমএস ক্রেডিটিং আরপিসি (RPC) ফাংশন
+-- ১১. পেমেন্ট এপ্রুভাল এবং এসএমএস ক্রেডিটিং আরপিসি (RPC) ফাংশন
 CREATE OR REPLACE FUNCTION public.approve_payment_with_sms(
   t_id UUID,
   m_id UUID,
@@ -145,5 +161,5 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ১১. সুপাবেস ক্যাশ রিফ্রেশ
+-- ১২. সুপাবেস ক্যাশ রিফ্রেশ
 NOTIFY pgrst, 'reload schema';
