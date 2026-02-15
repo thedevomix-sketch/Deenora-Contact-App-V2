@@ -32,7 +32,7 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
         const { data, error } = await supabase
           .from('recent_calls')
           .select('*, students(*, classes(*))')
-          .eq('madrasah_id', madrasahId) // Crucial filter for teachers
+          .eq('madrasah_id', madrasahId)
           .order('called_at', { ascending: false })
           .limit(10);
         if (!error && data) {
@@ -44,6 +44,20 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
   };
 
   useEffect(() => { fetchRecentCalls(); }, [dataVersion, madrasahId]);
+
+  const recordCall = async (studentId: string) => {
+    if (!madrasahId || !studentId) return;
+    try {
+      await supabase.from('recent_calls').insert({
+        madrasah_id: madrasahId,
+        student_id: studentId,
+        called_at: new Date().toISOString()
+      });
+      triggerRefresh();
+    } catch (e) {
+      console.error("Error recording call:", e);
+    }
+  };
 
   const handleSearch = useCallback(async (query: string) => {
     if (!query.trim() || !madrasahId) { setSearchResults([]); return; }
@@ -59,7 +73,7 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
       const { data } = await supabase
         .from('students')
         .select('*, classes(*)')
-        .eq('madrasah_id', madrasahId) // Explicitly filter by madrasah
+        .eq('madrasah_id', madrasahId)
         .ilike('student_name', `%${query}%`)
         .limit(10);
       if (data) setSearchResults(data);
@@ -71,11 +85,13 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
     return () => clearTimeout(timer);
   }, [searchQuery, handleSearch]);
 
-  const initiateNormalCall = (phone: string) => {
+  const initiateNormalCall = (studentId: string, phone: string) => {
+    recordCall(studentId);
     window.location.href = `tel:${phone}`;
   };
 
-  const initiateWhatsAppCall = (phone: string) => {
+  const initiateWhatsAppCall = (studentId: string, phone: string) => {
+     recordCall(studentId);
      window.location.href = `https://wa.me/88${phone.replace(/\D/g, '')}`;
   }
 
@@ -117,10 +133,10 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
                 <p className="text-[9px] text-[#A179FF] font-black uppercase mt-1 tracking-widest">{student.classes?.class_name || 'N/A'}</p>
               </div>
               <div className="flex items-center gap-2 shrink-0 ml-3">
-                 <div onClick={(e) => { e.stopPropagation(); initiateNormalCall(student.guardian_phone) }} className="w-10 h-10 bg-[#8D30F4]/10 text-[#8D30F4] rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all border border-[#8D30F4]/10">
+                 <div onClick={(e) => { e.stopPropagation(); initiateNormalCall(student.id, student.guardian_phone) }} className="w-10 h-10 bg-[#8D30F4]/10 text-[#8D30F4] rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all border border-[#8D30F4]/10">
                    <Phone size={20} fill="currentColor" />
                  </div>
-                 <div onClick={(e) => { e.stopPropagation(); initiateWhatsAppCall(student.guardian_phone) }} className="w-10 h-10 bg-[#25d366] text-white rounded-xl flex items-center justify-center shadow-lg active:scale-90 transition-all border border-white/20">
+                 <div onClick={(e) => { e.stopPropagation(); initiateWhatsAppCall(student.id, student.guardian_phone) }} className="w-10 h-10 bg-[#25d366] text-white rounded-xl flex items-center justify-center shadow-lg active:scale-90 transition-all border border-white/20">
                    <PhoneCall size={20} fill="currentColor" />
                  </div>
               </div>
@@ -160,10 +176,10 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
                   </div>
                 </div>
                 <div className="flex items-center gap-2 shrink-0 ml-3">
-                   <div onClick={(e) => { e.stopPropagation(); call.students && initiateNormalCall(call.students.guardian_phone) }} className="w-10 h-10 bg-[#8D30F4]/10 text-[#8D30F4] rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all border border-[#8D30F4]/10">
+                   <div onClick={(e) => { e.stopPropagation(); call.students && initiateNormalCall(call.students.id, call.students.guardian_phone) }} className="w-10 h-10 bg-[#8D30F4]/10 text-[#8D30F4] rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all border border-[#8D30F4]/10">
                      <Phone size={20} fill="currentColor" />
                    </div>
-                   <div onClick={(e) => { e.stopPropagation(); call.students && initiateWhatsAppCall(call.students.guardian_phone) }} className="w-10 h-10 bg-[#25d366] text-white rounded-xl flex items-center justify-center shadow-lg active:scale-90 transition-all border border-white/20">
+                   <div onClick={(e) => { e.stopPropagation(); call.students && initiateWhatsAppCall(call.students.id, call.students.guardian_phone) }} className="w-10 h-10 bg-[#25d366] text-white rounded-xl flex items-center justify-center shadow-lg active:scale-90 transition-all border border-white/20">
                      <PhoneCall size={20} fill="currentColor" />
                    </div>
                 </div>

@@ -33,7 +33,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.4.8-PREMIUM";
+  const APP_VERSION = "2.4.9-PREMIUM";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -49,7 +49,6 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Sync teacher session from DB to ensure latest permissions
   const syncTeacherProfile = async (id: string) => {
     try {
       const { data, error } = await supabase
@@ -84,7 +83,6 @@ const App: React.FC = () => {
       const savedTeacher = localStorage.getItem('teacher_session');
       if (savedTeacher) {
         const teacherData = JSON.parse(savedTeacher);
-        // Set initial state from storage
         setTeacher(teacherData);
         setMadrasah({ 
           id: teacherData.madrasah_id, 
@@ -97,7 +95,6 @@ const App: React.FC = () => {
           created_at: teacherData.created_at
         } as Madrasah);
         
-        // Background sync latest permissions
         if (navigator.onLine) await syncTeacherProfile(teacherData.id);
         
         setLoading(false);
@@ -241,6 +238,8 @@ const App: React.FC = () => {
             onBack={() => setView(selectedClass ? 'students' : 'home')} 
             lang={lang} 
             readOnly={!!teacher && !teacher.permissions.can_manage_students} 
+            madrasahId={madrasah?.id}
+            triggerRefresh={triggerRefresh}
           />
         )}
 

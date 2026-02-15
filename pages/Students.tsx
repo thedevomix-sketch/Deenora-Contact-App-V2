@@ -84,6 +84,18 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     } else { setLoading(false); }
   };
 
+  const recordCall = async (studentId: string) => {
+    if (!madrasahId || !studentId) return;
+    try {
+      await supabase.from('recent_calls').insert({
+        madrasah_id: madrasahId,
+        student_id: studentId,
+        called_at: new Date().toISOString()
+      });
+      triggerRefresh();
+    } catch (e) { console.error(e); }
+  };
+
   const toggleSelection = (id: string) => {
     const newSelected = new Set(selectedIds);
     if (newSelected.has(id)) newSelected.delete(id); else newSelected.add(id);
@@ -145,11 +157,13 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     }
   };
 
-  const initiateNormalCall = (phone: string) => {
+  const initiateNormalCall = (studentId: string, phone: string) => {
+    recordCall(studentId);
     window.location.href = `tel:${phone}`;
   };
 
-  const initiateWhatsAppCall = (phone: string) => {
+  const initiateWhatsAppCall = (studentId: string, phone: string) => {
+     recordCall(studentId);
      window.location.href = `https://wa.me/88${phone.replace(/\D/g, '')}`;
   }
 
@@ -231,10 +245,10 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
             </div>
             {!isSelectionMode && (
               <div className="flex items-center gap-2 shrink-0 ml-2">
-                <button onClick={(e) => { e.stopPropagation(); initiateNormalCall(student.guardian_phone); }} className="w-10 h-10 bg-[#8D30F4]/10 text-[#8D30F4] rounded-xl active:scale-90 transition-all border border-[#8D30F4]/10 flex items-center justify-center shadow-sm">
+                <button onClick={(e) => { e.stopPropagation(); initiateNormalCall(student.id, student.guardian_phone); }} className="w-10 h-10 bg-[#8D30F4]/10 text-[#8D30F4] rounded-xl active:scale-90 transition-all border border-[#8D30F4]/10 flex items-center justify-center shadow-sm">
                   <Phone size={18} fill="currentColor" />
                 </button>
-                <button onClick={(e) => { e.stopPropagation(); initiateWhatsAppCall(student.guardian_phone); }} className="w-10 h-10 bg-[#25d366] text-white rounded-xl shadow-lg active:scale-90 transition-all flex items-center justify-center border border-white/20">
+                <button onClick={(e) => { e.stopPropagation(); initiateWhatsAppCall(student.id, student.guardian_phone); }} className="w-10 h-10 bg-[#25d366] text-white rounded-xl shadow-lg active:scale-90 transition-all flex items-center justify-center border border-white/20">
                   <PhoneCall size={18} fill="currentColor" />
                 </button>
               </div>

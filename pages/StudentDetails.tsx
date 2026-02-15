@@ -2,25 +2,48 @@
 import React from 'react';
 import { ArrowLeft, Edit3, User as UserIcon, Smartphone, PhoneCall, UserCheck, MessageCircle, Hash, BookOpen } from 'lucide-react';
 import { Student, Language } from '../types';
+import { supabase } from '../supabase';
 
 interface StudentDetailsProps {
   student: Student;
   onEdit: () => void;
   onBack: () => void;
   lang: Language;
-  // Added readOnly prop to fix property mismatch error in App.tsx
   readOnly?: boolean;
+  madrasahId?: string;
+  triggerRefresh?: () => void;
 }
 
-const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack, lang, readOnly }) => {
+const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack, lang, readOnly, madrasahId, triggerRefresh }) => {
+  
+  const recordCall = async () => {
+    if (!madrasahId || !student.id) return;
+    try {
+      await supabase.from('recent_calls').insert({
+        madrasah_id: madrasahId,
+        student_id: student.id,
+        called_at: new Date().toISOString()
+      });
+      if (triggerRefresh) triggerRefresh();
+    } catch (e) { console.error(e); }
+  };
+
+  const initiateWhatsAppCall = () => {
+    recordCall();
+    window.location.href = `https://wa.me/88${student.guardian_phone}`;
+  };
+
+  const initiateWhatsAppMessage = () => {
+    recordCall();
+    window.location.href = `https://wa.me/88${student.guardian_phone}?text=${encodeURIComponent('আস-সালামু আলাইকুম')}`;
+  };
+
   return (
     <div className="animate-in slide-in-from-right-4 duration-500 pb-24 space-y-6">
-      {/* Header Actions */}
       <div className="flex items-center justify-between px-2">
         <button onClick={onBack} className="w-11 h-11 bg-white/20 backdrop-blur-md rounded-[1rem] flex items-center justify-center text-white active:scale-90 transition-all border border-white/20 shadow-xl">
           <ArrowLeft size={22} strokeWidth={3} />
         </button>
-        {/* Only show Edit button if not in readOnly mode */}
         {!readOnly && (
           <button onClick={onEdit} className="w-11 h-11 bg-white rounded-[1rem] flex items-center justify-center text-[#8D30F4] active:scale-90 transition-all border border-white shadow-xl">
             <Edit3 size={22} />
@@ -28,9 +51,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
         )}
       </div>
 
-      {/* Main Profile Card */}
       <div className="bg-white/95 backdrop-blur-xl rounded-[2.5rem] p-6 border border-white shadow-[0_25px_60px_rgba(46,11,94,0.2)] relative overflow-hidden">
-        {/* Class Badge */}
         <div className="flex justify-center mb-5">
            <div className="px-5 py-1.5 bg-gradient-to-r from-[#8D30F4] to-[#A179FF] rounded-full shadow-md border border-white flex items-center gap-2">
               <BookOpen size={12} className="text-white" />
@@ -51,10 +72,9 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
            </div>
         </div>
 
-        {/* Quick Actions Grid */}
         <div className="mt-8 grid grid-cols-2 gap-3.5">
            <button 
-             onClick={() => window.location.href = `https://wa.me/88${student.guardian_phone}`} 
+             onClick={initiateWhatsAppCall} 
              className="flex flex-col items-center justify-center p-4 bg-[#25d366]/5 border border-[#25d366]/20 rounded-[1.5rem] text-[#25d366] active:scale-95 transition-all group"
            >
               <div className="w-12 h-12 bg-[#25d366] text-white rounded-2xl flex items-center justify-center mb-2.5 shadow-md group-active:scale-90 transition-transform">
@@ -64,7 +84,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
            </button>
            
            <button 
-             onClick={() => window.location.href = `https://wa.me/88${student.guardian_phone}?text=${encodeURIComponent('আস-সালামু আলাইকুম')}`} 
+             onClick={initiateWhatsAppMessage} 
              className="flex flex-col items-center justify-center p-4 bg-[#25d366]/5 border border-[#25d366]/20 rounded-[1.5rem] text-[#25d366] active:scale-95 transition-all group"
            >
               <div className="w-12 h-12 bg-[#25d366] text-white rounded-2xl flex items-center justify-center mb-2.5 shadow-md group-active:scale-90 transition-transform">
@@ -74,9 +94,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
            </button>
         </div>
 
-        {/* Info List */}
         <div className="mt-7 space-y-2.5">
-           {/* Guardian Info */}
            <div className="flex items-center gap-3.5 p-3.5 bg-[#F2EBFF]/40 rounded-xl border border-white">
               <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center text-[#8D30F4] shrink-0 shadow-sm border border-[#8D30F4]/5">
                  <UserCheck size={18} />
@@ -87,7 +105,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
               </div>
            </div>
 
-           {/* Phone Info - Strictly Info Only, No Call Buttons Here */}
            <div className="flex items-center gap-3.5 p-3.5 bg-[#F2EBFF]/40 rounded-xl border border-white">
               <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center text-[#8D30F4] shrink-0 shadow-sm border border-[#8D30F4]/5">
                  <Smartphone size={18} />
@@ -98,7 +115,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
               </div>
            </div>
 
-           {/* Secondary Phone if exists */}
            {student.guardian_phone_2 && (
              <div className="flex items-center gap-3.5 p-3.5 bg-[#F2EBFF]/20 rounded-xl border border-white/50">
                 <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center text-slate-400 shrink-0 shadow-sm">
@@ -113,7 +129,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
         </div>
       </div>
       
-      {/* Bottom Footer Action (Optional) */}
       <div className="px-6 py-3.5 bg-white/10 backdrop-blur-md rounded-[2rem] border border-white/20 flex items-center justify-center gap-2.5 shadow-lg">
           <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
           <p className="text-[9px] font-black text-white uppercase tracking-widest">Active WhatsApp Connection</p>
