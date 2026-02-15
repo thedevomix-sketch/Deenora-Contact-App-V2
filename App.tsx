@@ -33,7 +33,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.2.3-STABLE";
+  const APP_VERSION = "2.2.4-STABLE";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -75,13 +75,19 @@ const App: React.FC = () => {
     }
   };
 
+  // Re-fetch profile when dataVersion changes to update balance
+  useEffect(() => {
+    if (session?.user?.id) {
+      fetchMadrasahProfile(session.user.id);
+    }
+  }, [dataVersion, session?.user?.id]);
+
   useEffect(() => {
     const handleOnline = () => { setIsOnline(true); handleSync(); };
     const handleOffline = () => setIsOnline(false);
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // FIX: Cast supabase.auth to any to fix "Property 'getSession' does not exist" error
     (supabase.auth as any).getSession().then(({ data: { session: currentSession } }: any) => {
       setSession(currentSession);
       if (currentSession) {
@@ -91,7 +97,6 @@ const App: React.FC = () => {
       }
     });
 
-    // FIX: Cast supabase.auth to any to fix "Property 'onAuthStateChange' does not exist" error
     const { data: { subscription } } = (supabase.auth as any).onAuthStateChange((_event: any, session: any) => {
       setSession(session);
       if (session) {
@@ -124,7 +129,6 @@ const App: React.FC = () => {
   };
 
   const fetchMadrasahProfile = async (userId: string) => {
-    setError(null);
     const { data, error: fetchError } = await supabase
       .from('madrasahs')
       .select('*')
@@ -153,7 +157,7 @@ const App: React.FC = () => {
     setView(newView);
   };
 
-  if (loading) {
+  if (loading && !madrasah) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#9D50FF] text-white">
         <Loader2 className="animate-spin mb-4 text-white" size={40} />
@@ -164,7 +168,6 @@ const App: React.FC = () => {
 
   if (!session) return <Auth lang={lang} />;
 
-  // Account Block Enforcement
   if (madrasah && madrasah.is_active === false) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#9D50FF] p-8 text-center animate-in fade-in">
@@ -176,7 +179,6 @@ const App: React.FC = () => {
            দুঃখিত, আপনার মাদরাসার অ্যাকাউন্টটি বর্তমানে অ্যাডমিন কর্তৃক ব্লক করা হয়েছে। বিস্তারিত জানতে বা অ্যাকাউন্ট সক্রিয় করতে আমাদের সাথে যোগাযোগ করুন।
         </p>
         <button 
-          // FIX: Cast supabase.auth to any to fix "Property 'signOut' does not exist" error
           onClick={() => (supabase.auth as any).signOut()} 
           className="bg-white text-red-500 px-10 py-4 rounded-full font-black shadow-2xl active:scale-95 transition-all"
         >
@@ -186,7 +188,7 @@ const App: React.FC = () => {
     );
   }
 
-  if (error) {
+  if (error && !madrasah) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#9D50FF] p-8 text-center">
         <AlertCircle size={60} className="text-white/20 mb-6" />
@@ -241,7 +243,6 @@ const App: React.FC = () => {
         </div>
       </Layout>
 
-      {/* App Update Custom Modal */}
       {showUpdateModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[1000] flex items-center justify-center p-8 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[2.8rem] p-10 shadow-[0_40px_100px_rgba(0,0,0,0.4)] border border-[#8D30F4]/10 relative animate-in zoom-in-95 text-center">
