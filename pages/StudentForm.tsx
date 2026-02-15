@@ -1,5 +1,6 @@
+
 import React, { useState, useEffect, useRef } from 'react';
-import { ArrowLeft, Save, User as UserIcon, Phone, List, Hash, Loader2, ChevronDown, Camera, X, Check, UserCheck } from 'lucide-react';
+import { ArrowLeft, Save, User as UserIcon, Phone, List, Hash, Loader2, ChevronDown, Camera, X, Check, UserCheck, AlertCircle, BookOpen } from 'lucide-react';
 import { supabase, offlineApi } from '../supabase';
 import { Student, Class, Language, Madrasah } from '../types';
 import { t } from '../translations';
@@ -168,12 +169,12 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
           <div className="space-y-5">
              <div className="space-y-2">
                <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><UserIcon size={14} className="text-[#8D30F4]" /> {t('student_name', lang)}</label>
-               <input type="text" required className="w-full h-[60px] px-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4] transition-all" value={name} onChange={(e) => setName(e.target.value)} />
+               <input type="text" required className="w-full h-[60px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" value={name} onChange={(e) => setName(e.target.value)} />
              </div>
 
              <div className="space-y-2">
                <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><UserCheck size={14} className="text-[#8D30F4]" /> {t('guardian_name', lang)}</label>
-               <input type="text" className="w-full h-[60px] px-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4] transition-all" value={guardianName} onChange={(e) => setGuardianName(e.target.value)} />
+               <input type="text" className="w-full h-[60px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" value={guardianName} onChange={(e) => setGuardianName(e.target.value)} />
              </div>
              
              <div className="grid grid-cols-2 gap-4">
@@ -181,7 +182,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Hash size={14} className="text-[#8D30F4]" /> Roll</label>
                   <input 
                     type="number" 
-                    className="w-full h-[60px] px-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] text-[#2D3142] font-black text-xl outline-none text-center focus:border-[#8D30F4] transition-all" 
+                    className="w-full h-[60px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] text-[#2D3142] font-black text-xl outline-none text-center focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" 
                     value={roll} 
                     onChange={(e) => setRoll(e.target.value)} 
                   />
@@ -190,7 +191,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><List size={14} className="text-[#8D30F4]" /> Class</label>
                   <div 
                     onClick={() => setShowClassModal(true)} 
-                    className="w-full h-[60px] px-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all"
+                    className="w-full h-[60px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all shadow-inner"
                   >
                     <span className="font-black text-[#2D3142] truncate text-base leading-none">{getSelectedClassName()}</span>
                     <ChevronDown size={18} className="text-[#8D30F4] shrink-0" />
@@ -201,11 +202,11 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Phone size={14} className="text-[#8D30F4]" /> Primary Phone</label>
-                  <input type="tel" required className="w-full h-[60px] px-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4] transition-all" value={phone} onChange={(e) => handlePhoneChange(e.target.value, setPhone)} />
+                  <input type="tel" required className="w-full h-[60px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" value={phone} onChange={(e) => handlePhoneChange(e.target.value, setPhone)} />
                 </div>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Phone size={14} className="text-[#8D30F4]" /> Phone 2</label>
-                  <input type="tel" className="w-full h-[60px] px-5 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-[1.2rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4] transition-all" value={phone2} onChange={(e) => handlePhoneChange(e.target.value, setPhone2)} />
+                  <input type="tel" className="w-full h-[60px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" value={phone2} onChange={(e) => handlePhoneChange(e.target.value, setPhone2)} />
                 </div>
              </div>
           </div>
@@ -217,28 +218,48 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
       </form>
 
       {showClassModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[500] flex items-center justify-center p-8 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-sm rounded-[3rem] p-8 shadow-2xl border-2 border-[#8D30F4]/10 relative">
-            <button onClick={() => setShowClassModal(false)} className="absolute top-6 right-6 text-[#8D30F4] hover:scale-110 transition-all"><X size={26} strokeWidth={3} /></button>
-            <h2 className="text-xl font-black text-[#4B168A] mb-6 font-noto tracking-tight">ক্লাস বাছাই করুন</h2>
-            <div className="space-y-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+        <div className="fixed inset-0 bg-[#080A12]/40 backdrop-blur-2xl z-[500] flex items-center justify-center p-8 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[3.5rem] p-10 shadow-[0_40px_100px_rgba(141,48,244,0.2)] border border-[#8D30F4]/5 relative animate-in zoom-in-95 duration-300">
+            <button onClick={() => setShowClassModal(false)} className="absolute top-10 right-10 text-slate-300 hover:text-[#8D30F4] hover:scale-110 transition-all"><X size={26} strokeWidth={3} /></button>
+            
+            <div className="flex items-center gap-5 mb-8">
+               <div className="w-16 h-16 bg-[#8D30F4]/10 rounded-[1.8rem] flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
+                  <BookOpen size={32} />
+               </div>
+               <div>
+                  <h2 className="text-xl font-black text-[#2E0B5E] font-noto tracking-tight">ক্লাস বাছাই করুন</h2>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Select a class</p>
+               </div>
+            </div>
+
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-2 custom-scrollbar">
                {classes.map(cls => (
-                 <button key={cls.id} onClick={() => { setClassId(cls.id); setShowClassModal(false); }} className={`w-full p-4 rounded-2xl font-black transition-all flex items-center justify-between ${classId === cls.id ? 'bg-[#8D30F4] text-white shadow-xl' : 'bg-[#F2EBFF] text-[#4B168A] border border-[#8D30F4]/10'}`}>
-                    <span>{cls.class_name}</span>
+                 <button key={cls.id} onClick={() => { setClassId(cls.id); setShowClassModal(false); }} className={`w-full p-5 rounded-[1.8rem] font-black transition-all flex items-center justify-between border-2 ${classId === cls.id ? 'bg-[#8D30F4] border-[#8D30F4] text-white shadow-xl' : 'bg-slate-50 border-slate-100 text-[#2E0B5E]'}`}>
+                    <span className="font-noto text-[16px]">{cls.class_name}</span>
                     {classId === cls.id && <Check size={20} strokeWidth={4} />}
                  </button>
                ))}
+               {classes.length === 0 && (
+                 <div className="text-center py-10">
+                   <p className="text-slate-400 font-bold text-sm">No classes found</p>
+                 </div>
+               )}
             </div>
           </div>
         </div>
       )}
 
       {errorModal.show && (
-         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[600] flex items-center justify-center p-8">
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-2xl text-center space-y-4">
-               <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto"><X size={32} /></div>
-               <p className="font-black text-slate-800">{errorModal.message}</p>
-               <button onClick={() => setErrorModal({show: false, message: ''})} className="px-8 py-3 bg-slate-100 rounded-full font-black text-slate-600">ঠিক আছে</button>
+         <div className="fixed inset-0 bg-[#080A12]/40 backdrop-blur-2xl z-[600] flex items-center justify-center p-8 animate-in fade-in duration-300">
+            <div className="bg-white w-full max-w-sm p-10 rounded-[3.5rem] shadow-[0_40px_100px_rgba(239,68,68,0.2)] text-center space-y-6 animate-in zoom-in-95 duration-300 border border-red-50">
+               <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner border border-red-100">
+                 <AlertCircle size={40} />
+               </div>
+               <div>
+                 <h3 className="text-xl font-black text-slate-800 font-noto tracking-tight">সতর্কবাণী</h3>
+                 <p className="font-bold text-slate-400 mt-2 text-[13px] leading-relaxed">{errorModal.message}</p>
+               </div>
+               <button onClick={() => setErrorModal({show: false, message: ''})} className="w-full py-5 bg-slate-100 text-[#2E0B5E] rounded-full font-black text-sm uppercase tracking-widest active:scale-95 transition-all">ঠিক আছে</button>
             </div>
          </div>
       )}

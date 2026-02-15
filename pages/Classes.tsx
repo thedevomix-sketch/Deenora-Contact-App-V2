@@ -109,7 +109,7 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
       <div className="flex items-center justify-between px-2">
         <h1 className="text-xl font-noto font-black text-white drop-shadow-md">{t('classes_title', lang)}</h1>
         {!readOnly && (
-          <button onClick={() => { setNewClassName(''); setEditingClass(null); setShowModal(true); }} className="premium-btn text-white px-4 py-2.5 rounded-xl text-[12px] font-black flex items-center gap-2 active:scale-95 transition-all border border-white/20">
+          <button onClick={() => { setNewClassName(''); setEditingClass(null); setShowModal(true); }} className="premium-btn text-white px-5 py-3 rounded-2xl text-[12px] font-black flex items-center gap-2 active:scale-95 transition-all border border-white/20 shadow-xl">
             <Plus size={16} strokeWidth={4} /> {t('new_class', lang)}
           </button>
         )}
@@ -117,9 +117,9 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
 
       <div className="grid grid-cols-1 gap-4">
         {classes.map(cls => (
-          <div key={cls.id} onClick={() => onClassClick(cls)} className="bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-white/40 flex items-center justify-between active:scale-[0.98] transition-all group shadow-lg relative overflow-hidden">
+          <div key={cls.id} onClick={() => onClassClick(cls)} className="bg-white/95 backdrop-blur-md p-5 rounded-[2.2rem] border border-white/40 flex items-center justify-between active:scale-[0.98] transition-all group shadow-lg relative overflow-hidden">
             <div className="flex items-center gap-4 min-w-0 flex-1">
-              <div className="w-12 h-12 bg-[#8D30F4]/10 rounded-[1.2rem] flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
+              <div className="w-14 h-14 bg-[#8D30F4]/10 rounded-2xl flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
                 <BookOpen size={24} />
               </div>
               <div className="min-w-0 flex-1">
@@ -130,15 +130,15 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-1.5 ml-3">
+            <div className="flex items-center gap-2 ml-3">
               {!readOnly && (
                 <>
                   <button onClick={(e) => { e.stopPropagation(); setNewClassName(cls.class_name); setEditingClass(cls); setShowModal(true); }} 
-                    className="w-9 h-9 bg-[#F2EBFF] text-[#8D30F4] rounded-lg flex items-center justify-center border border-[#8D30F4]/10 active:scale-90 transition-all shadow-sm">
+                    className="w-10 h-10 bg-[#F2EBFF] text-[#8D30F4] rounded-xl flex items-center justify-center border border-[#8D30F4]/10 active:scale-90 transition-all shadow-sm">
                     <Edit3 size={16} />
                   </button>
                   <button onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(cls); }} 
-                    className="w-9 h-9 bg-red-50 text-red-500 rounded-lg flex items-center justify-center border border-red-100 active:scale-90 transition-all shadow-sm">
+                    className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center border border-red-100 active:scale-90 transition-all shadow-sm">
                     <Trash2 size={16} />
                   </button>
                 </>
@@ -149,28 +149,37 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
         ))}
       </div>
 
-      {/* MODAL: Added fixed inset-0 and very high z-index */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[999] flex items-center justify-center p-8 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border-2 border-[#8D30F4]/10 relative animate-in zoom-in-95">
-            <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 text-slate-300 hover:text-[#8D30F4] transition-all"><X size={24} strokeWidth={3} /></button>
-            <h2 className="text-lg font-black text-[#2E0B5E] mb-5 font-noto tracking-tight">
-              {editingClass ? t('edit_class', lang) : t('new_class', lang)}
-            </h2>
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2">{t('class_name_label', lang)}</label>
+        <div className="fixed inset-0 bg-[#080A12]/40 backdrop-blur-2xl z-[999] flex items-center justify-center p-8 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[3.5rem] p-10 shadow-[0_40px_100px_rgba(141,48,244,0.2)] border border-[#8D30F4]/5 relative animate-in zoom-in-95 duration-300">
+            <button onClick={() => setShowModal(false)} className="absolute top-10 right-10 text-slate-300 hover:text-[#8D30F4] transition-all"><X size={26} strokeWidth={3} /></button>
+            
+            <div className="flex items-center gap-5 mb-8">
+               <div className="w-16 h-16 bg-[#8D30F4]/10 rounded-[1.8rem] flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
+                  <BookOpen size={32} />
+               </div>
+               <div>
+                  <h2 className="text-xl font-black text-[#2E0B5E] font-noto tracking-tight">
+                    {editingClass ? t('edit_class', lang) : t('new_class', lang)}
+                  </h2>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Class Information</p>
+               </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="space-y-2.5">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] px-2">{t('class_name_label', lang)}</label>
                 <input 
                   type="text" 
                   autoFocus
-                  className="w-full px-5 py-4 bg-[#F2EBFF] border-2 border-[#8D30F4]/10 rounded-2xl text-[#2E0B5E] font-black text-base outline-none focus:border-[#8D30F4] transition-all" 
+                  className="w-full px-6 py-5 bg-slate-50 border-2 border-slate-100 rounded-[1.8rem] text-[#2E0B5E] font-black text-lg outline-none focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" 
                   value={newClassName} 
                   onChange={(e) => setNewClassName(e.target.value)}
                   placeholder="যেমন: হিফয বিভাগ"
                 />
               </div>
-              <button onClick={handleSaveClass} disabled={modalLoading || !newClassName.trim()} className="w-full py-4 premium-btn text-white font-black rounded-2xl shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2 text-lg">
-                {modalLoading ? <Loader2 className="animate-spin" size={20} /> : <><Check size={20} strokeWidth={4} /> {t('save', lang)}</>}
+              <button onClick={handleSaveClass} disabled={modalLoading || !newClassName.trim()} className="w-full py-5 premium-btn text-white font-black rounded-full shadow-2xl active:scale-[0.98] transition-all flex items-center justify-center gap-3 text-lg">
+                {modalLoading ? <Loader2 className="animate-spin" size={24} /> : <><Check size={24} strokeWidth={4} /> {t('save', lang)}</>}
               </button>
             </div>
           </div>
@@ -178,20 +187,20 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
       )}
 
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-red-900/40 backdrop-blur-xl z-[1000] flex items-center justify-center p-8 animate-in fade-in duration-300">
-          <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border-2 border-red-50 text-center space-y-5 animate-in zoom-in-95">
-             <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
-                <AlertTriangle size={32} />
+        <div className="fixed inset-0 bg-[#080A12]/40 backdrop-blur-2xl z-[1000] flex items-center justify-center p-8 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[3.5rem] p-10 shadow-[0_40px_100px_rgba(239,68,68,0.2)] border border-red-50 text-center space-y-6 animate-in zoom-in-95 duration-300">
+             <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner border border-red-100">
+                <AlertTriangle size={40} />
              </div>
              <div>
-                <h3 className="text-lg font-black text-slate-800">{t('confirm_delete', lang)}</h3>
-                <p className="text-xs font-bold text-slate-400 mt-1.5">"{showDeleteConfirm.class_name}" শ্রেণির সকল ছাত্রের তথ্য মুছে যাবে।</p>
+                <h3 className="text-xl font-black text-slate-800 font-noto">{t('confirm_delete', lang)}</h3>
+                <p className="text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-wider px-4">"{showDeleteConfirm.class_name}" শ্রেণির সকল ছাত্রের তথ্য মুছে যাবে।</p>
              </div>
-             <div className="flex gap-3 pt-1">
-                <button onClick={() => setShowDeleteConfirm(null)} className="flex-1 py-3.5 bg-slate-100 text-slate-500 font-black rounded-xl active:scale-95 transition-all text-sm">বাতিল</button>
-                <button onClick={handleDeleteClass} disabled={modalLoading} className="flex-1 py-3.5 bg-red-500 text-white font-black rounded-xl shadow-lg shadow-red-200 active:scale-95 transition-all flex items-center justify-center text-sm">
-                  {modalLoading ? <Loader2 className="animate-spin" size={18} /> : 'ডিলিট করুন'}
+             <div className="flex flex-col gap-3 pt-2">
+                <button onClick={handleDeleteClass} disabled={modalLoading} className="w-full py-5 bg-red-500 text-white font-black rounded-full shadow-xl shadow-red-100 active:scale-95 transition-all flex items-center justify-center text-md">
+                  {modalLoading ? <Loader2 className="animate-spin" size={22} /> : 'ডিলিট করুন'}
                 </button>
+                <button onClick={() => setShowDeleteConfirm(null)} className="w-full py-4 bg-slate-50 text-slate-400 font-black rounded-full active:scale-95 transition-all text-sm uppercase tracking-widest">বাতিল</button>
              </div>
           </div>
         </div>
