@@ -16,27 +16,70 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 export const smsApi = {
   getGlobalSettings: async () => {
-    const { data } = await supabase.from('system_settings').select('*').eq('id', '00000000-0000-0000-0000-000000000001').maybeSingle();
-    return data || { reve_api_key: 'aa407e1c6629da8e', reve_secret_key: '91051e7e', bkash_number: '০১৭৬৬-XXXXXX', reve_caller_id: '1234' };
+    try {
+      const { data, error } = await supabase
+        .from('system_settings')
+        .select('*')
+        .eq('id', '00000000-0000-0000-0000-000000000001')
+        .maybeSingle();
+      
+      // Fallback defaults if DB is empty or fails
+      // Added reve_client_id to defaults to maintain type consistency
+      const defaults = { 
+        reve_api_key: 'aa407e1c6629da8e', 
+        reve_secret_key: '91051e7e', 
+        bkash_number: '০১৭৬৬-XXXXXX', 
+        reve_caller_id: '1234',
+        reve_client_id: ''
+      };
+
+      if (!data) return defaults;
+      
+      return {
+        reve_api_key: data.reve_api_key || defaults.reve_api_key,
+        reve_secret_key: data.reve_secret_key || defaults.reve_secret_key,
+        reve_caller_id: data.reve_caller_id || defaults.reve_caller_id,
+        bkash_number: data.bkash_number || defaults.bkash_number,
+        reve_client_id: data.reve_client_id || ''
+      };
+    } catch (e) {
+      // Added reve_client_id to catch block to maintain type consistency
+      return { 
+        reve_api_key: 'aa407e1c6629da8e', 
+        reve_secret_key: '91051e7e', 
+        bkash_number: '০১৭৬৬-XXXXXX', 
+        reve_caller_id: '1234',
+        reve_client_id: ''
+      };
+    }
   },
 
   sendBulk: async (madrasahId: string, students: Student[], message: string) => {
-    // 1. Fetch Madrasah data including its own API credentials (Masking)
-    const { data: mData } = await supabase.from('madrasahs').select('sms_balance, reve_api_key, reve_secret_key, reve_caller_id').eq('id', madrasahId).single();
-    if (!mData || (mData.sms_balance || 0) < students.length) {
-      throw new Error("Insufficient SMS balance.");
+    // 1. Fetch Madrasah data
+    const { data: mData, error: mError } = await supabase
+      .from('madrasahs')
+      .select('sms_balance, reve_api_key, reve_secret_key, reve_caller_id')
+      .eq('id', madrasahId)
+      .single();
+
+    if (mError || !mData) throw new Error("Could not find madrasah profile.");
+    
+    const balance = mData.sms_balance || 0;
+    if (balance < students.length) {
+      throw new Error(`Insufficient SMS balance. Needed: ${students.length}, Available: ${balance}`);
     }
 
     // 2. Get Global Credentials
     const global = await smsApi.getGlobalSettings();
     
-    // Logic: Use Masking Credentials if set, otherwise use Global (Non-Masking)
-    const apiKey = mData.reve_api_key || global.reve_api_key;
-    const secretKey = mData.reve_secret_key || global.reve_secret_key;
-    const callerId = mData.reve_caller_id || global.reve_caller_id;
+    // Logic: Use Masking Credentials if specifically provided, otherwise fallback to Global (Non-Masking)
+    // We check for truthiness to handle both null and empty strings
+    const apiKey = (mData.reve_api_key && mData.reve_api_key.trim() !== '') ? mData.reve_api_key : global.reve_api_key;
+    const secretKey = (mData.reve_secret_key && mData.reve_secret_key.trim() !== '') ? mData.reve_secret_key : global.reve_secret_key;
+    const callerId = (mData.reve_caller_id && mData.reve_caller_id.trim() !== '') ? mData.reve_caller_id : global.reve_caller_id;
 
     if (!apiKey || !secretKey || !callerId) {
-      throw new Error("SMS Gateway is not configured for this user.");
+      throw new Error("SMS Gateway is not configured. Please check Admin -> Settings.");
     }
 
     const phoneList = students.map(s => {
@@ -55,15 +98,19 @@ export const smsApi = {
     try {
       const response = await fetch(apiUrl);
       const result = await response.json();
-      if (result.Status === "0") {
-        await supabase.rpc('send_bulk_sms_rpc', {
+      
+      // Status "0" means success in REVE API
+      if (result.Status === "0" || result.Status === 0) {
+        const { error: rpcError } = await supabase.rpc('send_bulk_sms_rpc', {
           p_madrasah_id: madrasahId,
           p_student_ids: students.map(s => s.id),
           p_message: message
         });
+        
+        if (rpcError) throw rpcError;
         return { success: true };
       } else {
-        throw new Error(`Gateway: ${result.Text || 'Error'}`);
+        throw new Error(result.Text || `Gateway returned status: ${result.Status}`);
       }
     } catch (err: any) {
       throw new Error(err.message || "Failed to connect to SMS Gateway.");
@@ -77,13 +124,20 @@ export const smsApi = {
     let callerId = global.reve_caller_id;
 
     if (madrasahId) {
-      const { data } = await supabase.from('madrasahs').select('reve_api_key, reve_secret_key, reve_caller_id').eq('id', madrasahId).single();
-      if (data?.reve_api_key) apiKey = data.reve_api_key;
-      if (data?.reve_secret_key) secretKey = data.reve_secret_key;
-      if (data?.reve_caller_id) callerId = data.reve_caller_id;
+      const { data } = await supabase
+        .from('madrasahs')
+        .select('reve_api_key, reve_secret_key, reve_caller_id')
+        .eq('id', madrasahId)
+        .maybeSingle();
+        
+      if (data) {
+        if (data.reve_api_key && data.reve_api_key.trim() !== '') apiKey = data.reve_api_key;
+        if (data.reve_secret_key && data.reve_secret_key.trim() !== '') secretKey = data.reve_secret_key;
+        if (data.reve_caller_id && data.reve_caller_id.trim() !== '') callerId = data.reve_caller_id;
+      }
     }
 
-    if (!apiKey || !callerId) return;
+    if (!apiKey || !secretKey || !callerId) return;
 
     const p = phone.replace(/\D/g, '');
     const target = p.startsWith('88') ? p : `88${p}`;
