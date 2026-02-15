@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, UserPlus, ShieldCheck, User as UserIcon, Loader2, Save, X, Phone, Key, CheckCircle2, Trash2, Edit3, Smartphone, MessageSquare, Layers, MessageCircle, Shield, Check, ChevronRight } from 'lucide-react';
+import { ArrowLeft, UserPlus, ShieldCheck, User as UserIcon, Loader2, Save, X, Phone, Key, CheckCircle2, Trash2, Edit3, Smartphone, MessageSquare, Layers, MessageCircle, Shield, Check, ChevronRight, AlertTriangle } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Teacher, Language, Madrasah } from '../types';
 
@@ -15,6 +15,8 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<Teacher | null>(null);
   
   // Form States
   const [editId, setEditId] = useState<string | null>(null);
@@ -72,12 +74,19 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
     setPerms({ can_manage_students: true, can_manage_classes: false, can_send_sms: false, can_send_free_sms: false });
   };
 
-  const deleteTeacher = async (id: string) => {
-    if (!confirm('Are you sure?')) return;
+  const handleDeleteTeacher = async () => {
+    if (!showDeleteConfirm) return;
+    setIsDeleting(true);
     try {
-      await supabase.from('teachers').delete().eq('id', id);
+      const { error } = await supabase.from('teachers').delete().eq('id', showDeleteConfirm.id);
+      if (error) throw error;
+      setShowDeleteConfirm(null);
       fetchTeachers();
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { 
+      alert(e.message); 
+    } finally { 
+      setIsDeleting(false); 
+    }
   };
 
   const PermissionToggle = ({ 
@@ -148,7 +157,7 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
                     </div>
                     <div className="flex gap-2">
                        <button onClick={() => { setEditId(t.id); setName(t.name); setPhone(t.phone); setCode(t.login_code); setPerms(t.permissions); setIsModalOpen(true); }} className="w-10 h-10 bg-[#F2EBFF] text-[#8D30F4] rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all border border-[#8D30F4]/5"><Edit3 size={18} /></button>
-                       <button onClick={() => deleteTeacher(t.id)} className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all border border-red-100/50"><Trash2 size={18} /></button>
+                       <button onClick={() => setShowDeleteConfirm(t)} className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all border border-red-100/50"><Trash2 size={18} /></button>
                     </div>
                  </div>
 
@@ -287,6 +296,41 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
                  </div>
               </div>
            </div>
+        </div>
+      )}
+
+      {/* Teacher Deletion Modal - Better Design */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-[#080A12]/40 backdrop-blur-2xl z-[1000] flex items-center justify-center p-8 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[3.5rem] p-10 shadow-[0_40px_100px_rgba(239,68,68,0.2)] border border-red-50 text-center space-y-6 animate-in zoom-in-95 duration-300">
+             <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner border border-red-100">
+                <AlertTriangle size={40} />
+             </div>
+             <div>
+                <h3 className="text-xl font-black text-slate-800 font-noto">শিক্ষক প্রোফাইল মুছুন</h3>
+                <p className="text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-wider px-4 leading-relaxed">
+                  আপনি কি নিশ্চিতভাবে <span className="text-red-500">"{showDeleteConfirm.name}"</span> এর প্রোফাইল এবং অ্যাক্সেস মুছে ফেলতে চান? এটি আর ফিরিয়ে আনা যাবে না।
+                </p>
+             </div>
+             <div className="flex flex-col gap-3 pt-2">
+                <button 
+                  onClick={handleDeleteTeacher} 
+                  disabled={isDeleting} 
+                  className="w-full py-5 bg-red-500 text-white font-black rounded-full shadow-xl shadow-red-100 active:scale-95 transition-all flex items-center justify-center text-md gap-3"
+                >
+                  {isDeleting ? <Loader2 className="animate-spin" size={22} /> : (
+                    <><Trash2 size={20} /> নিশ্চিত ডিলিট</>
+                  )}
+                </button>
+                <button 
+                  onClick={() => setShowDeleteConfirm(null)} 
+                  disabled={isDeleting}
+                  className="w-full py-4 bg-slate-50 text-slate-400 font-black rounded-full active:scale-95 transition-all text-sm uppercase tracking-widest"
+                >
+                  বাতিল
+                </button>
+             </div>
+          </div>
         </div>
       )}
     </>
