@@ -21,7 +21,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [saving, setSaving] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   
-  const [stats, setStats] = useState({ students: 0, classes: 0, teachers: 0, usedSms: 0 });
+  const [stats, setStats] = useState({ students: 0, classes: 0, teachers: 0 });
   const [loadingStats, setLoadingStats] = useState(true);
 
   const [newName, setNewName] = useState(initialMadrasah?.name || '');
@@ -42,30 +42,16 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     if (!initialMadrasah) return;
     setLoadingStats(true);
     try {
-      // Fetch stats concurrently
-      const [stdRes, clsRes, teaRes, debitSmsRes, creditSmsRes] = await Promise.all([
+      const [stdRes, clsRes, teaRes] = await Promise.all([
         supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id),
         supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id),
-        supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id),
-        supabase.from('transactions').select('amount').eq('madrasah_id', initialMadrasah.id).eq('type', 'debit').eq('status', 'approved'),
-        supabase.from('transactions').select('amount').eq('madrasah_id', initialMadrasah.id).eq('type', 'credit').eq('status', 'approved')
+        supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id)
       ]);
-
-      // Calculation logic for used SMS
-      let totalUsed = 0;
-      if (debitSmsRes.data && debitSmsRes.data.length > 0) {
-        // Method 1: Sum of approved debit transactions
-        totalUsed = debitSmsRes.data.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-      } else if (creditSmsRes.data && initialMadrasah.sms_balance !== undefined) {
-        // Fallback: If no debit records exist, assume used = (Total Credits - Current Balance)
-        const totalPurchased = creditSmsRes.data.reduce((acc, curr) => acc + (Number(curr.amount) || 0), 0);
-      }
 
       setStats({ 
         students: stdRes.count || 0, 
         classes: clsRes.count || 0,
-        teachers: teaRes.count || 0,
-        usedSms: totalUsed
+        teachers: teaRes.count || 0
       });
     } catch (e) { 
       console.error("Account stats fetch error:", e); 
@@ -125,7 +111,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-24">
-      {/* Stats Summary Area - Enhanced Grid for 5 items */}
+      {/* Stats Summary Area - Cleaner 2x2 Grid */}
       {!isSuperAdmin && (
         <div className="grid grid-cols-2 gap-3 px-1">
           <div className="bg-white/95 backdrop-blur-md p-4 rounded-[2rem] border border-white shadow-xl flex flex-col items-center text-center">
@@ -153,19 +139,11 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
           </div>
 
           <div className="bg-white/95 backdrop-blur-md p-4 rounded-[2rem] border border-white shadow-xl flex flex-col items-center text-center">
-            <div className="w-11 h-11 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
-               <History size={22} />
+            <div className="w-11 h-11 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+               <Zap size={22} />
             </div>
-            <p className="text-xl font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.usedSms}</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{lang === 'bn' ? 'ব্যবহৃত এসএমএস' : 'Total Used SMS'}</p>
-          </div>
-
-          <div className="bg-white/95 backdrop-blur-md p-5 rounded-[2.5rem] border border-white shadow-xl flex flex-col items-center text-center col-span-2">
-            <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
-               <Zap size={24} />
-            </div>
-            <p className="text-2xl font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : (madrasah.sms_balance || 0)}</p>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">{lang === 'bn' ? 'অবশিষ্ট ব্যালেন্স' : 'Available Balance'}</p>
+            <p className="text-xl font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : (madrasah.sms_balance || 0)}</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{lang === 'bn' ? 'ব্যালেন্স' : 'Balance'}</p>
           </div>
         </div>
       )}
