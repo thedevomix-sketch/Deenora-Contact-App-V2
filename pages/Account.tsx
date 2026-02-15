@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Camera, Loader2, Lock, User as UserIcon, ShieldCheck, Database, Phone, ChevronRight, Hash, Copy, Check, MessageSquare, Zap, Globe, Smartphone, Server, Star, Save, Users, Layers, Edit3, X, UserPlus } from 'lucide-react';
+import { LogOut, Camera, Loader2, Lock, User as UserIcon, ShieldCheck, Database, Phone, ChevronRight, Hash, Copy, Check, MessageSquare, Zap, Globe, Smartphone, Server, Star, Save, Users, Layers, Edit3, X, UserPlus, Languages } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
@@ -34,7 +34,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [reveCallerId, setReveCallerId] = useState('');
   const [reveClientId, setReveClientId] = useState('');
   const [bkashNumber, setBkashNumber] = useState('');
-  const [savingGlobal, setSavingGlobal] = useState(false);
 
   const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -121,6 +120,32 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
           </div>
         </div>
       )}
+
+      {/* Language Selection Card */}
+      <div className="bg-white/95 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white shadow-xl space-y-4">
+        <div className="flex items-center gap-3 px-2">
+           <div className="w-9 h-9 bg-[#F2EBFF] text-[#8D30F4] rounded-xl flex items-center justify-center">
+              <Languages size={20} />
+           </div>
+           <h3 className="text-md font-black text-[#2E0B5E] uppercase tracking-wider">{t('language', lang)}</h3>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+           <button 
+             onClick={() => setLang('bn')} 
+             className={`p-4 rounded-2xl flex items-center justify-between transition-all border-2 ${lang === 'bn' ? 'bg-[#8D30F4]/5 border-[#8D30F4]/30 text-[#8D30F4]' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+           >
+              <span className="font-black text-sm">বাংলা</span>
+              {lang === 'bn' && <Check size={18} strokeWidth={4} />}
+           </button>
+           <button 
+             onClick={() => setLang('en')} 
+             className={`p-4 rounded-2xl flex items-center justify-between transition-all border-2 ${lang === 'en' ? 'bg-[#8D30F4]/5 border-[#8D30F4]/30 text-[#8D30F4]' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
+           >
+              <span className="font-black text-sm">English</span>
+              {lang === 'en' && <Check size={18} strokeWidth={4} />}
+           </button>
+        </div>
+      </div>
 
       <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] border border-white/50 shadow-2xl space-y-8 relative overflow-hidden">
         <div className="flex flex-col items-center gap-6 relative z-10">
