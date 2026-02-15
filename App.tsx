@@ -33,7 +33,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.4.7-PREMIUM";
+  const APP_VERSION = "2.4.8-PREMIUM";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -161,7 +161,7 @@ const App: React.FC = () => {
     if (teacher) {
       const perms = teacher.permissions;
       if (newView === 'classes' && !perms.can_manage_classes && !perms.can_manage_students) return;
-      if (newView === 'wallet-sms' && !perms.can_send_sms) return;
+      if (newView === 'wallet-sms' && !perms.can_send_sms && !perms.can_send_free_sms) return;
       if (['admin-panel', 'admin-dashboard', 'admin-approvals', 'teachers', 'data-management'].includes(newView)) return;
     }
     triggerRefresh();
@@ -228,7 +228,8 @@ const App: React.FC = () => {
             dataVersion={dataVersion} 
             triggerRefresh={triggerRefresh}
             canAdd={!teacher || teacher.permissions.can_manage_students}
-            canSendSMS={!teacher || teacher.permissions.can_send_sms}
+            canSendSMS={!teacher || (teacher.permissions.can_send_sms || teacher.permissions.can_send_free_sms)}
+            teacher={teacher}
             madrasahId={madrasah?.id}
           />
         )}

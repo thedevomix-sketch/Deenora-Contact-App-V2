@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, UserPlus, ShieldCheck, User as UserIcon, Loader2, Save, X, Phone, Key, CheckCircle2, Trash2, Edit3, Smartphone, MessageSquare, Layers } from 'lucide-react';
+import { ArrowLeft, UserPlus, ShieldCheck, User as UserIcon, Loader2, Save, X, Phone, Key, CheckCircle2, Trash2, Edit3, Smartphone, MessageSquare, Layers, MessageCircle } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Teacher, Language, Madrasah } from '../types';
 
@@ -24,7 +24,8 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
   const [perms, setPerms] = useState({
     can_manage_students: true,
     can_manage_classes: false,
-    can_send_sms: false
+    can_send_sms: false,
+    can_send_free_sms: false
   });
 
   useEffect(() => {
@@ -68,7 +69,7 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
     setName('');
     setPhone('');
     setCode('');
-    setPerms({ can_manage_students: true, can_manage_classes: false, can_send_sms: false });
+    setPerms({ can_manage_students: true, can_manage_classes: false, can_send_sms: false, can_send_free_sms: false });
   };
 
   const deleteTeacher = async (id: string) => {
@@ -114,15 +115,18 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
                   </div>
                </div>
 
-               <div className="flex gap-2 pt-3 border-t border-slate-50">
-                  <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1 ${t.permissions.can_manage_students ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-300'}`}>
+               <div className="flex flex-wrap gap-2 pt-3 border-t border-slate-50">
+                  <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1 ${t.permissions?.can_manage_students ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-300'}`}>
                     <Smartphone size={10} /> Students
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1 ${t.permissions.can_manage_classes ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-300'}`}>
+                  <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1 ${t.permissions?.can_manage_classes ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-300'}`}>
                     <Layers size={10} /> Classes
                   </div>
-                  <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1 ${t.permissions.can_send_sms ? 'bg-orange-50 text-orange-600' : 'bg-slate-50 text-slate-300'}`}>
-                    <MessageSquare size={10} /> SMS
+                  <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1 ${t.permissions?.can_send_sms ? 'bg-orange-50 text-orange-600' : 'bg-slate-50 text-slate-300'}`}>
+                    <MessageSquare size={10} /> System SMS
+                  </div>
+                  <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1 ${t.permissions?.can_send_free_sms ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-300'}`}>
+                    <MessageCircle size={10} /> Free SMS
                   </div>
                </div>
             </div>
@@ -155,27 +159,31 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
                     <input type="text" className="w-full h-14 bg-slate-50 rounded-2xl px-5 font-black text-[#8D30F4] outline-none focus:border-[#8D30F4] border-2 border-transparent" value={code} onChange={(e) => setCode(e.target.value)} />
                  </div>
 
-                 <div className="pt-2 space-y-3">
+                 <div className="pt-2 space-y-2">
                     <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-2">Permissions</p>
-                    <div className="space-y-2">
-                       <button onClick={() => setPerms({...perms, can_manage_students: !perms.can_manage_students})} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${perms.can_manage_students ? 'bg-green-50 border-green-200 text-green-700' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                          <div className="flex items-center gap-3"><Smartphone size={18}/> <span className="text-sm font-black">Manage Students</span></div>
-                          {perms.can_manage_students && <CheckCircle2 size={18} />}
+                    <div className="grid grid-cols-1 gap-2 max-h-[220px] overflow-y-auto pr-1">
+                       <button onClick={() => setPerms({...perms, can_manage_students: !perms.can_manage_students})} className={`w-full p-3 rounded-xl border-2 flex items-center justify-between transition-all ${perms.can_manage_students ? 'bg-green-50 border-green-200 text-green-700' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                          <div className="flex items-center gap-3"><Smartphone size={16}/> <span className="text-[12px] font-black">Manage Students</span></div>
+                          {perms.can_manage_students && <CheckCircle2 size={16} />}
                        </button>
-                       <button onClick={() => setPerms({...perms, can_manage_classes: !perms.can_manage_classes})} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${perms.can_manage_classes ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                          <div className="flex items-center gap-3"><Layers size={18}/> <span className="text-sm font-black">Manage Classes</span></div>
-                          {perms.can_manage_classes && <CheckCircle2 size={18} />}
+                       <button onClick={() => setPerms({...perms, can_manage_classes: !perms.can_manage_classes})} className={`w-full p-3 rounded-xl border-2 flex items-center justify-between transition-all ${perms.can_manage_classes ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                          <div className="flex items-center gap-3"><Layers size={16}/> <span className="text-[12px] font-black">Manage Classes</span></div>
+                          {perms.can_manage_classes && <CheckCircle2 size={16} />}
                        </button>
-                       <button onClick={() => setPerms({...perms, can_send_sms: !perms.can_send_sms})} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all ${perms.can_send_sms ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                          <div className="flex items-center gap-3"><MessageSquare size={18}/> <span className="text-sm font-black">Send SMS</span></div>
-                          {perms.can_send_sms && <CheckCircle2 size={18} />}
+                       <button onClick={() => setPerms({...perms, can_send_sms: !perms.can_send_sms})} className={`w-full p-3 rounded-xl border-2 flex items-center justify-between transition-all ${perms.can_send_sms ? 'bg-orange-50 border-orange-200 text-orange-700' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                          <div className="flex items-center gap-3"><MessageSquare size={16}/> <span className="text-[12px] font-black">Send System SMS</span></div>
+                          {perms.can_send_sms && <CheckCircle2 size={16} />}
+                       </button>
+                       <button onClick={() => setPerms({...perms, can_send_free_sms: !perms.can_send_free_sms})} className={`w-full p-3 rounded-xl border-2 flex items-center justify-between transition-all ${perms.can_send_free_sms ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
+                          <div className="flex items-center gap-3"><MessageCircle size={16}/> <span className="text-[12px] font-black">Send Free SMS</span></div>
+                          {perms.can_send_free_sms && <CheckCircle2 size={16} />}
                        </button>
                     </div>
                  </div>
               </div>
 
-              <button onClick={handleSave} disabled={saving} className="w-full h-16 premium-btn text-white font-black rounded-3xl shadow-xl flex items-center justify-center gap-3 mt-4">
-                 {saving ? <Loader2 className="animate-spin" size={24} /> : <><Save size={24}/> {editId ? 'Update Teacher' : 'Add Teacher'}</>}
+              <button onClick={handleSave} disabled={saving} className="w-full h-14 premium-btn text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 mt-2">
+                 {saving ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20}/> {editId ? 'Update Teacher' : 'Add Teacher'}</>}
               </button>
            </div>
         </div>

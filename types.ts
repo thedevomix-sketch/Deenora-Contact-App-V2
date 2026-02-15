@@ -55,6 +55,7 @@ export interface Teacher {
     can_manage_students: boolean;
     can_manage_classes: boolean;
     can_send_sms: boolean;
+    can_send_free_sms: boolean;
   };
   created_at: string;
 }

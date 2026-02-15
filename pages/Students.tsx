@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, Plus, Search, CheckCircle2, MessageSquare, X, BookOpen, ChevronDown, Check, PhoneCall, Smartphone, Loader2, ListChecks, MessageCircle, Phone, Sparkles } from 'lucide-react';
 import { supabase, offlineApi, smsApi } from '../supabase';
-import { Class, Student, Language } from '../types';
+import { Class, Student, Language, Teacher } from '../types';
 import { t } from '../translations';
 import { GoogleGenAI } from "@google/genai";
 
@@ -16,6 +16,7 @@ interface StudentsProps {
   triggerRefresh: () => void;
   canAdd?: boolean;
   canSendSMS?: boolean;
+  teacher?: Teacher | null;
   madrasahId?: string;
 }
 
@@ -24,7 +25,7 @@ const STATIC_DEFAULTS = [
   { id: 'def-2', title: 'অনুপস্থিতি (Absence)', body: 'আস-সালামু আলাইকুম, আজ আপনার সন্তান মাদরাসায় অনুপস্থিত। অনুগ্রহ করে কারণ জানান।' }
 ];
 
-const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAddClick, onBack, lang, dataVersion, triggerRefresh, canAdd, canSendSMS, madrasahId }) => {
+const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAddClick, onBack, lang, dataVersion, triggerRefresh, canAdd, canSendSMS, teacher, madrasahId }) => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -110,7 +111,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
 
   const handlePremiumSMS = async () => {
     if (!selectedTemplate || selectedIds.size === 0 || !madrasahId) return;
-    // Fix: setSending instead of setSendingBulk as setSendingBulk is not defined.
     setSending(true);
     try {
       const selectedStudents = students.filter(s => selectedIds.has(s.id));
@@ -153,6 +153,11 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
      window.location.href = `https://wa.me/88${phone.replace(/\D/g, '')}`;
   }
 
+  // Teacher specific permissions
+  const canSendSystemSMS = !teacher || teacher.permissions?.can_send_sms;
+  const canSendFreeSMS = !teacher || teacher.permissions?.can_send_free_sms;
+  const canAnySMS = canSendSystemSMS || canSendFreeSMS;
+
   return (
     <div className="space-y-4 animate-in slide-in-from-right-4 duration-300 min-h-[85vh] pb-80">
       <div className="flex flex-col gap-3">
@@ -173,7 +178,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
           </div>
           
           <div className="flex items-center gap-2">
-            {canSendSMS && (
+            {canAnySMS && (
               <>
                 {isSelectionMode && (
                   <button onClick={toggleSelectAll}
@@ -236,11 +241,6 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
             )}
           </div>
         ))}
-        {filteredStudents.length === 0 && !loading && (
-          <div className="py-20 text-center bg-white/10 rounded-[3rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
-            <p className="text-white font-black text-[11px] uppercase tracking-widest">{t('no_students', lang)}</p>
-          </div>
-        )}
       </div>
 
       {isSelectionMode && selectedIds.size > 0 && (
@@ -274,22 +274,26 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <button 
-                onClick={handlePremiumSMS} 
-                disabled={sending || !selectedTemplate} 
-                className={`h-[48px] rounded-full flex items-center justify-center gap-2 font-black text-[10px] tracking-tight uppercase shadow-lg transition-all ${selectedTemplate ? 'bg-[#8D30F4] text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}
-              >
-                {sending ? <Loader2 className="animate-spin" size={16} /> : <MessageSquare size={16} fill="currentColor" />} 
-                SYSTEM SMS
-              </button>
-              <button 
-                onClick={handleNativeSMS} 
-                disabled={!selectedTemplate} 
-                className={`h-[48px] rounded-full flex items-center justify-center gap-2 font-black text-[10px] tracking-tight uppercase shadow-lg transition-all ${selectedTemplate ? 'bg-[#1A0B2E] text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}
-              >
-                <Smartphone size={16} fill="currentColor" /> SIM SMS (FREE)
-              </button>
+            <div className={`grid gap-3 ${canSendSystemSMS && canSendFreeSMS ? 'grid-cols-2' : 'grid-cols-1'}`}>
+              {canSendSystemSMS && (
+                <button 
+                  onClick={handlePremiumSMS} 
+                  disabled={sending || !selectedTemplate} 
+                  className={`h-[48px] rounded-full flex items-center justify-center gap-2 font-black text-[10px] tracking-tight uppercase shadow-lg transition-all ${selectedTemplate ? 'bg-[#8D30F4] text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}
+                >
+                  {sending ? <Loader2 className="animate-spin" size={16} /> : <MessageSquare size={16} fill="currentColor" />} 
+                  SYSTEM SMS
+                </button>
+              )}
+              {canSendFreeSMS && (
+                <button 
+                  onClick={handleNativeSMS} 
+                  disabled={!selectedTemplate} 
+                  className={`h-[48px] rounded-full flex items-center justify-center gap-2 font-black text-[10px] tracking-tight uppercase shadow-lg transition-all ${selectedTemplate ? 'bg-[#1A0B2E] text-white' : 'bg-slate-100 text-slate-300 opacity-50'}`}
+                >
+                  <Smartphone size={16} fill="currentColor" /> SIM SMS (FREE)
+                </button>
+              )}
             </div>
             
             <div className="flex items-center justify-center gap-2 pt-0.5">
