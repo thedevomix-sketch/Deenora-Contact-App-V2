@@ -1,12 +1,13 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V20 - STABILITY FIX)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V21 - ROBUST FIX)
 -- ======================================================
 
--- Enable UUID extension
+-- ১. এক্সটেনশন এনাবল করা
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- ১. মাদরাসা প্রোফাইল টেবিল
+-- ২. মাদরাসা প্রোফাইল টেবিল
+-- নতুন মাদরাসার জন্য সব কলাম শুরুতেই যোগ করা হয়েছে
 CREATE TABLE IF NOT EXISTS public.madrasahs (
     id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
     name TEXT NOT NULL DEFAULT 'নতুন মাদরাসা',
@@ -17,29 +18,22 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     balance DECIMAL DEFAULT 0,
     sms_balance INTEGER DEFAULT 0,
     login_code TEXT,
+    reve_api_key TEXT,
+    reve_secret_key TEXT,
+    reve_caller_id TEXT,
+    reve_client_id TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Ensure all REVE columns exist in madrasahs (Safe check)
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='madrasahs' AND column_name='reve_api_key') THEN
-        ALTER TABLE public.madrasahs ADD COLUMN reve_api_key TEXT;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='madrasahs' AND column_name='reve_secret_key') THEN
-        ALTER TABLE public.madrasahs ADD COLUMN reve_secret_key TEXT;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='madrasahs' AND column_name='reve_caller_id') THEN
-        ALTER TABLE public.madrasahs ADD COLUMN reve_caller_id TEXT;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='madrasahs' AND column_name='reve_client_id') THEN
-        ALTER TABLE public.madrasahs ADD COLUMN reve_client_id TEXT;
-    END IF;
-END $$;
+-- পুরনো মাদরাসা যাদের টেবিলে এই কলামগুলো নেই, তাদের জন্য নিরাপদভাবে যোগ করা
+ALTER TABLE public.madrasahs ADD COLUMN IF NOT EXISTS reve_api_key TEXT;
+ALTER TABLE public.madrasahs ADD COLUMN IF NOT EXISTS reve_secret_key TEXT;
+ALTER TABLE public.madrasahs ADD COLUMN IF NOT EXISTS reve_caller_id TEXT;
+ALTER TABLE public.madrasahs ADD COLUMN IF NOT EXISTS reve_client_id TEXT;
 
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
--- সিকিউরিটি ডিফাইনার ফাংশন
+-- ৩. সিকিউরিটি ফাংশন
 CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
@@ -50,7 +44,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Madrasahs Policies
+-- ৪. মাদরাসা পলিসি
 DROP POLICY IF EXISTS "madrasah_select_policy" ON public.madrasahs;
 DROP POLICY IF EXISTS "madrasah_update_own" ON public.madrasahs;
 DROP POLICY IF EXISTS "madrasah_admin_policy" ON public.madrasahs;
@@ -59,7 +53,7 @@ CREATE POLICY "madrasah_select_policy" ON public.madrasahs FOR SELECT USING (tru
 CREATE POLICY "madrasah_update_own" ON public.madrasahs FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "madrasah_admin_policy" ON public.madrasahs FOR ALL USING (public.is_admin(auth.uid()));
 
--- ২. ক্লাস টেবিল
+-- ৫. ক্লাস টেবিল
 CREATE TABLE IF NOT EXISTS public.classes (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
@@ -73,7 +67,7 @@ DROP POLICY IF EXISTS "class_manage_policy" ON public.classes;
 CREATE POLICY "class_select_policy" ON public.classes FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "class_manage_policy" ON public.classes FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
--- ৩. স্টুডেন্ট টেবিল
+-- ৬. স্টুডেন্ট টেবিল
 CREATE TABLE IF NOT EXISTS public.students (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
@@ -94,7 +88,7 @@ DROP POLICY IF EXISTS "student_manage_policy" ON public.students;
 CREATE POLICY "student_select_policy" ON public.students FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "student_manage_policy" ON public.students FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
--- ৪. ট্রানজ্যাকশন টেবিল
+-- ৭. ট্রানজ্যাকশন টেবিল
 CREATE TABLE IF NOT EXISTS public.transactions (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
@@ -115,7 +109,7 @@ CREATE POLICY "trans_select_policy" ON public.transactions FOR SELECT USING (aut
 CREATE POLICY "trans_insert_policy" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = madrasah_id);
 CREATE POLICY "trans_admin_policy" ON public.transactions FOR ALL USING (public.is_admin(auth.uid()));
 
--- ৫. এসএমএস টেমপ্লেট ও লগ
+-- ৮. এসএমএস টেমপ্লেট ও লগ
 CREATE TABLE IF NOT EXISTS public.sms_templates (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
@@ -140,7 +134,7 @@ DROP POLICY IF EXISTS "logs_policy" ON public.sms_logs;
 CREATE POLICY "template_policy" ON public.sms_templates FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "logs_policy" ON public.sms_logs FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
--- ৬. অ্যাডমিন এসএমএস স্টক টেবিল
+-- ৯. স্টক এবং সেটিংস
 CREATE TABLE IF NOT EXISTS public.admin_sms_stock (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     remaining_sms INTEGER DEFAULT 0,
@@ -150,7 +144,7 @@ CREATE TABLE IF NOT EXISTS public.admin_sms_stock (
 INSERT INTO public.admin_sms_stock (remaining_sms) 
 SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM public.admin_sms_stock);
 
--- ৭. সিস্টেম সেটিংস টেবিল (FIXED SCHEMA)
+-- সিস্টেম সেটিংস টেবিল
 CREATE TABLE IF NOT EXISTS public.system_settings (
     id UUID PRIMARY KEY DEFAULT '00000000-0000-0000-0000-000000000001',
     reve_api_key TEXT,
@@ -161,18 +155,11 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- Ensure all columns exist in system_settings
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='system_settings' AND column_name='bkash_number') THEN
-        ALTER TABLE public.system_settings ADD COLUMN bkash_number TEXT;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='system_settings' AND column_name='reve_client_id') THEN
-        ALTER TABLE public.system_settings ADD COLUMN reve_client_id TEXT;
-    END IF;
-END $$;
+-- কলাম নিশ্চিত করা (idempotent)
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS bkash_number TEXT;
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS reve_client_id TEXT;
 
--- Seeding data using dynamic SQL to prevent "column does not exist" parsing errors
+-- ডাইনামিক ইনসার্ট (পার্সিং এরর এড়াতে)
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM public.system_settings WHERE id = '00000000-0000-0000-0000-000000000001') THEN
@@ -180,7 +167,7 @@ BEGIN
     END IF;
 END $$;
 
--- ৮. বাল্ক এসএমএস আরপিসি
+-- ১০. আরপিসি ফাংশনসমূহ
 CREATE OR REPLACE FUNCTION public.send_bulk_sms_rpc(
   p_madrasah_id UUID,
   p_student_ids UUID[],
@@ -191,25 +178,15 @@ DECLARE
     v_balance INTEGER;
 BEGIN
     v_sms_count := array_length(p_student_ids, 1);
-    
-    -- ইউজার ব্যালেন্স চেক
     SELECT COALESCE(sms_balance, 0) INTO v_balance FROM public.madrasahs WHERE id = p_madrasah_id;
     
     IF v_balance < v_sms_count THEN
         RETURN json_build_object('success', false, 'error', 'Insufficient SMS balance');
     END IF;
 
-    -- ১. ইউজারের ব্যালেন্স কমানো
-    UPDATE public.madrasahs 
-    SET sms_balance = COALESCE(sms_balance, 0) - v_sms_count 
-    WHERE id = p_madrasah_id;
+    UPDATE public.madrasahs SET sms_balance = COALESCE(sms_balance, 0) - v_sms_count WHERE id = p_madrasah_id;
+    UPDATE public.admin_sms_stock SET remaining_sms = COALESCE(remaining_sms, 0) - v_sms_count WHERE id IS NOT NULL;
 
-    -- ২. অ্যাডমিন স্টক থেকেও কমানো
-    UPDATE public.admin_sms_stock 
-    SET remaining_sms = COALESCE(remaining_sms, 0) - v_sms_count 
-    WHERE id IS NOT NULL;
-
-    -- ৩. লগ ইনসার্ট করা
     INSERT INTO public.sms_logs (madrasah_id, recipient_phone, message, status)
     SELECT p_madrasah_id, guardian_phone, p_message, 'sent'
     FROM public.students
@@ -219,7 +196,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ৯. পেমেন্ট এপ্রুভাল আরপিসি
 CREATE OR REPLACE FUNCTION public.approve_payment_with_sms(
   t_id UUID,
   m_id UUID,
