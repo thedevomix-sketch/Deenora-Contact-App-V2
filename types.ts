@@ -13,6 +13,11 @@ export interface Madrasah {
   login_code?: string;
   balance: number;
   sms_balance: number;
+  // REVE SMS Credentials
+  reve_api_key?: string;
+  reve_secret_key?: string;
+  reve_caller_id?: string;
+  reve_client_id?: string;
 }
 
 export interface AdminSMSStock {
@@ -35,7 +40,7 @@ export interface Student {
   roll?: number;
   guardian_phone: string;
   guardian_phone_2?: string;
-  photo_url?: string; // Added
+  photo_url?: string;
   class_id: string;
   madrasah_id: string;
   created_at: string;
