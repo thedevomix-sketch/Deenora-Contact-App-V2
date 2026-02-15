@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp, RefreshCcw } from 'lucide-react';
+import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp, RefreshCcw, Clock, Hash } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, Transaction, AdminSMSStock } from '../types';
 
@@ -154,6 +154,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     if (!selectedUser) return;
     setIsUpdatingUser(true);
     try {
+      // FIX: Changed editReve_callerId to editReveCallerId
       const { error: updateError } = await supabase.from('madrasahs').update({
         name: editName.trim(),
         phone: editPhone.trim(),
@@ -390,7 +391,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                  <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2"><UserIcon size={14}/> Basic Information</h4>
                  <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Madrasah Name</label>
-                    {/* FIXED: Changed target.value to e.target.value in onChange handler below */}
                     <input type="text" className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-5 font-black text-slate-800 font-noto" value={editName} onChange={(e) => setEditName(e.target.value)} />
                  </div>
                  <div className="space-y-1.5">
@@ -450,33 +450,75 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       )}
 
       {view === 'approvals' && (
-        <div className="space-y-5">
+        <div className="space-y-4 px-1">
           {pendingTrans.length > 0 ? pendingTrans.map(tr => (
-            <div key={tr.id} className="bg-white/95 backdrop-blur-md p-7 rounded-[2.8rem] border border-white shadow-2xl space-y-6">
-              <div className="flex items-start justify-between">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] font-black text-[#8D30F4] uppercase mb-1 tracking-widest truncate">{tr.madrasahs?.name}</p>
-                  <h4 className="text-3xl font-black text-slate-800">{tr.amount} ৳</h4>
+            <div key={tr.id} className="bg-white p-5 rounded-[2rem] border border-white shadow-xl space-y-4 animate-in slide-in-from-bottom-3">
+              {/* Header: Amount & Date */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <div className="bg-green-50 text-green-600 px-3 py-1 rounded-full text-[14px] font-black border border-green-100 flex items-center gap-1.5 shadow-sm">
+                    <TrendingUp size={14} /> {tr.amount} ৳
+                  </div>
+                  <div className="bg-slate-50 text-slate-400 px-3 py-1 rounded-full text-[9px] font-black border border-slate-100 flex items-center gap-1">
+                    <Clock size={12} /> {new Date(tr.created_at).toLocaleDateString('bn-BD')}
+                  </div>
                 </div>
-                <div className="w-14 h-14 bg-[#F2EBFF] text-[#8D30F4] rounded-2xl flex items-center justify-center border border-[#8D30F4]/10 shadow-inner shrink-0">
-                   <CreditCard size={28} />
+                <div className="w-9 h-9 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center border border-blue-100 shadow-inner">
+                   <CreditCard size={18} />
                 </div>
               </div>
-              <div className="bg-slate-50 p-5 rounded-[1.8rem] border border-slate-100 grid grid-cols-2 gap-4 text-[11px]">
-                 <div><p className="text-slate-400 font-black mb-1">Sender</p><p className="font-black text-slate-800 text-sm">{tr.sender_phone}</p></div>
-                 <div className="text-right"><p className="text-slate-400 font-black mb-1">TrxID</p><p className="font-black text-[#8D30F4] text-sm uppercase">{tr.transaction_id}</p></div>
+
+              {/* Madrasah Info */}
+              <div className="px-1">
+                 <p className="text-[14px] font-black text-slate-800 font-noto leading-tight">{tr.madrasahs?.name}</p>
+                 <div className="flex items-center gap-2 mt-1 opacity-60">
+                    <Smartphone size={10} className="text-[#8D30F4]" />
+                    <span className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest">{tr.madrasahs?.phone || 'No Phone'}</span>
+                 </div>
               </div>
-              <div className="space-y-2">
-                 <label className="text-[10px] font-black text-slate-400 uppercase px-1 tracking-widest">Give SMS Credits</label>
-                 <input type="number" className="w-full px-6 py-4.5 bg-slate-50 border-2 border-[#8D30F4]/10 rounded-2xl font-black text-center text-xl outline-none focus:border-[#8D30F4]/30 transition-all" value={smsToCredit[tr.id] || ''} onChange={(e) => setSmsToCredit({...smsToCredit, [tr.id]: e.target.value})} placeholder="e.g. 500" />
+
+              {/* Transaction Grid */}
+              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 grid grid-cols-2 gap-3">
+                 <div className="min-w-0">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Sender</p>
+                    <p className="text-[11px] font-black text-slate-700 truncate">{tr.sender_phone}</p>
+                 </div>
+                 <div className="min-w-0 text-right">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">TrxID</p>
+                    <p className="text-[11px] font-black text-[#8D30F4] uppercase truncate">{tr.transaction_id}</p>
+                 </div>
               </div>
-              <div className="flex gap-3 pt-2">
-                 <button onClick={() => approveTransaction(tr)} className="flex-2 py-4.5 bg-green-500 text-white font-black rounded-2xl flex items-center justify-center gap-2 shadow-lg shadow-green-200 flex-1 transition-all active:scale-95"><CheckCircle size={18} /> Approve</button>
-                 <button onClick={async () => { if(confirm('Reject?')) { await supabase.from('transactions').update({ status: 'rejected' }).eq('id', tr.id); initData(); } }} className="py-4.5 bg-red-50 text-red-500 font-black rounded-2xl flex items-center justify-center gap-2 px-6 transition-all active:scale-95"><XCircle size={18} /></button>
+
+              {/* Input for SMS Credits */}
+              <div className="relative group">
+                 <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#8D30F4]" size={14} />
+                 <input 
+                   type="number" 
+                   className="w-full h-12 pl-10 pr-5 bg-slate-50 border border-slate-100 rounded-xl font-black text-sm outline-none focus:border-[#8D30F4]/30 transition-all text-center" 
+                   value={smsToCredit[tr.id] || ''} 
+                   onChange={(e) => setSmsToCredit({...smsToCredit, [tr.id]: e.target.value})} 
+                   placeholder="Give SMS Credits (e.g. 500)" 
+                 />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                 <button 
+                   onClick={() => approveTransaction(tr)} 
+                   className="flex-[2] h-12 bg-green-500 text-white font-black rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-green-100 active:scale-95 transition-all text-xs"
+                 >
+                   <CheckCircle size={16} /> Approve
+                 </button>
+                 <button 
+                   onClick={async () => { if(confirm('Reject?')) { await supabase.from('transactions').update({ status: 'rejected' }).eq('id', tr.id); initData(); } }} 
+                   className="flex-1 h-12 bg-red-50 text-red-500 font-black rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all text-xs border border-red-100"
+                 >
+                   <XCircle size={16} /> Reject
+                 </button>
               </div>
             </div>
           )) : (
-            <div className="text-center py-20 bg-white/10 rounded-[3rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
+            <div className="text-center py-20 bg-white/10 rounded-[2.5rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
                <p className="text-white font-black uppercase text-[10px] tracking-[0.2em] drop-shadow-sm">No pending requests</p>
             </div>
           )}
