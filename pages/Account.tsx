@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Camera, Loader2, Lock, User as UserIcon, ShieldCheck, Database, Phone, ChevronRight, Hash, Copy, Check, MessageSquare, Zap, Globe, Smartphone, Server, Star, Save, Users, Layers, Edit3, X, UserPlus, Languages } from 'lucide-react';
+import { LogOut, Camera, Loader2, Lock, User as UserIcon, ShieldCheck, Database, Phone, ChevronRight, Hash, Copy, Check, MessageSquare, Zap, Globe, Smartphone, Server, Star, Save, Users, Layers, Edit3, X, UserPlus, Languages, Mail, Key } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
@@ -26,6 +26,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
   const [newName, setNewName] = useState(initialMadrasah?.name || '');
   const [newPhone, setNewPhone] = useState(initialMadrasah?.phone || '');
+  const [newEmail, setNewEmail] = useState(initialMadrasah?.email || '');
   const [newLoginCode, setNewLoginCode] = useState(initialMadrasah?.login_code || '');
   const [logoUrl, setLogoUrl] = useState(initialMadrasah?.logo_url || '');
   
@@ -69,10 +70,27 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     if (!madrasah || isTeacher) return;
     setSaving(true);
     try {
-      const { error } = await supabase.from('madrasahs').update({ name: newName.trim(), phone: newPhone.trim(), login_code: newLoginCode.trim(), logo_url: logoUrl }).eq('id', madrasah.id);
+      const { error } = await supabase.from('madrasahs').update({ 
+        name: newName.trim(), 
+        phone: newPhone.trim(), 
+        email: newEmail.trim(),
+        login_code: newLoginCode.trim(), 
+        logo_url: logoUrl 
+      }).eq('id', madrasah.id);
+      
       if (error) throw error;
       if (onProfileUpdate) onProfileUpdate();
       setIsEditingProfile(false);
+      
+      // Update local state to reflect changes immediately
+      setMadrasah(prev => prev ? { 
+        ...prev, 
+        name: newName.trim(), 
+        phone: newPhone.trim(), 
+        email: newEmail.trim(),
+        login_code: newLoginCode.trim() 
+      } : null);
+
       alert(lang === 'bn' ? 'সব তথ্য আপডেট হয়েছে!' : 'Profile Updated!');
     } catch (err: any) { alert(err.message); } finally { setSaving(false); }
   };
@@ -161,15 +179,25 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
           </div>
 
-          <div className="text-center">
+          <div className="text-center w-full px-4">
             <h2 className="text-2xl font-black text-[#2E0B5E] font-noto leading-tight">{madrasah.name}</h2>
-            {isTeacher && <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest mt-2">Logged in as Teacher</p>}
+            <div className="mt-2 flex flex-col items-center gap-1">
+              <div className="flex items-center gap-1.5 text-slate-400">
+                <Mail size={12} />
+                <span className="text-[11px] font-bold">{madrasah.email || 'No email set'}</span>
+              </div>
+              <div className="mt-2 bg-[#F2EBFF] px-4 py-1.5 rounded-xl border border-[#8D30F4]/10 inline-flex items-center gap-2">
+                <Key size={12} className="text-[#8D30F4]" />
+                <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest">Code: {madrasah.login_code || 'N/A'}</p>
+              </div>
+            </div>
+            {isTeacher && <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest mt-3">Logged in as Teacher</p>}
           </div>
         </div>
 
         <div className="space-y-4">
           {isEditingProfile && !isTeacher ? (
-            <>
+            <div className="space-y-4">
               <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">মাদরাসার নাম</label>
                 <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full font-noto" value={newName} onChange={(e) => setNewName(e.target.value)} />
@@ -178,13 +206,21 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">মোবাইল নম্বর</label>
                 <input type="tel" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
               </div>
-              <div className="flex gap-3">
+              <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">লগইন জিমেইল</label>
+                <input type="email" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
+              </div>
+              <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">মাদরাসা কোড</label>
+                <input type="text" className="bg-transparent border-none outline-none font-black text-[#8D30F4] text-base w-full" value={newLoginCode} onChange={(e) => setNewLoginCode(e.target.value)} />
+              </div>
+              <div className="flex gap-3 pt-2">
                 <button onClick={() => setIsEditingProfile(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-2xl text-sm">Cancel</button>
                 <button onClick={handleUpdate} disabled={saving} className="flex-[2] py-4 bg-[#8D30F4] text-white font-black rounded-2xl text-sm shadow-lg">
                   {saving ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Update Info'}
                 </button>
               </div>
-            </>
+            </div>
           ) : (
             <div className="space-y-3">
               {!isSuperAdmin && !isTeacher && (
