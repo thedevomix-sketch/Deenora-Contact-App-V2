@@ -21,7 +21,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [saving, setSaving] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   
-  const [stats, setStats] = useState({ students: 0, classes: 0 });
+  const [stats, setStats] = useState({ students: 0, classes: 0, teachers: 0 });
   const [loadingStats, setLoadingStats] = useState(true);
 
   const [newName, setNewName] = useState(initialMadrasah?.name || '');
@@ -39,11 +39,16 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const fetchStats = async () => {
     if (!initialMadrasah) return;
     try {
-      const [stdRes, clsRes] = await Promise.all([
+      const [stdRes, clsRes, teaRes] = await Promise.all([
         supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id),
-        supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id)
+        supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id),
+        supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id)
       ]);
-      setStats({ students: stdRes.count || 0, classes: clsRes.count || 0 });
+      setStats({ 
+        students: stdRes.count || 0, 
+        classes: clsRes.count || 0,
+        teachers: teaRes.count || 0
+      });
     } catch (e) { console.error(e); } finally { setLoadingStats(false); }
   };
 
@@ -57,7 +62,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     if (!madrasah || isTeacher) return;
     setSaving(true);
     try {
-      // Removed 'email' from the update payload to fix the "column not found" error
       const { error } = await supabase.from('madrasahs').update({ 
         name: newName.trim(), 
         phone: newPhone.trim(), 
@@ -99,9 +103,9 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-24">
-      {/* Stats Summary Area */}
+      {/* Stats Summary Area - Optimized 2x2 Grid */}
       {!isSuperAdmin && (
-        <div className="grid grid-cols-3 gap-3 px-1">
+        <div className="grid grid-cols-2 gap-3 px-1">
           <div className="bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-white shadow-xl flex flex-col items-center text-center">
             <div className="w-10 h-10 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
                <Users size={20} />
@@ -115,6 +119,13 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
             </div>
             <p className="text-lg font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.classes}</p>
             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{t('classes', lang)}</p>
+          </div>
+          <div className="bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-white shadow-xl flex flex-col items-center text-center">
+            <div className="w-10 h-10 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+               <UserPlus size={20} />
+            </div>
+            <p className="text-lg font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.teachers}</p>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{t('teachers', lang)}</p>
           </div>
           <div className="bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-white shadow-xl flex flex-col items-center text-center">
             <div className="w-10 h-10 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">

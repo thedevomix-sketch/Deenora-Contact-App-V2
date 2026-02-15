@@ -141,57 +141,123 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-[#080A12]/40 backdrop-blur-2xl z-[500] flex items-center justify-center p-6 animate-in fade-in duration-300">
-           <div className="bg-white w-full max-w-sm rounded-[3.5rem] p-10 shadow-[0_40px_100px_rgba(141,48,244,0.2)] space-y-8 relative animate-in zoom-in-95 duration-300 border border-[#8D30F4]/5">
-              <button onClick={() => setIsModalOpen(false)} className="absolute top-10 right-10 text-slate-300 hover:text-[#8D30F4] transition-all"><X size={28} strokeWidth={3}/></button>
+        <div className="fixed inset-0 bg-[#080A12]/60 backdrop-blur-xl z-[500] flex items-end sm:items-center justify-center p-0 sm:p-6 animate-in fade-in duration-300">
+           {/* Modal Content */}
+           <div className="bg-white w-full max-w-lg rounded-t-[3rem] sm:rounded-[3.5rem] p-6 sm:p-10 shadow-2xl space-y-6 relative animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300 border border-[#8D30F4]/5 max-h-[90vh] overflow-y-auto custom-scrollbar">
               
-              <div className="flex items-center gap-5">
-                 <div className="w-16 h-16 bg-[#8D30F4]/10 rounded-[1.8rem] flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
+              {/* Close Handle for Mobile */}
+              <div className="sm:hidden w-12 h-1.5 bg-slate-100 rounded-full mx-auto -mt-2 mb-4"></div>
+              
+              <button onClick={() => setIsModalOpen(false)} className="absolute top-6 sm:top-10 right-6 sm:right-10 text-slate-300 hover:text-[#8D30F4] transition-all p-1">
+                 <X size={28} strokeWidth={3}/>
+              </button>
+              
+              <div className="flex items-center gap-4 sm:gap-6">
+                 <div className="w-14 sm:w-16 h-14 sm:h-16 bg-[#8D30F4]/10 rounded-2xl sm:rounded-[1.8rem] flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
+                    {/* Fixed Error: Lucide icons do not support tailwind-like responsive props like 'sm:size'. Use fixed size. */}
                     <Shield size={32} />
                  </div>
                  <div>
-                    <h2 className="text-xl font-black text-[#2E0B5E] font-noto tracking-tight leading-tight">{editId ? 'Edit Teacher' : 'Add New Teacher'}</h2>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Staff Credentials</p>
+                    <h2 className="text-xl sm:text-2xl font-black text-[#2E0B5E] font-noto tracking-tight leading-tight">
+                      {editId ? 'Edit Teacher' : 'Add New Teacher'}
+                    </h2>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Staff Access Credentials</p>
                  </div>
               </div>
               
-              <div className="space-y-5">
-                 <div className="space-y-2 px-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2"><UserIcon size={12}/> Teacher Name</label>
-                    <input type="text" className="w-full h-[60px] bg-slate-50 rounded-[1.5rem] px-6 font-black text-[#2E0B5E] outline-none focus:border-[#8D30F4]/30 focus:bg-white border-2 border-slate-50 transition-all shadow-inner" value={name} onChange={(e) => setName(e.target.value)} placeholder="Full Name" />
-                 </div>
-                 <div className="space-y-2 px-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2"><Phone size={12}/> Phone Number</label>
-                    <input type="tel" className="w-full h-[60px] bg-slate-50 rounded-[1.5rem] px-6 font-black text-[#2E0B5E] outline-none focus:border-[#8D30F4]/30 focus:bg-white border-2 border-slate-50 transition-all shadow-inner" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="017XXXXXXXX" />
-                 </div>
-                 <div className="space-y-2 px-1">
-                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2"><Key size={12}/> Login Code (PIN)</label>
-                    <input type="text" className="w-full h-[60px] bg-slate-50 rounded-[1.5rem] px-6 font-black text-[#8D30F4] outline-none focus:border-[#8D30F4]/30 focus:bg-white border-2 border-slate-50 transition-all shadow-inner" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Secret PIN" />
+              <div className="space-y-4">
+                 <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-1.5">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                         <UserIcon size={12}/> Teacher Name
+                       </label>
+                       <div className="relative">
+                          <input 
+                            type="text" 
+                            className="w-full h-[56px] bg-slate-50 rounded-2xl px-5 font-black text-[#2E0B5E] outline-none focus:border-[#8D30F4]/30 focus:bg-white border-2 border-transparent transition-all shadow-inner" 
+                            value={name} 
+                            onChange={(e) => setName(e.target.value)} 
+                            placeholder="e.g. Abdur Rahman" 
+                          />
+                       </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                       <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                            <Phone size={12}/> Mobile Number
+                          </label>
+                          <input 
+                            type="tel" 
+                            className="w-full h-[56px] bg-slate-50 rounded-2xl px-5 font-black text-[#2E0B5E] outline-none focus:border-[#8D30F4]/30 focus:bg-white border-2 border-transparent transition-all shadow-inner" 
+                            value={phone} 
+                            onChange={(e) => setPhone(e.target.value)} 
+                            placeholder="017XXXXXXXX" 
+                          />
+                       </div>
+                       <div className="space-y-1.5">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
+                            <Key size={12}/> Login PIN
+                          </label>
+                          <input 
+                            type="text" 
+                            className="w-full h-[56px] bg-slate-50 rounded-2xl px-5 font-black text-[#8D30F4] outline-none focus:border-[#8D30F4]/30 focus:bg-white border-2 border-transparent transition-all shadow-inner" 
+                            value={code} 
+                            onChange={(e) => setCode(e.target.value)} 
+                            placeholder="Secret Code" 
+                          />
+                       </div>
+                    </div>
                  </div>
 
-                 <div className="pt-2 space-y-4">
-                    <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-2 flex items-center gap-2">Permissions</p>
-                    <div className="grid grid-cols-1 gap-2.5 max-h-[220px] overflow-y-auto pr-2 custom-scrollbar">
-                       <button onClick={() => setPerms({...perms, can_manage_students: !perms.can_manage_students})} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all active:scale-[0.98] ${perms.can_manage_students ? 'bg-green-50/50 border-green-200 text-green-700 shadow-sm' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                          <div className="flex items-center gap-3"><Smartphone size={18}/> <span className="text-[13px] font-black uppercase tracking-tight">Manage Students</span></div>
+                 <div className="pt-4 space-y-4">
+                    <div className="flex items-center justify-between px-1">
+                       <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-[0.2em] flex items-center gap-2">Permissions</p>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                       <button 
+                         type="button"
+                         onClick={() => setPerms({...perms, can_manage_students: !perms.can_manage_students})} 
+                         className={`p-4 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all active:scale-[0.95] text-center ${perms.can_manage_students ? 'bg-green-50/50 border-green-200 text-green-700 shadow-sm' : 'bg-slate-50 border-transparent text-slate-400 opacity-60'}`}
+                       >
+                          <Smartphone size={22} className={perms.can_manage_students ? 'text-green-500' : ''} />
+                          <span className="text-[10px] font-black uppercase leading-tight">Students</span>
                           <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${perms.can_manage_students ? 'bg-green-500 text-white' : 'bg-slate-200'}`}>
                              {perms.can_manage_students && <Check size={12} strokeWidth={4} />}
                           </div>
                        </button>
-                       <button onClick={() => setPerms({...perms, can_manage_classes: !perms.can_manage_classes})} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all active:scale-[0.98] ${perms.can_manage_classes ? 'bg-blue-50/50 border-blue-200 text-blue-700 shadow-sm' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                          <div className="flex items-center gap-3"><Layers size={18}/> <span className="text-[13px] font-black uppercase tracking-tight">Manage Classes</span></div>
+
+                       <button 
+                         type="button"
+                         onClick={() => setPerms({...perms, can_manage_classes: !perms.can_manage_classes})} 
+                         className={`p-4 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all active:scale-[0.95] text-center ${perms.can_manage_classes ? 'bg-blue-50/50 border-blue-200 text-blue-700 shadow-sm' : 'bg-slate-50 border-transparent text-slate-400 opacity-60'}`}
+                       >
+                          <Layers size={22} className={perms.can_manage_classes ? 'text-blue-500' : ''} />
+                          <span className="text-[10px] font-black uppercase leading-tight">Classes</span>
                           <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${perms.can_manage_classes ? 'bg-blue-500 text-white' : 'bg-slate-200'}`}>
                              {perms.can_manage_classes && <Check size={12} strokeWidth={4} />}
                           </div>
                        </button>
-                       <button onClick={() => setPerms({...perms, can_send_sms: !perms.can_send_sms})} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all active:scale-[0.98] ${perms.can_send_sms ? 'bg-orange-50/50 border-orange-200 text-orange-700 shadow-sm' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                          <div className="flex items-center gap-3"><MessageSquare size={18}/> <span className="text-[13px] font-black uppercase tracking-tight">System SMS</span></div>
+
+                       <button 
+                         type="button"
+                         onClick={() => setPerms({...perms, can_send_sms: !perms.can_send_sms})} 
+                         className={`p-4 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all active:scale-[0.95] text-center ${perms.can_send_sms ? 'bg-orange-50/50 border-orange-200 text-orange-700 shadow-sm' : 'bg-slate-50 border-transparent text-slate-400 opacity-60'}`}
+                       >
+                          <MessageSquare size={22} className={perms.can_send_sms ? 'text-orange-500' : ''} />
+                          <span className="text-[10px] font-black uppercase leading-tight">System SMS</span>
                           <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${perms.can_send_sms ? 'bg-orange-500 text-white' : 'bg-slate-200'}`}>
                              {perms.can_send_sms && <Check size={12} strokeWidth={4} />}
                           </div>
                        </button>
-                       <button onClick={() => setPerms({...perms, can_send_free_sms: !perms.can_send_free_sms})} className={`w-full p-4 rounded-2xl border-2 flex items-center justify-between transition-all active:scale-[0.98] ${perms.can_send_free_sms ? 'bg-indigo-50/50 border-indigo-200 text-indigo-700 shadow-sm' : 'bg-slate-50 border-slate-100 text-slate-400'}`}>
-                          <div className="flex items-center gap-3"><MessageCircle size={18}/> <span className="text-[13px] font-black uppercase tracking-tight">Free SIM SMS</span></div>
+
+                       <button 
+                         type="button"
+                         onClick={() => setPerms({...perms, can_send_free_sms: !perms.can_send_free_sms})} 
+                         className={`p-4 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all active:scale-[0.95] text-center ${perms.can_send_free_sms ? 'bg-indigo-50/50 border-indigo-200 text-indigo-700 shadow-sm' : 'bg-slate-50 border-transparent text-slate-400 opacity-60'}`}
+                       >
+                          <MessageCircle size={22} className={perms.can_send_free_sms ? 'text-indigo-500' : ''} />
+                          <span className="text-[10px] font-black uppercase leading-tight">Free SMS</span>
                           <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${perms.can_send_free_sms ? 'bg-indigo-500 text-white' : 'bg-slate-200'}`}>
                              {perms.can_send_free_sms && <Check size={12} strokeWidth={4} />}
                           </div>
@@ -200,9 +266,22 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
                  </div>
               </div>
 
-              <button onClick={handleSave} disabled={saving} className="w-full h-16 premium-btn text-white font-black rounded-full shadow-2xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all text-lg">
-                 {saving ? <Loader2 className="animate-spin" size={24} /> : <><Save size={24}/> {editId ? 'Update Profile' : 'Add Teacher'}</>}
-              </button>
+              <div className="pt-4">
+                 <button 
+                   onClick={handleSave} 
+                   disabled={saving || !name || !phone || !code} 
+                   className="w-full h-16 premium-btn text-white font-black rounded-[2rem] shadow-[0_20px_40px_rgba(141,48,244,0.3)] flex items-center justify-center gap-3 active:scale-95 transition-all text-lg font-noto disabled:opacity-30 disabled:grayscale"
+                 >
+                    {saving ? <Loader2 className="animate-spin" size={24} /> : (
+                       <>
+                         <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                            <Save size={22} />
+                         </div>
+                         <span>{editId ? 'Update Teacher' : 'Add Teacher'}</span>
+                       </>
+                    )}
+                 </button>
+              </div>
            </div>
         </div>
       )}

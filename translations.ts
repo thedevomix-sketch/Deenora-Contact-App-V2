@@ -98,7 +98,6 @@ export const translations = {
     native_sms: 'সিম থেকে এসএমএস (Free)',
     multi_select: 'সিলেক্ট করুন',
     stop_select: 'সিলেকশন বন্ধ করুন',
-    // New Keys for Full Translation
     manage_teachers: 'শিক্ষক ম্যানেজমেন্ট',
     backup_restore: 'ব্যাকআপ ও রিস্টোর',
     edit_account_info: 'অ্যাকাউন্ট তথ্য পরিবর্তন',
@@ -110,7 +109,7 @@ export const translations = {
     admin_portal: 'অ্যাডমিন পোর্টাল',
     sms: 'এসএমএস',
     students: 'ছাত্রছাত্রী',
-    // Fix: Removed duplicate 'classes' key here.
+    teachers: 'শিক্ষক',
     copied: 'কপি হয়েছে!',
     app_settings: 'অ্যাপ সেটিংস'
   },
@@ -210,7 +209,6 @@ export const translations = {
     native_sms: 'SIM SMS (Free)',
     multi_select: 'Select Multiple',
     stop_select: 'Stop Selection',
-    // New Keys for Full Translation
     manage_teachers: 'Manage Teachers',
     backup_restore: 'Backup & Restore',
     edit_account_info: 'Edit Account Info',
@@ -222,7 +220,7 @@ export const translations = {
     admin_portal: 'Admin Portal',
     sms: 'SMS',
     students: 'Students',
-    // Fix: Removed duplicate 'classes' key here.
+    teachers: 'Teachers',
     copied: 'Copied!',
     app_settings: 'App Settings'
   }
