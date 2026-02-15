@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Home, User, BookOpen, Wallet, ShieldCheck, BarChart3, Clock, RefreshCw, Smartphone } from 'lucide-react';
-import { View, Language, Madrasah } from '../types';
+import { View, Language, Madrasah, Teacher } from '../types';
 import { t } from '../translations';
 
 interface LayoutProps {
@@ -11,10 +11,10 @@ interface LayoutProps {
   lang: Language;
   madrasah: Madrasah | null;
   onUpdateClick?: () => void;
-  isTeacher?: boolean;
+  teacher?: Teacher | null;
 }
 
-const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, madrasah, onUpdateClick, isTeacher }) => {
+const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, madrasah, onUpdateClick, teacher }) => {
   const isSuperAdmin = madrasah?.is_super_admin === true;
 
   const isTabActive = (tab: string) => {
@@ -29,9 +29,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
     return false;
   };
 
-  // Helper to check if teacher can see specific tabs
-  const canSeeClasses = !isTeacher || (isTeacher && (JSON.parse(localStorage.getItem('teacher_session') || '{}').permissions?.can_manage_students || JSON.parse(localStorage.getItem('teacher_session') || '{}').permissions?.can_manage_classes));
-  const canSeeWallet = !isTeacher || (isTeacher && JSON.parse(localStorage.getItem('teacher_session') || '{}').permissions?.can_send_sms);
+  // Improved visibility check using the teacher object passed from App.tsx
+  const canSeeClasses = !teacher || (teacher.permissions.can_manage_students || teacher.permissions.can_manage_classes);
+  const canSeeWallet = !teacher || teacher.permissions.can_send_sms;
 
   return (
     <div className="flex flex-col overflow-hidden w-full relative" style={{ height: 'var(--app-height, 100%)' }}>
@@ -51,12 +51,12 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
               {isSuperAdmin ? (lang === 'bn' ? 'সুপার অ্যাডমিন' : 'Super Admin') : (madrasah?.name || 'মাদরাসা কন্টাক্ট')}
             </h1>
             <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.2em] mt-1.5 drop-shadow-sm">
-              {isTeacher ? 'Teacher Portal' : 'Admin Portal'}
+              {teacher ? 'Teacher Portal' : 'Admin Portal'}
             </p>
           </div>
         </div>
         
-        <button onClick={onUpdateClick} className="p-2.5 bg-white/20 backdrop-blur-md rounded-[1rem] text-white active:scale-95 transition-all border border-white/20 shadow-xl">
+        <button onClick={() => window.location.reload()} className="p-2.5 bg-white/20 backdrop-blur-md rounded-[1rem] text-white active:scale-95 transition-all border border-white/20 shadow-xl">
           <RefreshCw size={18} />
         </button>
       </header>

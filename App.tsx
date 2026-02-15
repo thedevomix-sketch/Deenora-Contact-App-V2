@@ -14,7 +14,7 @@ import WalletSMS from './pages/WalletSMS';
 import DataManagement from './pages/DataManagement';
 import Teachers from './pages/Teachers';
 import { View, Class, Student, Language, Madrasah, Teacher } from './types';
-import { WifiOff, Loader2, AlertCircle, RefreshCw, X, Sparkles, Zap, ShieldAlert } from 'lucide-react';
+import { WifiOff, Loader2, RefreshCw } from 'lucide-react';
 import { t } from './translations';
 
 const App: React.FC = () => {
@@ -29,66 +29,49 @@ const App: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [dataVersion, setDataVersion] = useState(0); 
-  const [error, setError] = useState<string | null>(null);
-  const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [lang, setLang] = useState<Language>(() => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.4.0-PREMIUM";
+  const APP_VERSION = "2.4.5-PREMIUM";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
   };
 
-  const handleSync = async () => {
-    if (navigator.onLine) {
-      setSyncing(true);
-      await offlineApi.processQueue();
-      setSyncing(false);
-      triggerRefresh();
-    }
-  };
-
-  const forceUpdate = async () => {
-    try {
-      if ('serviceWorker' in navigator) {
-        const registrations = await navigator.serviceWorker.getRegistrations();
-        for (let registration of registrations) {
-          await registration.unregister();
-        }
-      }
-      if ('caches' in window) {
-        const cacheNames = await caches.keys();
-        await Promise.all(cacheNames.map(name => caches.delete(name)));
-      }
-      Object.keys(localStorage).forEach(key => {
-        if (key.startsWith('cache_') || key === 'sync_queue') {
-          localStorage.removeItem(key);
-        }
-      });
-      window.location.replace(window.location.origin + window.location.pathname + '?v=' + Date.now());
-    } catch (err) {
-      window.location.reload();
-    }
-  };
+  useEffect(() => {
+    const handleStatusChange = () => setIsOnline(navigator.onLine);
+    window.addEventListener('online', handleStatusChange);
+    window.addEventListener('offline', handleStatusChange);
+    return () => {
+      window.removeEventListener('online', handleStatusChange);
+      window.removeEventListener('offline', handleStatusChange);
+    };
+  }, []);
 
   useEffect(() => {
-    // Check for Teacher session first
     const savedTeacher = localStorage.getItem('teacher_session');
     if (savedTeacher) {
       const teacherData = JSON.parse(savedTeacher);
       setTeacher(teacherData);
-      setMadrasah({ id: teacherData.madrasah_id, name: teacherData.madrasahs.name, logo_url: teacherData.madrasahs.logo_url } as any);
+      setMadrasah({ 
+        id: teacherData.madrasah_id, 
+        name: teacherData.madrasahs.name, 
+        logo_url: teacherData.madrasahs.logo_url,
+        is_super_admin: false,
+        balance: 0,
+        sms_balance: 0,
+        is_active: true,
+        created_at: teacherData.created_at
+      } as Madrasah);
       setLoading(false);
       return;
     }
 
-    // Otherwise check Supabase Auth
     (supabase.auth as any).getSession().then(({ data: { session: currentSession } }: any) => {
       setSession(currentSession);
       if (currentSession) {
-        fetchMadrasahProfileWithRetry(currentSession.user.id);
+        fetchMadrasahProfile(currentSession.user.id);
       } else {
         setLoading(false);
       }
@@ -97,18 +80,17 @@ const App: React.FC = () => {
     const { data: { subscription } } = (supabase.auth as any).onAuthStateChange((_event: any, session: any) => {
       setSession(session);
       if (session) {
-        fetchMadrasahProfileWithRetry(session.user.id);
+        fetchMadrasahProfile(session.user.id);
       } else {
         setMadrasah(null);
         setLoading(false);
-        setError(null);
       }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchMadrasahProfileWithRetry = async (userId: string, retries = 2) => {
+  const fetchMadrasahProfile = async (userId: string) => {
     try {
       const { data, error: fetchError } = await supabase
         .from('madrasahs')
@@ -116,23 +98,13 @@ const App: React.FC = () => {
         .eq('id', userId)
         .maybeSingle();
       
-      if (fetchError) throw fetchError;
-
       if (data) {
         setMadrasah(data);
         offlineApi.setCache('profile', data);
-      } else {
-        const { data: newData } = await supabase
-          .from('madrasahs')
-          .insert({ id: userId, name: 'নতুন মাদরাসা', is_active: true, balance: 0 })
-          .select()
-          .single();
-        setMadrasah(newData);
       }
       setLoading(false);
     } catch (err) {
-      if (retries > 0) setTimeout(() => fetchMadrasahProfileWithRetry(userId, retries - 1), 1000);
-      else { setError("Connectivity issue"); setLoading(false); }
+      setLoading(false);
     }
   };
 
@@ -146,11 +118,13 @@ const App: React.FC = () => {
   };
 
   const navigateTo = (newView: View) => {
-    // Teacher permission checks
     if (teacher) {
-      if (newView === 'classes' && !teacher.permissions.can_manage_classes && !teacher.permissions.can_manage_students) return;
-      if (newView === 'wallet-sms' && !teacher.permissions.can_send_sms) return;
-      if (newView === 'admin-panel' || newView === 'admin-dashboard' || newView === 'admin-approvals') return;
+      const { permissions } = teacher;
+      // Block views based on specific teacher permissions
+      if (newView === 'classes' && !permissions.can_manage_classes && !permissions.can_manage_students) return;
+      if (newView === 'wallet-sms' && !permissions.can_send_sms) return;
+      // Always block admin features for teachers
+      if (['admin-panel', 'admin-dashboard', 'admin-approvals', 'teachers', 'data-management'].includes(newView)) return;
     }
     triggerRefresh();
     setView(newView);
@@ -181,9 +155,8 @@ const App: React.FC = () => {
         currentView={view} 
         setView={navigateTo} 
         lang={lang} 
-        madrasah={madrasah} 
-        onUpdateClick={() => setShowUpdateModal(true)}
-        isTeacher={!!teacher}
+        madrasah={madrasah}
+        teacher={teacher}
       >
         {view === 'home' && (
           isSuperAdmin ? <AdminPanel lang={lang} currentView="list" /> : 
@@ -191,7 +164,14 @@ const App: React.FC = () => {
         )}
         
         {view === 'classes' && (
-          <Classes onClassClick={(cls) => { setSelectedClass(cls); setView('students'); }} lang={lang} madrasah={madrasah} dataVersion={dataVersion} triggerRefresh={triggerRefresh} readOnly={teacher && !teacher.permissions.can_manage_classes} />
+          <Classes 
+            onClassClick={(cls) => { setSelectedClass(cls); setView('students'); }} 
+            lang={lang} 
+            madrasah={madrasah} 
+            dataVersion={dataVersion} 
+            triggerRefresh={triggerRefresh} 
+            readOnly={!!teacher && !teacher.permissions.can_manage_classes} 
+          />
         )}
 
         {view === 'students' && selectedClass && (
@@ -203,13 +183,33 @@ const App: React.FC = () => {
             lang={lang} 
             dataVersion={dataVersion} 
             triggerRefresh={triggerRefresh}
-            canAdd={!teacher || (teacher && teacher.permissions.can_manage_students)}
-            canSendSMS={!teacher || (teacher && teacher.permissions.can_send_sms)}
+            canAdd={!teacher || teacher.permissions.can_manage_students}
+            canSendSMS={!teacher || teacher.permissions.can_send_sms}
           />
         )}
 
-        {view === 'student-details' && selectedStudent && <StudentDetails student={selectedStudent} onEdit={() => { setIsEditing(true); setView('student-form'); }} onBack={() => setView(selectedClass ? 'students' : 'home')} lang={lang} readOnly={teacher && !teacher.permissions.can_manage_students} />}
-        {view === 'student-form' && <StudentForm student={selectedStudent} madrasah={madrasah} defaultClassId={selectedClass?.id} isEditing={isEditing} onSuccess={() => { triggerRefresh(); setView(selectedClass ? 'students' : 'home'); }} onCancel={() => setView(selectedStudent ? 'student-details' : (selectedClass ? 'students' : 'home'))} lang={lang} />}
+        {view === 'student-details' && selectedStudent && (
+          <StudentDetails 
+            student={selectedStudent} 
+            onEdit={() => { setIsEditing(true); setView('student-form'); }} 
+            onBack={() => setView(selectedClass ? 'students' : 'home')} 
+            lang={lang} 
+            readOnly={!!teacher && !teacher.permissions.can_manage_students} 
+          />
+        )}
+
+        {view === 'student-form' && (
+          <StudentForm 
+            student={selectedStudent} 
+            madrasah={madrasah} 
+            defaultClassId={selectedClass?.id} 
+            isEditing={isEditing} 
+            onSuccess={() => { triggerRefresh(); setView(selectedClass ? 'students' : 'home'); }} 
+            onCancel={() => setView(selectedStudent ? 'student-details' : (selectedClass ? 'students' : 'home'))} 
+            lang={lang} 
+          />
+        )}
+
         {view === 'wallet-sms' && <WalletSMS lang={lang} madrasah={madrasah} triggerRefresh={triggerRefresh} dataVersion={dataVersion} />}
         {view === 'teachers' && <Teachers lang={lang} madrasah={madrasah} onBack={() => setView('account')} />}
         {view === 'data-management' && <DataManagement lang={lang} madrasah={madrasah} onBack={() => setView('account')} triggerRefresh={triggerRefresh} />}
