@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server } from 'lucide-react';
+import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, Transaction, AdminSMSStock } from '../types';
 
@@ -96,6 +96,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     if (data) setPendingTrans(data);
   };
 
+  const totalDistributedSms = useMemo(() => {
+    return madrasahs.reduce((acc, curr) => acc + (curr.sms_balance || 0), 0);
+  }, [madrasahs]);
+
   const handleUserClick = async (m: Madrasah) => {
     setSelectedUser(m);
     setEditName(m.name || '');
@@ -103,7 +107,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     setEditLoginCode(m.login_code || '');
     setEditActive(m.is_active !== false);
     
-    // Set Gateway fields
     setEditReveApiKey(m.reve_api_key || '');
     setEditReveSecretKey(m.reve_secret_key || '');
     setEditReveCallerId(m.reve_caller_id || '');
@@ -111,7 +114,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     
     setView('details');
 
-    // Fetch Stats
     const [studentsRes, classesRes] = await Promise.all([
       supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', m.id),
       supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', m.id)
@@ -126,7 +128,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     if (!selectedUser) return;
     setIsUpdatingUser(true);
     try {
-      // Direct update to Supabase
       const { error } = await supabase.from('madrasahs').update({
         name: editName.trim(),
         phone: editPhone.trim(),
@@ -141,12 +142,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       if (error) throw error;
       
       alert('User Settings Updated Successfully');
-      await fetchAllMadrasahs(); // Refresh the list
-      setView('list'); // Back to list view
+      await fetchAllMadrasahs();
+      setView('list');
       setSelectedUser(null);
     } catch (err: any) { 
       alert('Update Error: ' + err.message); 
-      console.error(err);
     } finally { 
       setIsUpdatingUser(false); 
     }
@@ -199,46 +199,62 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       )}
 
       {view === 'list' && (
-        <div className="space-y-4">
-          <div className="bg-white p-6 rounded-[2.2rem] flex items-center justify-between shadow-sm border border-white/40">
-            <div className="flex items-center gap-5">
-              <div className="w-12 h-12 bg-[#F2F5FF] text-[#8D30F4] rounded-2xl flex items-center justify-center border border-[#8D30F4]/5 shadow-inner">
-                <Database size={24} />
+        <div className="space-y-6">
+          {/* Header Global Stats */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
+              <div className="w-10 h-10 bg-[#F2F5FF] text-[#8D30F4] rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+                <Database size={20} />
               </div>
-              <div>
-                 <p className="text-xl font-black text-slate-800 leading-none">{adminStock?.remaining_sms || 0}</p>
-                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Global Stock</p>
-              </div>
+              <p className="text-lg font-black text-slate-800 leading-none">{adminStock?.remaining_sms || 0}</p>
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Global Stock</p>
             </div>
-            <div className="text-right">
-               <p className="text-xl font-black text-[#8D30F4] leading-none">{madrasahs.length}</p>
-               <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1">Total Users</p>
+            <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
+              <div className="w-10 h-10 bg-green-50 text-green-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+                <TrendingUp size={20} />
+              </div>
+              <p className="text-lg font-black text-slate-800 leading-none">{totalDistributedSms}</p>
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Distributed</p>
+            </div>
+            <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
+              <div className="w-10 h-10 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+                <Users size={20} />
+              </div>
+              <p className="text-lg font-black text-slate-800 leading-none">{madrasahs.length}</p>
+              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Total Users</p>
             </div>
           </div>
+
           <div className="relative group">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#8D30F4] transition-colors" size={18} />
             <input type="text" placeholder="Search Madrasah..." className="w-full pl-14 pr-6 py-4 bg-white border border-[#8D30F4]/5 rounded-[1.8rem] outline-none text-slate-800 font-bold shadow-sm focus:border-[#8D30F4]/20 transition-all" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
           </div>
-          {filtered.map(m => (
-            <div key={m.id} onClick={() => handleUserClick(m)} className="bg-white/95 backdrop-blur-md p-5 rounded-[2.2rem] border border-white/50 flex items-center justify-between shadow-lg active:scale-[0.98] transition-all cursor-pointer group">
-              <div className="flex items-center gap-4 min-w-0">
-                <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 border border-slate-100 shadow-inner overflow-hidden">
-                  {m.logo_url ? <img src={m.logo_url} className="w-full h-full object-cover" /> : <UserIcon size={24} />}
-                </div>
-                <div className="min-w-0">
-                  <h3 className="font-black text-slate-800 truncate font-noto text-lg">{m.name}</h3>
-                  <div className="flex items-center gap-3 mt-0.5">
-                    <div className="flex items-center gap-1">
-                       <MessageSquare size={10} className="text-[#8D30F4]/60" />
-                       <p className="text-[10px] font-black text-[#8D30F4]">SMS: {m.sms_balance || 0}</p>
+
+          <div className="space-y-3">
+            {filtered.map(m => (
+              <div key={m.id} onClick={() => handleUserClick(m)} className="bg-white/95 backdrop-blur-md p-5 rounded-[2.2rem] border border-white/50 flex items-center justify-between shadow-lg active:scale-[0.98] transition-all cursor-pointer group">
+                <div className="flex items-center gap-4 min-w-0">
+                  <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 border border-slate-100 shadow-inner overflow-hidden shrink-0">
+                    {m.logo_url ? <img src={m.logo_url} className="w-full h-full object-cover" /> : <UserIcon size={24} />}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="font-black text-slate-800 truncate font-noto text-lg">{m.name}</h3>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <p className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${m.is_active !== false ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                        {m.is_active !== false ? 'Active' : 'Blocked'}
+                      </p>
+                      <span className="text-[10px] text-slate-300">•</span>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{m.phone || 'No Phone'}</p>
                     </div>
-                    <p className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${m.is_active !== false ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>{m.is_active !== false ? 'Active' : 'Blocked'}</p>
                   </div>
                 </div>
+                <div className="text-right shrink-0 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100 shadow-inner flex flex-col items-center justify-center">
+                   <p className="text-lg font-black text-[#8D30F4] leading-none">{m.sms_balance || 0}</p>
+                   <p className="text-[7px] font-black text-slate-400 uppercase tracking-tighter mt-1">SMS LEFT</p>
+                </div>
               </div>
-              <ChevronRight size={20} className="text-slate-200 group-hover:text-[#8D30F4] transition-all" />
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
@@ -409,11 +425,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
           {pendingTrans.length > 0 ? pendingTrans.map(tr => (
             <div key={tr.id} className="bg-white/95 backdrop-blur-md p-7 rounded-[2.8rem] border border-white shadow-2xl space-y-6">
               <div className="flex items-start justify-between">
-                <div>
-                  <p className="text-[10px] font-black text-[#8D30F4] uppercase mb-1 tracking-widest">{tr.madrasahs?.name}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-black text-[#8D30F4] uppercase mb-1 tracking-widest truncate">{tr.madrasahs?.name}</p>
                   <h4 className="text-3xl font-black text-slate-800">{tr.amount} ৳</h4>
                 </div>
-                <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 border border-slate-100 shadow-inner">
+                <div className="w-14 h-14 bg-[#F2EBFF] text-[#8D30F4] rounded-2xl flex items-center justify-center border border-[#8D30F4]/10 shadow-inner shrink-0">
                    <CreditCard size={28} />
                 </div>
               </div>
