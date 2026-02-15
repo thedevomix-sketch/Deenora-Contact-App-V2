@@ -1,6 +1,6 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V12 - ADMIN ACCESS FIX)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V13 - RECURSION FIX)
 -- ======================================================
 
 -- Enable UUID extension
@@ -17,7 +17,6 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     balance DECIMAL DEFAULT 0,
     sms_balance INTEGER DEFAULT 0,
     login_code TEXT,
-    -- REVE SMS Columns for Masking
     reve_api_key TEXT,
     reve_secret_key TEXT,
     reve_caller_id TEXT,
@@ -25,13 +24,28 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
+-- RLS Enable
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Allow public select for validation" ON public.madrasahs FOR SELECT USING (true);
-CREATE POLICY "Allow individual update" ON public.madrasahs FOR UPDATE USING (auth.uid() = id);
-CREATE POLICY "Super Admin Full Access" ON public.madrasahs FOR ALL USING (
-    (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
-);
+-- রিকারশন এড়ানোর জন্য সিকিউরিটি ডিফাইনার ফাংশন
+CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
+RETURNS BOOLEAN AS $$
+BEGIN
+  RETURN EXISTS (
+    SELECT 1 FROM public.madrasahs 
+    WHERE id = user_id AND is_super_admin = true
+  );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Madrasahs Policies (Fixed Recursion)
+DROP POLICY IF EXISTS "Allow public select for validation" ON public.madrasahs;
+DROP POLICY IF EXISTS "Allow individual update" ON public.madrasahs;
+DROP POLICY IF EXISTS "Super Admin Full Access" ON public.madrasahs;
+
+CREATE POLICY "madrasah_select_policy" ON public.madrasahs FOR SELECT USING (true);
+CREATE POLICY "madrasah_update_own" ON public.madrasahs FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "madrasah_admin_policy" ON public.madrasahs FOR ALL USING (public.is_admin(auth.uid()));
 
 -- ২. ক্লাস টেবিল
 CREATE TABLE IF NOT EXISTS public.classes (
@@ -42,12 +56,12 @@ CREATE TABLE IF NOT EXISTS public.classes (
 );
 
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can see own classes" ON public.classes;
+DROP POLICY IF EXISTS "Users can manage own classes" ON public.classes;
+DROP POLICY IF EXISTS "Super Admin View All Classes" ON public.classes;
 
-CREATE POLICY "Users can see own classes" ON public.classes FOR SELECT USING (auth.uid() = madrasah_id);
-CREATE POLICY "Users can manage own classes" ON public.classes FOR ALL USING (auth.uid() = madrasah_id);
-CREATE POLICY "Super Admin View All Classes" ON public.classes FOR SELECT USING (
-    (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
-);
+CREATE POLICY "class_select_policy" ON public.classes FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
+CREATE POLICY "class_manage_policy" ON public.classes FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
 -- ৩. স্টুডেন্ট টেবিল
 CREATE TABLE IF NOT EXISTS public.students (
@@ -65,12 +79,12 @@ CREATE TABLE IF NOT EXISTS public.students (
 );
 
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can see own students" ON public.students;
+DROP POLICY IF EXISTS "Users can manage own students" ON public.students;
+DROP POLICY IF EXISTS "Super Admin View All Students" ON public.students;
 
-CREATE POLICY "Users can see own students" ON public.students FOR SELECT USING (auth.uid() = madrasah_id);
-CREATE POLICY "Users can manage own students" ON public.students FOR ALL USING (auth.uid() = madrasah_id);
-CREATE POLICY "Super Admin View All Students" ON public.students FOR SELECT USING (
-    (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
-);
+CREATE POLICY "student_select_policy" ON public.students FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
+CREATE POLICY "student_manage_policy" ON public.students FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
 -- ৪. ট্রানজ্যাকশন টেবিল
 CREATE TABLE IF NOT EXISTS public.transactions (
@@ -86,19 +100,20 @@ CREATE TABLE IF NOT EXISTS public.transactions (
 );
 
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Users can see own transactions" ON public.transactions;
+DROP POLICY IF EXISTS "Users can request recharge" ON public.transactions;
+DROP POLICY IF EXISTS "Super Admin Manage Transactions" ON public.transactions;
 
-CREATE POLICY "Users can see own transactions" ON public.transactions FOR SELECT USING (auth.uid() = madrasah_id);
-CREATE POLICY "Users can request recharge" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = madrasah_id);
-CREATE POLICY "Super Admin Manage Transactions" ON public.transactions FOR ALL USING (
-    (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
-);
+CREATE POLICY "trans_select_policy" ON public.transactions FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
+CREATE POLICY "trans_insert_policy" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = madrasah_id);
+CREATE POLICY "trans_admin_policy" ON public.transactions FOR ALL USING (public.is_admin(auth.uid()));
 
--- ৫. এসএমএস টেমপ্লেট ও লগ (RLS Enabled)
+-- ৫. এসএমএস টেমপ্লেট ও লগ
 ALTER TABLE public.sms_templates ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Template access" ON public.sms_templates FOR ALL USING (auth.uid() = madrasah_id);
+CREATE POLICY "template_policy" ON public.sms_templates FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
 ALTER TABLE public.sms_logs ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "Logs access" ON public.sms_logs FOR ALL USING (auth.uid() = madrasah_id);
+CREATE POLICY "logs_policy" ON public.sms_logs FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
 -- ৬. অ্যাডমিন এসএমএস স্টক টেবিল
 CREATE TABLE IF NOT EXISTS public.admin_sms_stock (
