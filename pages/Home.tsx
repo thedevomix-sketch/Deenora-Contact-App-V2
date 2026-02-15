@@ -9,7 +9,7 @@ interface HomeProps {
   onStudentClick: (student: Student) => void;
   lang: Language;
   dataVersion: number;
-  triggerRefresh: void;
+  triggerRefresh: () => void;
   madrasahId?: string;
 }
 
@@ -30,11 +30,9 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
     if (isManual) {
       setLoadingRecent(true);
       setFetchError(null);
-      // Clear cache on manual refresh to ensure we get fresh data
       offlineApi.removeCache('recent_calls');
     }
     
-    // Check cache first for faster loading
     const cached = offlineApi.getCache('recent_calls');
     if (cached && !isManual) {
       setRecentCalls(cached);
@@ -43,7 +41,6 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
 
     if (navigator.onLine) {
       try {
-        // Querying recent_calls with related student and class data
         const { data, error } = await supabase
           .from('recent_calls')
           .select(`
@@ -70,8 +67,7 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
         if (error) throw error;
         
         if (data) {
-          // Fix for TypeScript type mismatch: Supabase join results can sometimes be returned as arrays.
-          // We normalize these to single objects to match our interface definitions.
+          // Normalize Supabase data as it sometimes returns joined data differently
           const formattedCalls: RecentCall[] = (data as any[]).map(call => {
             const rawStudent = Array.isArray(call.students) ? call.students[0] : call.students;
             if (rawStudent) {
@@ -87,11 +83,9 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
             return { ...call, students: undefined };
           });
 
-          // Filter out entries where student data might be missing or restricted
           const validCalls = formattedCalls.filter(call => call.students);
           setRecentCalls(validCalls);
           offlineApi.setCache('recent_calls', validCalls);
-          console.log("Fetched recent calls:", validCalls.length);
         }
       } catch (err: any) { 
         console.error("Recent Calls Fetch Error:", err.message);
@@ -120,8 +114,6 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
       if (error) {
         console.error("Error saving call record:", error.message);
       } else {
-        // Automatically refresh history after recording a call
-        fetchRecentCalls();
         triggerRefresh();
       }
     } catch (e) {
@@ -143,7 +135,6 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
           .limit(10);
         
         if (data) {
-          // Normalize joined classes data (Supabase may return it as an array)
           const formattedResults = (data as any[]).map(s => ({
             ...s,
             classes: Array.isArray(s.classes) ? s.classes[0] : s.classes

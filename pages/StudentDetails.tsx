@@ -19,12 +19,14 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
   const recordCall = async () => {
     if (!madrasahId || !student.id) return;
     try {
-      await supabase.from('recent_calls').insert({
+      const { error } = await supabase.from('recent_calls').insert({
         madrasah_id: madrasahId,
         student_id: student.id,
         called_at: new Date().toISOString()
       });
-      if (triggerRefresh) triggerRefresh();
+      if (!error && triggerRefresh) {
+        triggerRefresh();
+      }
     } catch (e) { console.error("recordCall Error:", e); }
   };
 
