@@ -28,7 +28,9 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
   const [userTransactions, setUserTransactions] = useState<Transaction[]>([]);
   
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<SMSTemplate | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [tempTitle, setTempTitle] = useState('');
   const [tempBody, setTempBody] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -92,12 +94,14 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
     } catch (e: any) { alert(e.message); } finally { setIsSaving(false); }
   };
 
-  const handleDeleteTemplate = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this template?')) return;
+  const handleDeleteTemplate = async () => {
+    if (!showDeleteConfirm) return;
+    setIsDeleting(true);
     try {
-      await supabase.from('sms_templates').delete().eq('id', id);
+      await supabase.from('sms_templates').delete().eq('id', showDeleteConfirm.id);
+      setShowDeleteConfirm(null);
       fetchTemplates();
-    } catch (e: any) { alert(e.message); }
+    } catch (e: any) { alert(e.message); } finally { setIsDeleting(false); }
   };
 
   const fetchUserTransactions = async () => {
@@ -207,7 +211,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
                         </div>
                         <div className="flex gap-1.5">
                            <button onClick={() => { setEditingId(tmp.id); setTempTitle(tmp.title); setTempBody(tmp.body); setShowAddModal(true); }} className="w-8 h-8 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center active:scale-90 transition-all"><Edit3 size={14}/></button>
-                           <button onClick={() => handleDeleteTemplate(tmp.id)} className="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center active:scale-90 transition-all"><Trash2 size={14}/></button>
+                           <button onClick={() => setShowDeleteConfirm(tmp)} className="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center active:scale-90 transition-all"><Trash2 size={14}/></button>
                         </div>
                      </div>
                      <p className="text-sm font-bold text-slate-500 font-noto leading-relaxed">{tmp.body}</p>
@@ -382,6 +386,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
         </div>
       )}
 
+      {/* Add/Edit Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-[#080A12]/40 backdrop-blur-2xl z-[500] flex items-center justify-center p-6 animate-in fade-in duration-300">
            <div className="bg-white w-full max-w-sm rounded-[3.5rem] p-10 shadow-[0_40px_100px_rgba(141,48,244,0.2)] border border-[#8D30F4]/5 relative animate-in zoom-in-95 duration-300">
@@ -414,6 +419,41 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
                  </button>
               </div>
            </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-[#080A12]/40 backdrop-blur-2xl z-[1000] flex items-center justify-center p-8 animate-in fade-in duration-300">
+          <div className="bg-white w-full max-w-sm rounded-[3.5rem] p-10 shadow-[0_40px_100px_rgba(239,68,68,0.2)] border border-red-50 text-center space-y-6 animate-in zoom-in-95 duration-300">
+             <div className="w-20 h-20 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner border border-red-100">
+                <AlertTriangle size={40} />
+             </div>
+             <div>
+                <h3 className="text-xl font-black text-slate-800 font-noto">টেমপ্লেট ডিলিট করুন</h3>
+                <p className="text-[11px] font-bold text-slate-400 mt-2 uppercase tracking-wider px-4 leading-relaxed">
+                  আপনি কি নিশ্চিতভাবে "{showDeleteConfirm.title}" টেমপ্লেটটি মুছে ফেলতে চান? এটি আর ফিরিয়ে আনা যাবে না।
+                </p>
+             </div>
+             <div className="flex flex-col gap-3 pt-2">
+                <button 
+                  onClick={handleDeleteTemplate} 
+                  disabled={isDeleting} 
+                  className="w-full py-5 bg-red-500 text-white font-black rounded-full shadow-xl shadow-red-100 active:scale-95 transition-all flex items-center justify-center text-md gap-3"
+                >
+                  {isDeleting ? <Loader2 className="animate-spin" size={22} /> : (
+                    <><Trash2 size={20} /> ডিলিট করুন</>
+                  )}
+                </button>
+                <button 
+                  onClick={() => setShowDeleteConfirm(null)} 
+                  disabled={isDeleting}
+                  className="w-full py-4 bg-slate-50 text-slate-400 font-black rounded-full active:scale-95 transition-all text-sm uppercase tracking-widest"
+                >
+                  বাতিল
+                </button>
+             </div>
+          </div>
         </div>
       )}
     </div>
