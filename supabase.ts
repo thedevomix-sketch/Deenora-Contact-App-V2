@@ -52,7 +52,7 @@ export const smsApi = {
   },
 
   sendBulk: async (madrasahId: string, students: Student[], message: string) => {
-    // 1. Fetch settings
+    // 1. Fetch settings and profile
     const [mRes, global] = await Promise.all([
       supabase.from('madrasahs').select('sms_balance, reve_api_key, reve_secret_key, reve_caller_id').eq('id', madrasahId).single(),
       smsApi.getGlobalSettings()
@@ -66,7 +66,8 @@ export const smsApi = {
       throw new Error(`Insufficient SMS balance. Needed: ${students.length}, Available: ${balance}`);
     }
 
-    // 2. FIRST: Deduct balance in Database via RPC
+    // 2. CRITICAL: Call RPC FIRST to deduct balance.
+    // If this fails, we stop here.
     const { data: rpcData, error: rpcError } = await supabase.rpc('send_bulk_sms_rpc', {
       p_madrasah_id: madrasahId,
       p_student_ids: students.map(s => s.id),
@@ -76,7 +77,7 @@ export const smsApi = {
     if (rpcError) throw new Error("Balance Update Failed: " + rpcError.message);
     if (rpcData && rpcData.success === false) throw new Error(rpcData.error || "Transaction denied");
 
-    // 3. SECOND: Fire the SMS request (Best effort)
+    // 3. SECOND: Fire the SMS request to the gateway
     const apiKey = (mData.reve_api_key && mData.reve_api_key.trim() !== '') ? mData.reve_api_key : global.reve_api_key;
     const secretKey = (mData.reve_secret_key && mData.reve_secret_key.trim() !== '') ? mData.reve_secret_key : global.reve_secret_key;
     const callerId = (mData.reve_caller_id && mData.reve_caller_id.trim() !== '') ? mData.reve_caller_id : global.reve_caller_id;
@@ -95,12 +96,14 @@ export const smsApi = {
     const apiUrl = `https://smpp.revesms.com:7790/send?apikey=${apiKey}&secretkey=${secretKey}&content=${encodeURIComponent(JSON.stringify(contentArray))}`;
 
     try {
-      // Use no-cors to prevent browser-level fetch error due to missing CORS headers at REVE end.
+      // Use mode: 'no-cors' to bypass browser safety blocks on API response reading.
+      // This will still send the request, but we won't see the result.
       await fetch(apiUrl, { mode: 'no-cors', cache: 'no-cache' });
       return { success: true };
     } catch (err) {
-      // If we committed to DB, we treat this as success for the user.
-      console.warn("SMS sent but response not readable:", err);
+      // If the RPC succeeded, we treat the SMS as successfully triggered 
+      // even if the fetch throws a "Failed to fetch" (usually CORS).
+      console.warn("SMS triggered, but response not readable by browser:", err);
       return { success: true };
     }
   },

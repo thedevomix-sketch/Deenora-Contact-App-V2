@@ -1,6 +1,6 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V16 - POLICY FIX)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V17 - ROBUST FIX)
 -- ======================================================
 
 -- Enable UUID extension
@@ -37,7 +37,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Madrasahs Policies (FIXED: DROP IF EXISTS)
+-- Madrasahs Policies
 DROP POLICY IF EXISTS "madrasah_select_policy" ON public.madrasahs;
 DROP POLICY IF EXISTS "madrasah_update_own" ON public.madrasahs;
 DROP POLICY IF EXISTS "madrasah_admin_policy" ON public.madrasahs;
