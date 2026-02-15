@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy } from 'lucide-react';
+import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
@@ -21,7 +21,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [saving, setSaving] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   
-  const [stats, setStats] = useState({ students: 0, classes: 0, teachers: 0 });
+  const [stats, setStats] = useState({ students: 0, classes: 0, teachers: 0, usedSms: 0 });
   const [loadingStats, setLoadingStats] = useState(true);
 
   const [newName, setNewName] = useState(initialMadrasah?.name || '');
@@ -39,15 +39,20 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const fetchStats = async () => {
     if (!initialMadrasah) return;
     try {
-      const [stdRes, clsRes, teaRes] = await Promise.all([
+      const [stdRes, clsRes, teaRes, smsRes] = await Promise.all([
         supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id),
         supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id),
-        supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id)
+        supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id),
+        supabase.from('transactions').select('amount').eq('madrasah_id', initialMadrasah.id).eq('type', 'debit').eq('status', 'approved')
       ]);
+
+      const totalUsed = smsRes.data?.reduce((acc, curr) => acc + (curr.amount || 0), 0) || 0;
+
       setStats({ 
         students: stdRes.count || 0, 
         classes: clsRes.count || 0,
-        teachers: teaRes.count || 0
+        teachers: teaRes.count || 0,
+        usedSms: totalUsed
       });
     } catch (e) { console.error(e); } finally { setLoadingStats(false); }
   };
@@ -103,7 +108,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-24">
-      {/* Stats Summary Area - Optimized 2x2 Grid */}
+      {/* Stats Summary Area - Optimized Grid for 5 items */}
       {!isSuperAdmin && (
         <div className="grid grid-cols-2 gap-3 px-1">
           <div className="bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-white shadow-xl flex flex-col items-center text-center">
@@ -128,11 +133,18 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
             <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{t('teachers', lang)}</p>
           </div>
           <div className="bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-white shadow-xl flex flex-col items-center text-center">
-            <div className="w-10 h-10 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+            <div className="w-10 h-10 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+               <History size={20} />
+            </div>
+            <p className="text-lg font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.usedSms}</p>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{lang === 'bn' ? 'ব্যবহৃত এসএমএস' : 'Total Used SMS'}</p>
+          </div>
+          <div className="bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-white shadow-xl flex flex-col items-center text-center col-span-2">
+            <div className="w-10 h-10 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
                <Zap size={20} />
             </div>
-            <p className="text-lg font-black text-[#2E0B5E] leading-none">{madrasah.sms_balance || 0}</p>
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{t('sms', lang)}</p>
+            <p className="text-xl font-black text-[#2E0B5E] leading-none">{madrasah.sms_balance || 0}</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{lang === 'bn' ? 'অবশিষ্ট ব্যালেন্স' : 'Available Balance'}</p>
           </div>
         </div>
       )}
