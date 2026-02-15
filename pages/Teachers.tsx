@@ -177,28 +177,27 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
       )}
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-[#080A12]/60 backdrop-blur-xl z-[500] flex items-end sm:items-center justify-center p-0 sm:p-6 animate-in fade-in duration-300">
-           <div className="bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl relative animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300 border border-[#8D30F4]/5">
+        <div className="fixed inset-0 bg-[#080A12]/60 backdrop-blur-xl z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300">
+           <div className="bg-white w-full max-w-sm rounded-[3rem] shadow-2xl relative animate-in zoom-in-95 duration-300 border border-[#8D30F4]/5 flex flex-col overflow-hidden max-h-[90vh]">
               
-              <div className="sm:hidden w-12 h-1 bg-slate-100 rounded-full mx-auto -mt-4 mb-6"></div>
-              
-              <button onClick={() => setIsModalOpen(false)} className="absolute top-8 right-8 text-slate-300 hover:text-[#8D30F4] transition-all p-1">
-                 <X size={24} strokeWidth={3}/>
-              </button>
-              
-              <div className="flex items-center gap-4 mb-8">
-                 <div className="w-14 h-14 bg-[#8D30F4]/10 rounded-2xl flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10">
-                    <Shield size={28} />
+              <div className="flex items-center justify-between p-8 pb-4 shrink-0">
+                 <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-[#8D30F4]/10 rounded-2xl flex items-center justify-center text-[#8D30F4] border border-[#8D30F4]/10">
+                       <Shield size={24} />
+                    </div>
+                    <div>
+                       <h2 className="text-xl font-black text-[#2E0B5E] font-noto tracking-tight">
+                         {editId ? 'Edit Teacher' : 'Add Teacher'}
+                       </h2>
+                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Access Credentials</p>
+                    </div>
                  </div>
-                 <div>
-                    <h2 className="text-xl font-black text-[#2E0B5E] font-noto tracking-tight">
-                      {editId ? 'Edit Teacher' : 'Add Teacher'}
-                    </h2>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Access Credentials</p>
-                 </div>
+                 <button onClick={() => setIsModalOpen(false)} className="text-slate-300 hover:text-[#8D30F4] transition-all p-1">
+                    <X size={24} strokeWidth={3}/>
+                 </button>
               </div>
               
-              <div className="space-y-5">
+              <div className="px-8 pb-8 space-y-5 overflow-y-auto custom-scrollbar flex-1">
                  <div className="space-y-1.5">
                     <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Name</label>
                     <input 
@@ -269,18 +268,21 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
                     </div>
                  </div>
 
-                 <button 
-                   onClick={handleSave} 
-                   disabled={saving || !name || !phone || !code} 
-                   className="w-full h-14 premium-btn text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all text-sm font-noto disabled:opacity-30 mt-4"
-                 >
-                    {saving ? <Loader2 className="animate-spin" size={20} /> : (
-                       <>
-                         <Save size={18} />
-                         <span>{editId ? 'Update Profile' : 'Save Teacher'}</span>
-                       </>
-                    )}
-                 </button>
+                 <div className="pt-2">
+                    <button 
+                      onClick={handleSave} 
+                      disabled={saving || !name || !phone || !code} 
+                      className="w-full h-14 premium-btn text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all text-sm font-noto disabled:opacity-30"
+                    >
+                       {saving ? <Loader2 className="animate-spin" size={20} /> : (
+                          <>
+                            <Save size={18} />
+                            <span>{editId ? 'Update Profile' : 'Save Teacher'}</span>
+                          </>
+                       )}
+                    </button>
+                    <div className="h-10"></div> {/* Extra spacing for mobile keyboards */}
+                 </div>
               </div>
            </div>
         </div>
