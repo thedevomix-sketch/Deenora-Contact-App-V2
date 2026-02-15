@@ -79,17 +79,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
            </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-3 gap-2">
-           <button 
-             onClick={() => initiateNormalCall(student.guardian_phone)} 
-             className="flex flex-col items-center justify-center p-3 bg-[#8D30F4]/5 border border-[#8D30F4]/20 rounded-[1.5rem] text-[#8D30F4] active:scale-95 transition-all group"
-           >
-              <div className="w-10 h-10 bg-[#8D30F4] text-white rounded-xl flex items-center justify-center mb-2 shadow-md group-active:scale-90 transition-transform">
-                <Phone size={20} fill="currentColor" />
-              </div>
-              <span className="text-[8px] font-black uppercase tracking-widest">Phone</span>
-           </button>
-
+        <div className="mt-8 grid grid-cols-2 gap-2">
            <button 
              onClick={() => initiateWhatsAppCall(student.guardian_phone)} 
              className="flex flex-col items-center justify-center p-3 bg-[#25d366]/5 border border-[#25d366]/20 rounded-[1.5rem] text-[#25d366] active:scale-95 transition-all group"
@@ -132,9 +122,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
                    <p className="text-[15px] font-black text-[#2E0B5E] tracking-tight">{student.guardian_phone}</p>
                 </div>
               </div>
-              <button onClick={() => initiateNormalCall(student.guardian_phone)} className="w-8 h-8 bg-[#8D30F4] text-white rounded-lg flex items-center justify-center active:scale-90 transition-all shadow-sm">
-                 <Phone size={14} fill="currentColor" />
-              </button>
            </div>
 
            {student.guardian_phone_2 && (
@@ -151,9 +138,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
                 <div className="flex gap-1.5">
                   <button onClick={() => initiateWhatsAppCall(student.guardian_phone_2!)} className="w-8 h-8 bg-[#25d366] text-white rounded-lg flex items-center justify-center active:scale-90 transition-all shadow-sm">
                      <PhoneCall size={14} fill="currentColor" />
-                  </button>
-                  <button onClick={() => initiateNormalCall(student.guardian_phone_2!)} className="w-8 h-8 bg-[#A179FF] text-white rounded-lg flex items-center justify-center active:scale-90 transition-all shadow-sm">
-                     <Phone size={14} fill="currentColor" />
                   </button>
                 </div>
              </div>
