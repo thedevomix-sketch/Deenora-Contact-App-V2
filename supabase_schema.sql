@@ -1,6 +1,6 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V18 - SCHEMA REPAIR)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V19 - PARSING FIX)
 -- ======================================================
 
 -- Enable UUID extension
@@ -17,29 +17,14 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     balance DECIMAL DEFAULT 0,
     sms_balance INTEGER DEFAULT 0,
     login_code TEXT,
-    reve_api_key TEXT,
-    reve_secret_key TEXT,
-    reve_caller_id TEXT,
-    reve_client_id TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- Ensure columns exist in madrasahs if table was created earlier
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='madrasahs' AND column_name='reve_api_key') THEN
-        ALTER TABLE public.madrasahs ADD COLUMN reve_api_key TEXT;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='madrasahs' AND column_name='reve_secret_key') THEN
-        ALTER TABLE public.madrasahs ADD COLUMN reve_secret_key TEXT;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='madrasahs' AND column_name='reve_caller_id') THEN
-        ALTER TABLE public.madrasahs ADD COLUMN reve_caller_id TEXT;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='madrasahs' AND column_name='reve_client_id') THEN
-        ALTER TABLE public.madrasahs ADD COLUMN reve_client_id TEXT;
-    END IF;
-END $$;
+-- কলামগুলো না থাকলে যোগ করার নিরাপদ পদ্ধতি (Postgres 9.6+)
+ALTER TABLE public.madrasahs ADD COLUMN IF NOT EXISTS reve_api_key TEXT;
+ALTER TABLE public.madrasahs ADD COLUMN IF NOT EXISTS reve_secret_key TEXT;
+ALTER TABLE public.madrasahs ADD COLUMN IF NOT EXISTS reve_caller_id TEXT;
+ALTER TABLE public.madrasahs ADD COLUMN IF NOT EXISTS reve_client_id TEXT;
 
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
@@ -165,20 +150,17 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- REPAIR system_settings if column bkash_number is missing
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='system_settings' AND column_name='bkash_number') THEN
-        ALTER TABLE public.system_settings ADD COLUMN bkash_number TEXT;
-    END IF;
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='system_settings' AND column_name='reve_client_id') THEN
-        ALTER TABLE public.system_settings ADD COLUMN reve_client_id TEXT;
+-- কলাম নিশ্চিত করা
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS bkash_number TEXT;
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS reve_client_id TEXT;
+
+-- ডাইনামিক SQL ব্যবহার করে ইনসার্ট করা যাতে পার্সিং এরর না আসে
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM public.system_settings WHERE id = '00000000-0000-0000-0000-000000000001') THEN
+        EXECUTE 'INSERT INTO public.system_settings (id, bkash_number) VALUES (''00000000-0000-0000-0000-000000000001'', ''017XXXXXXXX'')';
     END IF;
 END $$;
-
-INSERT INTO public.system_settings (id, bkash_number) 
-SELECT '00000000-0000-0000-0000-000000000001', '017XXXXXXXX' 
-WHERE NOT EXISTS (SELECT 1 FROM public.system_settings WHERE id = '00000000-0000-0000-0000-000000000001');
 
 -- ৮. বাল্ক এসএমএস আরপিসি
 CREATE OR REPLACE FUNCTION public.send_bulk_sms_rpc(
