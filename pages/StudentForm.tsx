@@ -147,34 +147,34 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
 
   return (
     <div className="animate-in slide-in-from-bottom-6 duration-500 pb-24 space-y-8">
-      <div className="flex items-center gap-5">
-        <button onClick={onCancel} className="w-14 h-14 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white active:scale-95 transition-all border border-white/20 shadow-xl">
-          <ArrowLeft size={28} strokeWidth={3} />
+      <div className="flex items-center gap-5 px-1">
+        <button onClick={onCancel} className="w-11 h-11 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white active:scale-95 transition-all border border-white/20 shadow-xl shrink-0">
+          <ArrowLeft size={24} strokeWidth={3} />
         </button>
-        <h1 className="text-2xl font-black text-white font-noto drop-shadow-md">
+        <h1 className="text-xl font-black text-white font-noto drop-shadow-md truncate">
           {isEditing ? t('edit_student', lang) : t('add_student', lang)}
         </h1>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] border-2 border-[#8D30F4]/10 shadow-2xl space-y-8">
+        <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] border-2 border-[#8D30F4]/5 shadow-2xl space-y-8">
           <div className="flex flex-col items-center gap-4">
-            <div onClick={() => fileInputRef.current?.click()} className="w-28 h-28 rounded-[2rem] bg-[#F2EBFF] border-4 border-dashed border-[#8D30F4]/30 flex items-center justify-center text-[#8D30F4]/40 overflow-hidden relative active:scale-95 transition-all shadow-inner">
+            <div onClick={() => fileInputRef.current?.click()} className="w-28 h-28 rounded-[2.2rem] bg-[#F2EBFF] border-4 border-dashed border-[#8D30F4]/20 flex items-center justify-center text-[#8D30F4]/40 overflow-hidden relative active:scale-95 transition-all shadow-inner">
               {uploading ? <Loader2 className="animate-spin text-[#8D30F4]" /> : photoUrl ? <img src={photoUrl} className="w-full h-full object-cover" /> : <Camera size={35} />}
             </div>
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
-            <p className="text-[11px] font-black text-[#8D30F4] uppercase tracking-widest">{photoUrl ? 'Change Photo' : 'Add Photo'}</p>
+            <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-[0.2em]">{photoUrl ? 'Change Photo' : 'Add Photo'}</p>
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-6">
              <div className="space-y-2">
                <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><UserIcon size={14} className="text-[#8D30F4]" /> {t('student_name', lang)}</label>
-               <input type="text" required className="w-full h-[60px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" value={name} onChange={(e) => setName(e.target.value)} />
+               <input type="text" required className="w-full h-[64px] px-6 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" value={name} onChange={(e) => setName(e.target.value)} />
              </div>
 
              <div className="space-y-2">
                <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><UserCheck size={14} className="text-[#8D30F4]" /> {t('guardian_name', lang)}</label>
-               <input type="text" className="w-full h-[60px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" value={guardianName} onChange={(e) => setGuardianName(e.target.value)} />
+               <input type="text" className="w-full h-[64px] px-6 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] outline-none text-[#2D3142] font-black text-lg focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" value={guardianName} onChange={(e) => setGuardianName(e.target.value)} />
              </div>
              
              <div className="grid grid-cols-2 gap-4">
@@ -182,7 +182,7 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Hash size={14} className="text-[#8D30F4]" /> Roll</label>
                   <input 
                     type="number" 
-                    className="w-full h-[60px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] text-[#2D3142] font-black text-xl outline-none text-center focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" 
+                    className="w-full h-[64px] px-6 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] text-[#2D3142] font-black text-xl outline-none text-center focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" 
                     value={roll} 
                     onChange={(e) => setRoll(e.target.value)} 
                   />
@@ -191,9 +191,9 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><List size={14} className="text-[#8D30F4]" /> Class</label>
                   <div 
                     onClick={() => setShowClassModal(true)} 
-                    className="w-full h-[60px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all shadow-inner"
+                    className="w-full h-[64px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] flex items-center justify-between cursor-pointer active:scale-[0.98] transition-all shadow-inner"
                   >
-                    <span className="font-black text-[#2D3142] truncate text-base leading-none">{getSelectedClassName()}</span>
+                    <span className="font-black text-[#2D3142] truncate text-base leading-none font-noto">{getSelectedClassName()}</span>
                     <ChevronDown size={18} className="text-[#8D30F4] shrink-0" />
                   </div>
                 </div>
@@ -201,19 +201,26 @@ const StudentForm: React.FC<StudentFormProps> = ({ student, madrasah, defaultCla
 
              <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Phone size={14} className="text-[#8D30F4]" /> Primary Phone</label>
-                  <input type="tel" required className="w-full h-[60px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" value={phone} onChange={(e) => handlePhoneChange(e.target.value, setPhone)} />
+                  <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Phone size={14} className="text-[#8D30F4]" /> Phone 1</label>
+                  <input type="tel" required className="w-full h-[64px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" value={phone} onChange={(e) => handlePhoneChange(e.target.value, setPhone)} />
                 </div>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2 text-[10px] font-black text-[#4B168A] uppercase tracking-widest px-2"><Phone size={14} className="text-[#8D30F4]" /> Phone 2</label>
-                  <input type="tel" className="w-full h-[60px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.2rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" value={phone2} onChange={(e) => handlePhoneChange(e.target.value, setPhone2)} />
+                  <input type="tel" className="w-full h-[64px] px-5 bg-slate-50 border-2 border-slate-100 rounded-[1.5rem] text-[#2D3142] font-black text-sm outline-none focus:border-[#8D30F4]/30 focus:bg-white transition-all shadow-inner" value={phone2} onChange={(e) => handlePhoneChange(e.target.value, setPhone2)} />
                 </div>
              </div>
           </div>
         </div>
 
-        <button type="submit" disabled={loading} className="w-full py-6 premium-btn text-white font-black rounded-[2.5rem] shadow-[0_20px_50px_rgba(141,48,244,0.4)] active:scale-[0.98] transition-all flex items-center justify-center gap-4 text-xl font-noto">
-          {loading ? <Loader2 className="animate-spin" size={28} /> : <><Save size={28} /> {t('save', lang)}</>}
+        <button type="submit" disabled={loading} className="w-full h-[72px] premium-btn text-white font-black rounded-[2.2rem] shadow-[0_20px_50px_-10px_rgba(141,48,244,0.5)] active:scale-95 transition-all flex items-center justify-center gap-4 text-[17px] font-noto border border-white/20 uppercase tracking-[0.15em] relative overflow-hidden group">
+          {loading ? <Loader2 className="animate-spin" size={28} /> : (
+            <>
+              <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center shadow-inner group-active:scale-90 transition-transform">
+                <Save size={24} strokeWidth={2.5} />
+              </div>
+              <span className="drop-shadow-md">{t('save', lang)}</span>
+            </>
+          )}
         </button>
       </form>
 
