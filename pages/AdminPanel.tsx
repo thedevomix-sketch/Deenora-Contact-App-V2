@@ -19,6 +19,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   const [madrasahs, setMadrasahs] = useState<MadrasahWithStats[]>([]);
   const [pendingTrans, setPendingTrans] = useState<Transaction[]>([]);
   const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
+  const [selectedUserHistory, setSelectedUserHistory] = useState<Transaction[]>([]);
   const [adminStock, setAdminStock] = useState<AdminSMSStock | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -123,6 +124,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     if (data) setTransactionHistory(data);
   };
 
+  const fetchSelectedUserHistory = async (madrasahId: string) => {
+    const { data } = await supabase.from('transactions')
+      .select('*')
+      .eq('madrasah_id', madrasahId)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    if (data) setSelectedUserHistory(data);
+  };
+
   const totalDistributedSms = useMemo(() => {
     return madrasahs.reduce((acc, curr) => acc + (curr.sms_balance || 0), 0);
   }, [madrasahs]);
@@ -132,7 +142,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     try {
       const [studentsRes, classesRes] = await Promise.all([
         supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', madrasahId),
-        supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', madrasahId)
+        supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', madrasahId),
+        fetchSelectedUserHistory(madrasahId)
       ]);
       setUserStats({
         students: studentsRes.count || 0,
@@ -197,8 +208,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       const { error } = await supabase.rpc('approve_payment_with_sms', { t_id: tr.id, m_id: tr.madrasah_id, sms_to_give: sms });
       if (error) throw error;
       
-      // Removed automated SMS notification as requested
-
       setPendingTrans(p => p.filter(t => t.id !== tr.id));
       alert('Approved Successfully!');
       initData();
@@ -410,6 +419,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                        <input type="text" className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-5 font-black text-[#8D30F4]" value={editLoginCode} onChange={(e) => setEditLoginCode(e.target.value)} />
                        <Key size={16} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300" />
                     </div>
+                 </div>
+              </div>
+
+              {/* User Specific Recharge History in Details */}
+              <div className="space-y-4 pt-4 border-t border-slate-100">
+                 <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2"><HistoryIcon size={14}/> Recharge History</h4>
+                 <div className="space-y-2">
+                    {selectedUserHistory.length > 0 ? selectedUserHistory.map(tr => (
+                      <div key={tr.id} className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex items-center justify-between">
+                         <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                               <p className="text-xs font-black text-slate-800">{tr.amount} ৳</p>
+                               <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-full ${tr.status === 'approved' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                                  {tr.status}
+                               </span>
+                            </div>
+                            <p className="text-[9px] font-bold text-slate-400 mt-0.5">{new Date(tr.created_at).toLocaleDateString('bn-BD')}</p>
+                         </div>
+                         <div className="text-right">
+                            <p className="text-[8px] font-black text-[#8D30F4] uppercase truncate max-w-[80px]">{tr.transaction_id}</p>
+                         </div>
+                      </div>
+                    )) : (
+                      <p className="text-center text-slate-400 text-[9px] font-black py-4 uppercase">No transactions found</p>
+                    )}
                  </div>
               </div>
 

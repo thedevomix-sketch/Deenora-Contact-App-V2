@@ -1,8 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Loader2, Send, ChevronDown, BookOpen, Users, CheckCircle2, MessageSquare, Plus, Edit3, Trash2, Smartphone, X, Check, History, Zap, AlertTriangle } from 'lucide-react';
+import { CreditCard, Loader2, Send, ChevronDown, BookOpen, Users, CheckCircle2, MessageSquare, Plus, Edit3, Trash2, Smartphone, X, Check, History, Zap, AlertTriangle, Clock } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
-import { SMSTemplate, Language, Madrasah, Class, Student } from '../types';
+import { SMSTemplate, Language, Madrasah, Class, Student, Transaction } from '../types';
 import { t } from '../translations';
 import { sortMadrasahClasses } from './Classes';
 
@@ -24,6 +24,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
   const [bulkSuccess, setBulkSuccess] = useState(false);
   const [classStudents, setClassStudents] = useState<Student[]>([]);
   const [showClassDropdown, setShowClassDropdown] = useState(false);
+  const [userTransactions, setUserTransactions] = useState<Transaction[]>([]);
   
   const [showAddModal, setShowAddModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -42,7 +43,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
   useEffect(() => { 
     if (activeTab === 'templates') fetchTemplates(); 
     if (activeTab === 'bulk-sms') { fetchClasses(); fetchTemplates(); }
-    if (activeTab === 'recharge') fetchSystemSettings();
+    if (activeTab === 'recharge') { fetchSystemSettings(); fetchUserTransactions(); }
   }, [activeTab, madrasah?.id, dataVersion]);
 
   useEffect(() => {
@@ -73,6 +74,16 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
     setLoading(false);
   };
 
+  const fetchUserTransactions = async () => {
+    if (!madrasah) return;
+    const { data } = await supabase.from('transactions')
+      .select('*')
+      .eq('madrasah_id', madrasah.id)
+      .order('created_at', { ascending: false })
+      .limit(10);
+    if (data) setUserTransactions(data);
+  };
+
   const handleRechargeRequest = async () => {
     if (!rechargeAmount || !rechargeTrx || !madrasah) return;
     setRequesting(true);
@@ -91,6 +102,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
       setRechargeAmount('');
       setRechargeTrx('');
       setRechargePhone('');
+      fetchUserTransactions();
       setTimeout(() => setRequestSuccess(false), 5000);
     } catch (err: any) {
       alert(err.message);
@@ -214,6 +226,38 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
                 <button onClick={handleRechargeRequest} disabled={requesting || !rechargeAmount || !rechargeTrx} className="w-full h-16 premium-btn text-white font-black rounded-full flex items-center justify-center gap-3 text-lg mt-4 disabled:opacity-40">
                   {requesting ? <Loader2 className="animate-spin" size={24} /> : 'রিকোয়েস্ট পাঠান'}
                 </button>
+              </div>
+           </div>
+
+           {/* User's Own Recharge History List */}
+           <div className="space-y-4">
+              <h2 className="text-[10px] font-black text-white uppercase tracking-[0.2em] px-3 opacity-80 flex items-center gap-2">
+                 <History size={12} /> My Recharge History
+              </h2>
+              <div className="space-y-2.5">
+                {userTransactions.length > 0 ? userTransactions.map(tr => (
+                  <div key={tr.id} className="bg-white/95 backdrop-blur-md p-4 rounded-[1.8rem] border border-white flex items-center justify-between shadow-xl">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <p className="text-[15px] font-black text-slate-800 leading-none">{tr.amount} ৳</p>
+                        <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${tr.status === 'approved' ? 'bg-green-50 text-green-600' : tr.status === 'pending' ? 'bg-orange-50 text-orange-600' : 'bg-red-50 text-red-600'}`}>
+                          {tr.status}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1.5">
+                         <Clock size={10} className="text-slate-400" />
+                         <p className="text-[10px] font-bold text-slate-400">{new Date(tr.created_at).toLocaleDateString('bn-BD')}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                       <p className="text-[9px] font-black text-[#8D30F4] uppercase tracking-tighter opacity-60">TrxID: {tr.transaction_id}</p>
+                    </div>
+                  </div>
+                )) : (
+                  <div className="text-center py-10 bg-white/10 rounded-[2.5rem] border border-white/20">
+                     <p className="text-white/40 text-[9px] font-black uppercase tracking-widest">No history records</p>
+                  </div>
+                )}
               </div>
            </div>
         </div>
