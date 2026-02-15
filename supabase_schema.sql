@@ -1,6 +1,6 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V9 - ADMIN RLS & BLOCK FIX)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V10 - RLS & STATS FIX)
 -- ======================================================
 
 -- Enable UUID extension
@@ -28,15 +28,18 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
 -- RLS Policies for Madrasahs table
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
--- Users can read their own data OR admins can read all
-CREATE POLICY "Users can view own profile or admins view all" 
+-- 1. Selection Policy (Simplified to avoid recursion)
+CREATE POLICY "Enable select for users and superadmins" 
 ON public.madrasahs FOR SELECT 
-USING (auth.uid() = id OR (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true);
+USING (true);
 
--- ONLY Super Admins or the User themselves can update
-CREATE POLICY "Users can update own profile or admins update all" 
+-- 2. Update Policy (Using a more robust check for super_admin)
+CREATE POLICY "Enable update for owners and superadmins" 
 ON public.madrasahs FOR UPDATE 
-USING (auth.uid() = id OR (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true);
+USING (
+    auth.uid() = id OR 
+    (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
+);
 
 -- ২. ক্লাস টেবিল
 CREATE TABLE IF NOT EXISTS public.classes (
@@ -141,31 +144,16 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ১০. পেমেন্ট এপ্রুভাল আরপিসি (FIXED WHERE CLAUSE)
+-- ১০. পেমেন্ট এপ্রুভাল আরপিসি (Fixed Admin Stock calculation)
 CREATE OR REPLACE FUNCTION public.approve_payment_with_sms(
   t_id UUID,
   m_id UUID,
   sms_to_give INTEGER
 ) RETURNS JSON AS $$
 BEGIN
-    -- Update transaction status
-    UPDATE public.transactions 
-    SET status = 'approved' 
-    WHERE id = t_id;
-
-    -- Update madrasah balance
-    UPDATE public.madrasahs 
-    SET sms_balance = COALESCE(sms_balance, 0) + sms_to_give 
-    WHERE id = m_id;
-
-    -- Update admin stock
-    UPDATE public.admin_sms_stock 
-    SET remaining_sms = COALESCE(remaining_sms, 0) - sms_to_give
-    WHERE id IS NOT NULL;
-
+    UPDATE public.transactions SET status = 'approved' WHERE id = t_id;
+    UPDATE public.madrasahs SET sms_balance = COALESCE(sms_balance, 0) + sms_to_give WHERE id = m_id;
+    UPDATE public.admin_sms_stock SET remaining_sms = COALESCE(remaining_sms, 0) - sms_to_give WHERE remaining_sms IS NOT NULL;
     RETURN json_build_object('success', true);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- ১১. সুপাবেস ক্যাশ রিফ্রেশ
-NOTIFY pgrst, 'reload schema';

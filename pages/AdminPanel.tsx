@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp } from 'lucide-react';
+import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp, RefreshCcw } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, Transaction, AdminSMSStock } from '../types';
 
@@ -34,6 +34,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   const [editReveClientId, setEditReveClientId] = useState('');
 
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
+  const [isRefreshingStats, setIsRefreshingStats] = useState(false);
   const [copied, setCopied] = useState(false);
 
   // Global Settings
@@ -87,7 +88,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   };
 
   const fetchAllMadrasahs = async () => {
-    const { data } = await supabase.from('madrasahs').select('*').neq('is_super_admin', true).order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('madrasahs').select('*').neq('is_super_admin', true).order('created_at', { ascending: false });
+    if (error) console.error("Fetch Madrasahs Error:", error);
     if (data) setMadrasahs(data);
   };
 
@@ -99,6 +101,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   const totalDistributedSms = useMemo(() => {
     return madrasahs.reduce((acc, curr) => acc + (curr.sms_balance || 0), 0);
   }, [madrasahs]);
+
+  const fetchDynamicStats = async (madrasahId: string) => {
+    setIsRefreshingStats(true);
+    try {
+      const [studentsRes, classesRes] = await Promise.all([
+        supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', madrasahId),
+        supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', madrasahId)
+      ]);
+      setUserStats({
+        students: studentsRes.count || 0,
+        classes: classesRes.count || 0
+      });
+    } catch (err) {
+      console.error("Stats Fetch Error:", err);
+    } finally {
+      setIsRefreshingStats(false);
+    }
+  };
 
   const handleUserClick = async (m: Madrasah) => {
     setSelectedUser(m);
@@ -113,22 +133,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     setEditReveClientId(m.reve_client_id || '');
     
     setView('details');
-
-    const [studentsRes, classesRes] = await Promise.all([
-      supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', m.id),
-      supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', m.id)
-    ]);
-    setUserStats({
-      students: studentsRes.count || 0,
-      classes: classesRes.count || 0
-    });
+    // Fetch Dynamic Stats immediately
+    await fetchDynamicStats(m.id);
   };
 
   const updateUserProfile = async () => {
     if (!selectedUser) return;
     setIsUpdatingUser(true);
     try {
-      const { error } = await supabase.from('madrasahs').update({
+      // 1. Perform the update
+      const { error: updateError } = await supabase.from('madrasahs').update({
         name: editName.trim(),
         phone: editPhone.trim(),
         login_code: editLoginCode.trim(),
@@ -139,14 +153,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
         reve_client_id: editReveClientId.trim() || null
       }).eq('id', selectedUser.id);
       
-      if (error) throw error;
+      if (updateError) throw updateError;
       
+      // 2. Refresh local state
       alert('User Settings Updated Successfully');
-      await fetchAllMadrasahs();
+      await fetchAllMadrasahs(); // Fetch fresh list from server
       setView('list');
       setSelectedUser(null);
     } catch (err: any) { 
       alert('Update Error: ' + err.message); 
+      console.error(err);
     } finally { 
       setIsUpdatingUser(false); 
     }
@@ -264,7 +280,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
               <button onClick={() => setView('list')} className="w-11 h-11 bg-white/20 backdrop-blur-md rounded-[1rem] flex items-center justify-center text-white active:scale-90 transition-all border border-white/20 shadow-xl">
                 <ArrowLeft size={22} strokeWidth={3} />
               </button>
-              <h1 className="text-xl font-black text-white font-noto drop-shadow-md">User Details</h1>
+              <div className="flex-1">
+                <h1 className="text-xl font-black text-white font-noto drop-shadow-md">User Details</h1>
+              </div>
+              <button onClick={() => fetchDynamicStats(selectedUser.id)} className={`w-11 h-11 bg-white/20 backdrop-blur-md rounded-[1rem] flex items-center justify-center text-white active:scale-90 transition-all border border-white/20 shadow-xl ${isRefreshingStats ? 'animate-spin' : ''}`}>
+                 <RefreshCcw size={18} />
+              </button>
            </div>
 
            <div className="bg-white/95 backdrop-blur-xl rounded-[2.8rem] p-8 border border-white shadow-2xl space-y-8 relative overflow-hidden">
@@ -284,12 +305,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
               <div className="grid grid-cols-3 gap-3">
                  <div className="bg-slate-50 p-4 rounded-3xl text-center border border-slate-100">
                     <Users size={18} className="mx-auto text-[#8D30F4] mb-2" />
-                    <p className="text-lg font-black text-slate-800 leading-none">{userStats.students}</p>
+                    <p className="text-lg font-black text-slate-800 leading-none">
+                      {isRefreshingStats ? '...' : userStats.students}
+                    </p>
                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Students</p>
                  </div>
                  <div className="bg-slate-50 p-4 rounded-3xl text-center border border-slate-100">
                     <Layers size={18} className="mx-auto text-[#8D30F4] mb-2" />
-                    <p className="text-lg font-black text-slate-800 leading-none">{userStats.classes}</p>
+                    <p className="text-lg font-black text-slate-800 leading-none">
+                      {isRefreshingStats ? '...' : userStats.classes}
+                    </p>
                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Classes</p>
                  </div>
                  <div className="bg-slate-50 p-4 rounded-3xl text-center border border-slate-100">
