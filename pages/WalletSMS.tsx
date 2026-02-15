@@ -226,11 +226,21 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
           <div className="bg-white/95 backdrop-blur-xl p-6 rounded-[2.5rem] shadow-2xl border border-white/50 space-y-7">
             <div className="space-y-4">
               <h4 className="text-[11px] font-black text-[#2E0B5E] uppercase tracking-widest px-1">১. ক্লাস নির্বাচন</h4>
-              <div className="relative">
+              <div className="relative space-y-3">
                 <button onClick={() => setShowClassDropdown(!showClassDropdown)} className="w-full h-[60px] px-6 rounded-[1.5rem] border-2 bg-slate-50 border-slate-100 flex items-center justify-between">
                   <span className="text-base font-black font-noto text-[#2E0B5E]">{getSelectedClassName()}</span>
                   <ChevronDown className={`text-slate-300 transition-all ${showClassDropdown ? 'rotate-180' : ''}`} size={20} />
                 </button>
+                
+                {selectedClassId && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-[#8D30F4]/10 rounded-xl border border-[#8D30F4]/10 animate-in fade-in slide-in-from-top-2">
+                    <Users size={16} className="text-[#8D30F4]" />
+                    <p className="text-[11px] font-black text-[#8D30F4] uppercase tracking-wider">
+                      {lang === 'bn' ? `মোট ছাত্র: ${classStudents.length} জন` : `Total Students: ${classStudents.length}`}
+                    </p>
+                  </div>
+                )}
+
                 {showClassDropdown && (
                   <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 z-[100] p-2 max-h-60 overflow-y-auto">
                     {classes.map(cls => (
@@ -253,7 +263,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
               </div>
             </div>
 
-            <button onClick={handleSendBulk} disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId} className="w-full h-[64px] premium-btn text-white font-black rounded-full shadow-lg flex items-center justify-center gap-3 text-lg disabled:opacity-40">
+            <button onClick={handleSendBulk} disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId || classStudents.length === 0} className="w-full h-[64px] premium-btn text-white font-black rounded-full shadow-lg flex items-center justify-center gap-3 text-lg disabled:opacity-40">
               {sendingBulk ? <Loader2 className="animate-spin" size={24} /> : bulkSuccess ? 'সফল!' : 'বাল্ক এসএমএস পাঠান'}
             </button>
           </div>
