@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History } from 'lucide-react';
+import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
@@ -28,6 +28,12 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [newPhone, setNewPhone] = useState(initialMadrasah?.phone || '');
   const [newLoginCode, setNewLoginCode] = useState(initialMadrasah?.login_code || '');
   const [logoUrl, setLogoUrl] = useState(initialMadrasah?.logo_url || '');
+  
+  // Gateway Settings
+  const [reveApiKey, setReveApiKey] = useState(initialMadrasah?.reve_api_key || '');
+  const [reveSecretKey, setReveSecretKey] = useState(initialMadrasah?.reve_secret_key || '');
+  const [reveCallerId, setReveCallerId] = useState(initialMadrasah?.reve_caller_id || '');
+  const [reveClientId, setReveClientId] = useState(initialMadrasah?.reve_client_id || '');
   
   const [copiedId, setCopiedId] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -74,7 +80,11 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         name: newName.trim(), 
         phone: newPhone.trim(), 
         login_code: newLoginCode.trim(), 
-        logo_url: logoUrl 
+        logo_url: logoUrl,
+        reve_api_key: reveApiKey.trim() || null,
+        reve_secret_key: reveSecretKey.trim() || null,
+        reve_caller_id: reveCallerId.trim() || null,
+        reve_client_id: reveClientId.trim() || null
       }).eq('id', madrasah.id);
       
       if (error) throw error;
@@ -85,7 +95,11 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         ...prev, 
         name: newName.trim(), 
         phone: newPhone.trim(), 
-        login_code: newLoginCode.trim() 
+        login_code: newLoginCode.trim(),
+        reve_api_key: reveApiKey.trim(),
+        reve_secret_key: reveSecretKey.trim(),
+        reve_caller_id: reveCallerId.trim(),
+        reve_client_id: reveClientId.trim()
       } : null);
 
       alert(lang === 'bn' ? 'সব তথ্য আপডেট হয়েছে!' : 'Profile Updated!');
@@ -200,6 +214,34 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">{t('madrasah_code_label', lang)}</label>
                 <input type="text" className="bg-transparent border-none outline-none font-black text-[#8D30F4] text-base w-full" value={newLoginCode} onChange={(e) => setNewLoginCode(e.target.value)} />
               </div>
+
+              {/* SMS Gateway Section */}
+              <div className="pt-4 border-t border-slate-100 space-y-4">
+                 <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2">
+                    <Server size={14}/> SMS Gateway (REVE)
+                 </h4>
+                 <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                       <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">API Key</label>
+                       <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveApiKey} onChange={(e) => setReveApiKey(e.target.value)} placeholder="Reve API Key" />
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                       <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Secret Key</label>
+                       <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveSecretKey} onChange={(e) => setReveSecretKey(e.target.value)} placeholder="Secret Key" />
+                    </div>
+                 </div>
+                 <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                       <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Sender ID</label>
+                       <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveCallerId} onChange={(e) => setReveCallerId(e.target.value)} placeholder="Masking Name" />
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                       <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Client ID</label>
+                       <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveClientId} onChange={(e) => setReveClientId(e.target.value)} placeholder="Client ID" />
+                    </div>
+                 </div>
+              </div>
+
               <div className="flex gap-3 pt-4">
                 <button onClick={() => setIsEditingProfile(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-2xl text-sm">{t('cancel', lang)}</button>
                 <button onClick={handleUpdate} disabled={saving} className="flex-[2] py-4 bg-[#8D30F4] text-white font-black rounded-2xl text-sm shadow-xl">
