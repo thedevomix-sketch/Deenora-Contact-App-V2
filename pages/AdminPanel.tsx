@@ -49,6 +49,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
 
   useEffect(() => { initData(); }, [dataVersion]);
 
+  // Update internal view when prop changes (from bottom nav)
+  useEffect(() => {
+    if (currentView === 'approvals') setView('approvals');
+    else if (currentView === 'list' || currentView === 'dashboard') setView('list');
+  }, [currentView]);
+
   const initData = async () => {
     setLoading(true);
     try {
@@ -234,64 +240,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in">
-      {/* Global Stock Status - Always Visible */}
-      {view !== 'details' && (
-        <div className="space-y-4 px-1">
-          <div className="grid grid-cols-2 gap-3">
-             <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
-                <div className="w-10 h-10 bg-[#F2F5FF] text-[#8D30F4] rounded-2xl flex items-center justify-center mb-2 shadow-inner">
-                  <Database size={20} />
-                </div>
-                <p className="text-lg font-black text-slate-800 leading-none">{adminStock?.remaining_sms || 0}</p>
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">Global SMS Stock</p>
-              </div>
-              <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
-                <div className="w-10 h-10 bg-green-50 text-green-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
-                  <TrendingUp size={20} />
-                </div>
-                <p className="text-lg font-black text-slate-800 leading-none">{totalDistributedSms}</p>
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">Distributed SMS</p>
-              </div>
-          </div>
-
-          <div className="flex gap-2 overflow-x-auto pb-1 custom-scrollbar">
-             <button onClick={() => setView('list')} className={`px-5 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-wider whitespace-nowrap transition-all ${view === 'list' ? 'bg-white text-[#8D30F4] shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}>User List</button>
-             <button onClick={() => setView('approvals')} className={`px-5 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-wider whitespace-nowrap transition-all ${view === 'approvals' ? 'bg-white text-[#8D30F4] shadow-md' : 'bg-white/10 text-white hover:bg-white/20'}`}>Payments</button>
-          </div>
-        </div>
-      )}
-
       {view === 'list' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-3 gap-3">
-            <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
-              <div className="w-10 h-10 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
-                <Users size={18} />
-              </div>
-              <p className="text-sm font-black text-slate-800">{madrasahs.length}</p>
-              <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">Madrasahs</p>
-            </div>
-            <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
-              <div className="w-10 h-10 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
-                <Users size={18} />
-              </div>
-              <p className="text-sm font-black text-slate-800">{globalStats.totalStudents}</p>
-              <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">Total Std</p>
-            </div>
-            <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
-              <div className="w-10 h-10 bg-purple-50 text-purple-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
-                <Layers size={18} />
-              </div>
-              <p className="text-sm font-black text-slate-800">{globalStats.totalClasses}</p>
-              <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">Total Cls</p>
-            </div>
-          </div>
-
+          {/* Search Header */}
           <div className="relative group">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#8D30F4] transition-colors" size={18} />
-            <input type="text" placeholder="Search Madrasah..." className="w-full pl-14 pr-6 py-4 bg-white border border-[#8D30F4]/5 rounded-[1.8rem] outline-none text-slate-800 font-bold shadow-sm focus:border-[#8D30F4]/20 transition-all" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            <input type="text" placeholder="Search Madrasah..." className="w-full pl-14 pr-6 py-5 bg-white border border-[#8D30F4]/5 rounded-[2rem] outline-none text-slate-800 font-bold shadow-xl focus:border-[#8D30F4]/20 transition-all" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             <button onClick={initData} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8D30F4] p-2 hover:bg-slate-50 rounded-xl transition-all">
-               <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
+               <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
             </button>
           </div>
 
@@ -304,8 +260,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                       {m.logo_url ? <img src={m.logo_url} className="w-full h-full object-cover" /> : <UserIcon size={24} />}
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-black text-slate-800 truncate font-noto text-lg">{m.name}</h3>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <h3 className="font-black text-slate-800 truncate font-noto text-lg leading-tight">{m.name}</h3>
+                      <div className="flex items-center gap-2 mt-1">
                         <p className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${m.is_active !== false ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
                           {m.is_active !== false ? 'Active' : 'Blocked'}
                         </p>
