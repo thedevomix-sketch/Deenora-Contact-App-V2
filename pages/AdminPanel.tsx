@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp, RefreshCcw, Clock, Hash, History as HistoryIcon, Zap } from 'lucide-react';
+import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp, RefreshCcw, Clock, Hash, History as HistoryIcon, Zap, Activity, PieChart, Users2 } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, Transaction, AdminSMSStock } from '../types';
 
@@ -23,7 +23,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   const [adminStock, setAdminStock] = useState<AdminSMSStock | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [view, setView] = useState<'list' | 'approvals' | 'details'>(currentView === 'approvals' ? 'approvals' : 'list');
+  const [view, setView] = useState<'list' | 'approvals' | 'details' | 'dashboard'>(
+    currentView === 'approvals' ? 'approvals' : currentView === 'dashboard' ? 'dashboard' : 'list'
+  );
   const [smsToCredit, setSmsToCredit] = useState<{ [key: string]: string }>({});
 
   // Global Counts
@@ -52,7 +54,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   // Update internal view when prop changes (from bottom nav)
   useEffect(() => {
     if (currentView === 'approvals') setView('approvals');
-    else if (currentView === 'list' || currentView === 'dashboard') setView('list');
+    else if (currentView === 'dashboard') setView('dashboard');
+    else if (currentView === 'list') setView('list');
   }, [currentView]);
 
   const initData = async () => {
@@ -141,6 +144,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
 
   const totalDistributedSms = useMemo(() => {
     return madrasahs.reduce((acc, curr) => acc + (curr.sms_balance || 0), 0);
+  }, [madrasahs]);
+
+  const activeUserCount = useMemo(() => {
+    return madrasahs.filter(m => m.is_active !== false).length;
   }, [madrasahs]);
 
   const fetchDynamicStats = async (madrasahId: string) => {
@@ -240,6 +247,109 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in">
+      {view === 'dashboard' && (
+        <div className="space-y-6 animate-in slide-in-from-bottom-5">
+           {/* Summary Stats Row 1 */}
+           <div className="grid grid-cols-2 gap-3">
+              <div className="bg-white/95 backdrop-blur-md p-6 rounded-[2.5rem] border border-white shadow-xl flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-3 shadow-inner">
+                   <Users2 size={24} />
+                </div>
+                <h4 className="text-3xl font-black text-[#2E0B5E] leading-none">{loading ? '...' : madrasahs.length}</h4>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Total Madrasahs</p>
+              </div>
+              
+              <div className="bg-white/95 backdrop-blur-md p-6 rounded-[2.5rem] border border-white shadow-xl flex flex-col items-center text-center">
+                <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mb-3 shadow-inner">
+                   <Activity size={24} />
+                </div>
+                <h4 className="text-3xl font-black text-[#2E0B5E] leading-none">{loading ? '...' : activeUserCount}</h4>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Active Portals</p>
+              </div>
+           </div>
+
+           {/* Global SMS Analytics */}
+           <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] border border-white shadow-2xl space-y-8 relative overflow-hidden">
+              <div className="flex items-center justify-between px-1">
+                 <div>
+                   <h3 className="text-lg font-black text-[#2E0B5E] font-noto leading-tight">SMS Analytics</h3>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Global Distribution Overview</p>
+                 </div>
+                 <div className="w-12 h-12 bg-[#F2EBFF] text-[#8D30F4] rounded-2xl flex items-center justify-center shadow-inner">
+                    <Zap size={24} fill="currentColor" />
+                 </div>
+              </div>
+
+              <div className="space-y-6">
+                 <div className="space-y-2">
+                    <div className="flex justify-between items-center px-2">
+                       <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">Distributed to Users</span>
+                       <span className="text-sm font-black text-[#8D30F4]">{totalDistributedSms.toLocaleString()}</span>
+                    </div>
+                    <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden p-1 shadow-inner">
+                       <div 
+                         className="h-full bg-gradient-to-r from-[#8D30F4] to-[#A179FF] rounded-full transition-all duration-1000"
+                         style={{ width: `${Math.min(100, (totalDistributedSms / 10000) * 100)}%` }}
+                       />
+                    </div>
+                 </div>
+
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Stock Remaining</p>
+                       <h5 className="text-xl font-black text-[#2E0B5E]">{adminStock?.remaining_sms || 0}</h5>
+                    </div>
+                    <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Growth Index</p>
+                       <h5 className="text-xl font-black text-emerald-500 flex items-center gap-1">
+                          <TrendingUp size={16} /> +12%
+                       </h5>
+                    </div>
+                 </div>
+              </div>
+           </div>
+
+           {/* Entity Counts Grid */}
+           <div className="grid grid-cols-2 gap-3">
+              <div className="bg-[#F2EBFF]/50 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/50 shadow-lg">
+                 <div className="flex items-center gap-3 mb-2">
+                    <Users size={16} className="text-[#8D30F4]" />
+                    <span className="text-[9px] font-black text-[#8D30F4] uppercase tracking-widest">Total Students</span>
+                 </div>
+                 <h4 className="text-2xl font-black text-[#2E0B5E] leading-none">{loading ? '...' : globalStats.totalStudents}</h4>
+              </div>
+
+              <div className="bg-[#F2EBFF]/50 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/50 shadow-lg">
+                 <div className="flex items-center gap-3 mb-2">
+                    <Layers size={16} className="text-[#8D30F4]" />
+                    <span className="text-[9px] font-black text-[#8D30F4] uppercase tracking-widest">Total Classes</span>
+                 </div>
+                 <h4 className="text-2xl font-black text-[#2E0B5E] leading-none">{loading ? '...' : globalStats.totalClasses}</h4>
+              </div>
+           </div>
+
+           {/* Recent Entities / Health */}
+           <div className="bg-white/95 p-6 rounded-[2.8rem] border border-white shadow-xl space-y-5">
+              <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
+                 <Activity size={14} className="text-[#8D30F4]" /> Recent Registrations
+              </h3>
+              <div className="space-y-3">
+                 {madrasahs.slice(0, 4).map(m => (
+                    <div key={m.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
+                       <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-[#8D30F4] shadow-sm border border-slate-100">
+                             <Globe size={14} />
+                          </div>
+                          <span className="text-[13px] font-black text-slate-700 font-noto truncate max-w-[150px]">{m.name}</span>
+                       </div>
+                       <span className="text-[10px] font-bold text-slate-400">{new Date(m.created_at).toLocaleDateString('bn-BD')}</span>
+                    </div>
+                 ))}
+              </div>
+           </div>
+        </div>
+      )}
+
       {view === 'list' && (
         <div className="space-y-6">
           {/* Distributed SMS Summary Card */}
