@@ -1,6 +1,6 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V7 - BALANCE FIX)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V8 - RPC FIX)
 -- ======================================================
 
 -- Enable UUID extension
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     is_active BOOLEAN DEFAULT true,
     is_super_admin BOOLEAN DEFAULT false,
     balance DECIMAL DEFAULT 0,
-    sms_balance INTEGER DEFAULT 0, -- This was causing the error
+    sms_balance INTEGER DEFAULT 0,
     login_code TEXT,
     -- REVE SMS Columns for Masking
     reve_api_key TEXT,
@@ -24,14 +24,6 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     reve_client_id TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
-
--- কলামটি যদি আগে থেকে না থাকে তবে ম্যানুয়ালি অ্যাড করার কমান্ড
-DO $$ 
-BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='madrasahs' AND column_name='sms_balance') THEN
-        ALTER TABLE public.madrasahs ADD COLUMN sms_balance INTEGER DEFAULT 0;
-    END IF;
-END $$;
 
 -- ২. ক্লাস টেবিল
 CREATE TABLE IF NOT EXISTS public.classes (
@@ -75,16 +67,7 @@ CREATE TABLE IF NOT EXISTS public.sms_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ৬. কল লগ টেবিল
-CREATE TABLE IF NOT EXISTS public.recent_calls (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
-    student_id UUID REFERENCES public.students(id) ON DELETE CASCADE NOT NULL,
-    guardian_phone TEXT NOT NULL,
-    called_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- ৭. ট্রানজ্যাকশন টেবিল
+-- ৬. ট্রানজ্যাকশন টেবিল
 CREATE TABLE IF NOT EXISTS public.transactions (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
@@ -97,14 +80,14 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ৮. অ্যাডমিন এসএমএস স্টক টেবিল
+-- ৭. অ্যাডমিন এসএমএস স্টক টেবিল
 CREATE TABLE IF NOT EXISTS public.admin_sms_stock (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     remaining_sms INTEGER DEFAULT 0,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ৯. সিস্টেম সেটিংস টেবিল
+-- ৮. সিস্টেম সেটিংস টেবিল
 CREATE TABLE IF NOT EXISTS public.system_settings (
     id UUID PRIMARY KEY DEFAULT '00000000-0000-0000-0000-000000000001',
     reve_api_key TEXT,
@@ -115,7 +98,7 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- ১০. বাল্ক এসএমএস আরপিসি
+-- ৯. বাল্ক এসএমএস আরপিসি
 CREATE OR REPLACE FUNCTION public.send_bulk_sms_rpc(
   p_madrasah_id UUID,
   p_student_ids UUID[],
@@ -145,19 +128,31 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ১১. পেমেন্ট এপ্রুভাল আরপিসি
+-- ১০. পেমেন্ট এপ্রুভাল আরপিসি (FIXED WHERE CLAUSE)
 CREATE OR REPLACE FUNCTION public.approve_payment_with_sms(
   t_id UUID,
   m_id UUID,
   sms_to_give INTEGER
 ) RETURNS JSON AS $$
 BEGIN
-    UPDATE public.transactions SET status = 'approved' WHERE id = t_id;
-    UPDATE public.madrasahs SET sms_balance = COALESCE(sms_balance, 0) + sms_to_give WHERE id = m_id;
-    UPDATE public.admin_sms_stock SET remaining_sms = COALESCE(remaining_sms, 0) - sms_to_give;
+    -- Update transaction status
+    UPDATE public.transactions 
+    SET status = 'approved' 
+    WHERE id = t_id;
+
+    -- Update madrasah balance
+    UPDATE public.madrasahs 
+    SET sms_balance = COALESCE(sms_balance, 0) + sms_to_give 
+    WHERE id = m_id;
+
+    -- Update admin stock (Crucial: Added WHERE clause to satisfy DB constraints)
+    UPDATE public.admin_sms_stock 
+    SET remaining_sms = COALESCE(remaining_sms, 0) - sms_to_give
+    WHERE id IS NOT NULL;
+
     RETURN json_build_object('success', true);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- রিফ্রেশ
+-- ১১. সুপাবেস ক্যাশ রিফ্রেশ
 NOTIFY pgrst, 'reload schema';
