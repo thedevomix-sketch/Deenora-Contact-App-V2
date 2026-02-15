@@ -1,6 +1,6 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V17 - ROBUST FIX)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V18 - SCHEMA REPAIR)
 -- ======================================================
 
 -- Enable UUID extension
@@ -23,6 +23,23 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     reve_client_id TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Ensure columns exist in madrasahs if table was created earlier
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='madrasahs' AND column_name='reve_api_key') THEN
+        ALTER TABLE public.madrasahs ADD COLUMN reve_api_key TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='madrasahs' AND column_name='reve_secret_key') THEN
+        ALTER TABLE public.madrasahs ADD COLUMN reve_secret_key TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='madrasahs' AND column_name='reve_caller_id') THEN
+        ALTER TABLE public.madrasahs ADD COLUMN reve_caller_id TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='madrasahs' AND column_name='reve_client_id') THEN
+        ALTER TABLE public.madrasahs ADD COLUMN reve_client_id TEXT;
+    END IF;
+END $$;
 
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
@@ -55,10 +72,8 @@ CREATE TABLE IF NOT EXISTS public.classes (
 );
 
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
-
 DROP POLICY IF EXISTS "class_select_policy" ON public.classes;
 DROP POLICY IF EXISTS "class_manage_policy" ON public.classes;
-
 CREATE POLICY "class_select_policy" ON public.classes FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "class_manage_policy" ON public.classes FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
@@ -78,10 +93,8 @@ CREATE TABLE IF NOT EXISTS public.students (
 );
 
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
-
 DROP POLICY IF EXISTS "student_select_policy" ON public.students;
 DROP POLICY IF EXISTS "student_manage_policy" ON public.students;
-
 CREATE POLICY "student_select_policy" ON public.students FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "student_manage_policy" ON public.students FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
@@ -99,11 +112,9 @@ CREATE TABLE IF NOT EXISTS public.transactions (
 );
 
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
-
 DROP POLICY IF EXISTS "trans_select_policy" ON public.transactions;
 DROP POLICY IF EXISTS "trans_insert_policy" ON public.transactions;
 DROP POLICY IF EXISTS "trans_admin_policy" ON public.transactions;
-
 CREATE POLICY "trans_select_policy" ON public.transactions FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "trans_insert_policy" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = madrasah_id);
 CREATE POLICY "trans_admin_policy" ON public.transactions FOR ALL USING (public.is_admin(auth.uid()));
@@ -128,10 +139,8 @@ CREATE TABLE IF NOT EXISTS public.sms_logs (
 
 ALTER TABLE public.sms_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sms_logs ENABLE ROW LEVEL SECURITY;
-
 DROP POLICY IF EXISTS "template_policy" ON public.sms_templates;
 DROP POLICY IF EXISTS "logs_policy" ON public.sms_logs;
-
 CREATE POLICY "template_policy" ON public.sms_templates FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "logs_policy" ON public.sms_logs FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
@@ -145,7 +154,7 @@ CREATE TABLE IF NOT EXISTS public.admin_sms_stock (
 INSERT INTO public.admin_sms_stock (remaining_sms) 
 SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM public.admin_sms_stock);
 
--- ৭. সিস্টেম সেটিংস টেবিল
+-- ৭. সিস্টেম সেটিংস টেবিল (FIXED SCHEMA)
 CREATE TABLE IF NOT EXISTS public.system_settings (
     id UUID PRIMARY KEY DEFAULT '00000000-0000-0000-0000-000000000001',
     reve_api_key TEXT,
@@ -155,6 +164,17 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
     bkash_number TEXT,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
+
+-- REPAIR system_settings if column bkash_number is missing
+DO $$ 
+BEGIN 
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='system_settings' AND column_name='bkash_number') THEN
+        ALTER TABLE public.system_settings ADD COLUMN bkash_number TEXT;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='system_settings' AND column_name='reve_client_id') THEN
+        ALTER TABLE public.system_settings ADD COLUMN reve_client_id TEXT;
+    END IF;
+END $$;
 
 INSERT INTO public.system_settings (id, bkash_number) 
 SELECT '00000000-0000-0000-0000-000000000001', '017XXXXXXXX' 
