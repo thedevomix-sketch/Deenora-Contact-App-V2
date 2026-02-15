@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp, RefreshCcw, Clock, Hash, History as HistoryIcon } from 'lucide-react';
+import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp, RefreshCcw, Clock, Hash, History as HistoryIcon, Zap } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, Transaction, AdminSMSStock } from '../types';
 
@@ -242,10 +242,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     <div className="space-y-6 pb-20 animate-in fade-in">
       {view === 'list' && (
         <div className="space-y-6">
+          {/* Distributed SMS Summary Card */}
+          <div className="bg-white/95 backdrop-blur-md p-6 rounded-[2.5rem] border border-white shadow-2xl flex items-center justify-between text-[#2E0B5E] relative overflow-hidden">
+             <div className="absolute -right-4 -bottom-4 opacity-5 text-[#8D30F4]">
+                <Zap size={120} />
+             </div>
+             <div className="relative z-10">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1.5">Distributed SMS</p>
+                <div className="flex items-baseline gap-2">
+                   <h3 className="text-4xl font-black">{loading ? '...' : totalDistributedSms}</h3>
+                   <span className="text-[10px] font-black uppercase tracking-widest text-[#8D30F4]/60">Credits</span>
+                </div>
+             </div>
+             <div className="w-14 h-14 bg-[#F2EBFF] text-[#8D30F4] rounded-[1.5rem] flex items-center justify-center shadow-inner shrink-0">
+                <Zap size={30} fill="currentColor" />
+             </div>
+          </div>
+
           {/* Search Header */}
-          <div className="relative group">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#8D30F4] transition-colors" size={18} />
-            <input type="text" placeholder="Search Madrasah..." className="w-full pl-14 pr-6 py-5 bg-white border border-[#8D30F4]/5 rounded-[2rem] outline-none text-slate-800 font-bold shadow-xl focus:border-[#8D30F4]/20 transition-all" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          <div className="relative group px-1">
+            <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#8D30F4] transition-colors" size={18} />
+            <input type="text" placeholder="Search Madrasah..." className="w-full pl-14 pr-14 py-5 bg-white border border-[#8D30F4]/5 rounded-[2rem] outline-none text-slate-800 font-bold shadow-xl focus:border-[#8D30F4]/20 transition-all" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             <button onClick={initData} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8D30F4] p-2 hover:bg-slate-50 rounded-xl transition-all">
                <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
             </button>
