@@ -117,64 +117,66 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
   );
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-24">
-      <div className="flex items-center gap-4 px-2">
-        <button onClick={onBack} className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white active:scale-90 transition-all border border-white/20 shadow-xl">
-          <ArrowLeft size={24} strokeWidth={3} />
-        </button>
-        <h1 className="text-2xl font-black text-white font-noto drop-shadow-md">Manage Teachers</h1>
-      </div>
-
-      <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="w-full py-6 bg-white rounded-[2.5rem] text-[#8D30F4] font-black flex items-center justify-center gap-3 shadow-[0_20px_50px_rgba(46,11,94,0.3)] active:scale-95 transition-all">
-        <UserPlus size={24} strokeWidth={3} /> Add New Teacher
-      </button>
-
-      {loading ? (
-        <div className="flex justify-center py-20"><Loader2 className="animate-spin text-white" size={40} /></div>
-      ) : (
-        <div className="space-y-3.5 px-1">
-          {teachers.map(t => (
-            <div key={t.id} className="bg-white/95 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/50 shadow-xl relative overflow-hidden group">
-               <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-4">
-                     <div className="w-16 h-16 bg-[#F2EBFF] text-[#8D30F4] rounded-[1.5rem] flex items-center justify-center border border-[#8D30F4]/10 shadow-inner shrink-0">
-                        <UserIcon size={30} />
-                     </div>
-                     <div className="min-w-0">
-                        <h3 className="text-[17px] font-black text-[#2E0B5E] font-noto truncate leading-tight">{t.name}</h3>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Phone: {t.phone}</p>
-                     </div>
-                  </div>
-                  <div className="flex gap-2">
-                     <button onClick={() => { setEditId(t.id); setName(t.name); setPhone(t.phone); setCode(t.login_code); setPerms(t.permissions); setIsModalOpen(true); }} className="w-10 h-10 bg-[#F2EBFF] text-[#8D30F4] rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all border border-[#8D30F4]/5"><Edit3 size={18} /></button>
-                     <button onClick={() => deleteTeacher(t.id)} className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all border border-red-100/50"><Trash2 size={18} /></button>
-                  </div>
-               </div>
-
-               <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-50">
-                  <div className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${t.permissions?.can_manage_students ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-300'}`}>
-                    <Smartphone size={10} strokeWidth={3} /> Students
-                  </div>
-                  <div className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${t.permissions?.can_manage_classes ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-300'}`}>
-                    <Layers size={10} strokeWidth={3} /> Classes
-                  </div>
-                  <div className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${t.permissions?.can_send_sms ? 'bg-orange-50 text-orange-600' : 'bg-slate-50 text-slate-300'}`}>
-                    <MessageSquare size={10} strokeWidth={3} /> System SMS
-                  </div>
-                  <div className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${t.permissions?.can_send_free_sms ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-300'}`}>
-                    <MessageCircle size={10} strokeWidth={3} /> Free SMS
-                  </div>
-               </div>
-            </div>
-          ))}
-          {teachers.length === 0 && (
-            <div className="text-center py-24 bg-white/10 rounded-[3rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
-               <UserIcon size={40} className="mx-auto text-white/20 mb-4" />
-               <p className="text-white/60 font-black text-xs uppercase tracking-[0.2em]">No Teachers Added Yet</p>
-            </div>
-          )}
+    <>
+      <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-24">
+        <div className="flex items-center gap-4 px-2">
+          <button onClick={onBack} className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center text-white active:scale-90 transition-all border border-white/20 shadow-xl">
+            <ArrowLeft size={24} strokeWidth={3} />
+          </button>
+          <h1 className="text-2xl font-black text-white font-noto drop-shadow-md">Manage Teachers</h1>
         </div>
-      )}
+
+        <button onClick={() => { resetForm(); setIsModalOpen(true); }} className="w-full py-6 bg-white rounded-[2.5rem] text-[#8D30F4] font-black flex items-center justify-center gap-3 shadow-[0_20px_50px_rgba(46,11,94,0.3)] active:scale-95 transition-all">
+          <UserPlus size={24} strokeWidth={3} /> Add New Teacher
+        </button>
+
+        {loading ? (
+          <div className="flex justify-center py-20"><Loader2 className="animate-spin text-white" size={40} /></div>
+        ) : (
+          <div className="space-y-3.5 px-1">
+            {teachers.map(t => (
+              <div key={t.id} className="bg-white/95 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/50 shadow-xl relative overflow-hidden group">
+                 <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-4">
+                       <div className="w-16 h-16 bg-[#F2EBFF] text-[#8D30F4] rounded-[1.5rem] flex items-center justify-center border border-[#8D30F4]/10 shadow-inner shrink-0">
+                          <UserIcon size={30} />
+                       </div>
+                       <div className="min-w-0">
+                          <h3 className="text-[17px] font-black text-[#2E0B5E] font-noto truncate leading-tight">{t.name}</h3>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Phone: {t.phone}</p>
+                       </div>
+                    </div>
+                    <div className="flex gap-2">
+                       <button onClick={() => { setEditId(t.id); setName(t.name); setPhone(t.phone); setCode(t.login_code); setPerms(t.permissions); setIsModalOpen(true); }} className="w-10 h-10 bg-[#F2EBFF] text-[#8D30F4] rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all border border-[#8D30F4]/5"><Edit3 size={18} /></button>
+                       <button onClick={() => deleteTeacher(t.id)} className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center shadow-sm active:scale-90 transition-all border border-red-100/50"><Trash2 size={18} /></button>
+                    </div>
+                 </div>
+
+                 <div className="flex flex-wrap gap-2 pt-4 border-t border-slate-50">
+                    <div className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${t.permissions?.can_manage_students ? 'bg-green-50 text-green-600' : 'bg-slate-50 text-slate-300'}`}>
+                      <Smartphone size={10} strokeWidth={3} /> Students
+                    </div>
+                    <div className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${t.permissions?.can_manage_classes ? 'bg-blue-50 text-blue-600' : 'bg-slate-50 text-slate-300'}`}>
+                      <Layers size={10} strokeWidth={3} /> Classes
+                    </div>
+                    <div className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${t.permissions?.can_send_sms ? 'bg-orange-50 text-orange-600' : 'bg-slate-50 text-slate-300'}`}>
+                      <MessageSquare size={10} strokeWidth={3} /> System SMS
+                    </div>
+                    <div className={`px-3.5 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${t.permissions?.can_send_free_sms ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-300'}`}>
+                      <MessageCircle size={10} strokeWidth={3} /> Free SMS
+                    </div>
+                 </div>
+              </div>
+            ))}
+            {teachers.length === 0 && (
+              <div className="text-center py-24 bg-white/10 rounded-[3rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
+                 <UserIcon size={40} className="mx-auto text-white/20 mb-4" />
+                 <p className="text-white/60 font-black text-xs uppercase tracking-[0.2em]">No Teachers Added Yet</p>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-[#080A12]/60 backdrop-blur-xl z-[500] flex items-center justify-center p-4 animate-in fade-in duration-300">
@@ -287,7 +289,7 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
            </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 

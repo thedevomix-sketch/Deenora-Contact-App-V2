@@ -105,48 +105,50 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
   };
 
   return (
-    <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-20">
-      <div className="flex items-center justify-between px-2">
-        <h1 className="text-xl font-noto font-black text-white drop-shadow-md">{t('classes_title', lang)}</h1>
-        {!readOnly && (
-          <button onClick={() => { setNewClassName(''); setEditingClass(null); setShowModal(true); }} className="premium-btn text-white px-5 py-3 rounded-2xl text-[12px] font-black flex items-center gap-2 active:scale-95 transition-all border border-white/20 shadow-xl">
-            <Plus size={16} strokeWidth={4} /> {t('new_class', lang)}
-          </button>
-        )}
-      </div>
+    <>
+      <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-20">
+        <div className="flex items-center justify-between px-2">
+          <h1 className="text-xl font-noto font-black text-white drop-shadow-md">{t('classes_title', lang)}</h1>
+          {!readOnly && (
+            <button onClick={() => { setNewClassName(''); setEditingClass(null); setShowModal(true); }} className="premium-btn text-white px-5 py-3 rounded-2xl text-[12px] font-black flex items-center gap-2 active:scale-95 transition-all border border-white/20 shadow-xl">
+              <Plus size={16} strokeWidth={4} /> {t('new_class', lang)}
+            </button>
+          )}
+        </div>
 
-      <div className="grid grid-cols-1 gap-4">
-        {classes.map(cls => (
-          <div key={cls.id} onClick={() => onClassClick(cls)} className="bg-white/95 backdrop-blur-md p-5 rounded-[2.2rem] border border-white/40 flex items-center justify-between active:scale-[0.98] transition-all group shadow-lg relative overflow-hidden">
-            <div className="flex items-center gap-4 min-w-0 flex-1">
-              <div className="w-14 h-14 bg-[#8D30F4]/10 rounded-2xl flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
-                <BookOpen size={24} />
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="font-black text-[#2E0B5E] text-[18px] font-noto truncate leading-tight tracking-tight">{cls.class_name}</h3>
-                <div className="flex items-center gap-1.5 mt-1">
-                  <Users size={12} className="text-[#8D30F4]/60" />
-                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em]">{cls.student_count || 0} {t('students_count', lang)}</p>
+        <div className="grid grid-cols-1 gap-4">
+          {classes.map(cls => (
+            <div key={cls.id} onClick={() => onClassClick(cls)} className="bg-white/95 backdrop-blur-md p-5 rounded-[2.2rem] border border-white/40 flex items-center justify-between active:scale-[0.98] transition-all group shadow-lg relative overflow-hidden">
+              <div className="flex items-center gap-4 min-w-0 flex-1">
+                <div className="w-14 h-14 bg-[#8D30F4]/10 rounded-2xl flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
+                  <BookOpen size={24} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="font-black text-[#2E0B5E] text-[18px] font-noto truncate leading-tight tracking-tight">{cls.class_name}</h3>
+                  <div className="flex items-center gap-1.5 mt-1">
+                    <Users size={12} className="text-[#8D30F4]/60" />
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em]">{cls.student_count || 0} {t('students_count', lang)}</p>
+                  </div>
                 </div>
               </div>
+              <div className="flex items-center gap-2 ml-3">
+                {!readOnly && (
+                  <>
+                    <button onClick={(e) => { e.stopPropagation(); setNewClassName(cls.class_name); setEditingClass(cls); setShowModal(true); }} 
+                      className="w-10 h-10 bg-[#F2EBFF] text-[#8D30F4] rounded-xl flex items-center justify-center border border-[#8D30F4]/10 active:scale-90 transition-all shadow-sm">
+                      <Edit3 size={16} />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(cls); }} 
+                      className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center border border-red-100 active:scale-90 transition-all shadow-sm">
+                      <Trash2 size={16} />
+                    </button>
+                  </>
+                )}
+                <ChevronRight className="text-[#A179FF]/40 group-hover:text-[#8D30F4] transition-colors ml-0.5" size={20} strokeWidth={3} />
+              </div>
             </div>
-            <div className="flex items-center gap-2 ml-3">
-              {!readOnly && (
-                <>
-                  <button onClick={(e) => { e.stopPropagation(); setNewClassName(cls.class_name); setEditingClass(cls); setShowModal(true); }} 
-                    className="w-10 h-10 bg-[#F2EBFF] text-[#8D30F4] rounded-xl flex items-center justify-center border border-[#8D30F4]/10 active:scale-90 transition-all shadow-sm">
-                    <Edit3 size={16} />
-                  </button>
-                  <button onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(cls); }} 
-                    className="w-10 h-10 bg-red-50 text-red-500 rounded-xl flex items-center justify-center border border-red-100 active:scale-90 transition-all shadow-sm">
-                    <Trash2 size={16} />
-                  </button>
-                </>
-              )}
-              <ChevronRight className="text-[#A179FF]/40 group-hover:text-[#8D30F4] transition-colors ml-0.5" size={20} strokeWidth={3} />
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {showModal && (
@@ -205,7 +207,7 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
           </div>
         </div>
       )}
-    </div>
+    </>
   );
 };
 
