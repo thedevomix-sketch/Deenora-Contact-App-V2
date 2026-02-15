@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { ArrowLeft, Edit3, User as UserIcon, Smartphone, PhoneCall, UserCheck, MessageCircle, Hash, BookOpen } from 'lucide-react';
 import { Student, Language } from '../types';
@@ -7,9 +8,11 @@ interface StudentDetailsProps {
   onEdit: () => void;
   onBack: () => void;
   lang: Language;
+  // Added readOnly prop to fix property mismatch error in App.tsx
+  readOnly?: boolean;
 }
 
-const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack, lang }) => {
+const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack, lang, readOnly }) => {
   return (
     <div className="animate-in slide-in-from-right-4 duration-500 pb-24 space-y-6">
       {/* Header Actions */}
@@ -17,9 +20,12 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
         <button onClick={onBack} className="w-11 h-11 bg-white/20 backdrop-blur-md rounded-[1rem] flex items-center justify-center text-white active:scale-90 transition-all border border-white/20 shadow-xl">
           <ArrowLeft size={22} strokeWidth={3} />
         </button>
-        <button onClick={onEdit} className="w-11 h-11 bg-white rounded-[1rem] flex items-center justify-center text-[#8D30F4] active:scale-90 transition-all border border-white shadow-xl">
-          <Edit3 size={22} />
-        </button>
+        {/* Only show Edit button if not in readOnly mode */}
+        {!readOnly && (
+          <button onClick={onEdit} className="w-11 h-11 bg-white rounded-[1rem] flex items-center justify-center text-[#8D30F4] active:scale-90 transition-all border border-white shadow-xl">
+            <Edit3 size={22} />
+          </button>
+        )}
       </div>
 
       {/* Main Profile Card */}

@@ -15,6 +15,9 @@ interface StudentsProps {
   lang: Language;
   dataVersion: number;
   triggerRefresh: () => void;
+  // Added permission props to fix property mismatch error in App.tsx
+  canAdd?: boolean;
+  canSendSMS?: boolean;
 }
 
 const STATIC_DEFAULTS = [
@@ -22,7 +25,7 @@ const STATIC_DEFAULTS = [
   { id: 'def-2', title: 'অনুপস্থিতি (Absence)', body: 'আস-সালামু আলাইকুম, আজ আপনার সন্তান মাদরাসায় অনুপস্থিত। অনুগ্রহ করে কারণ জানান।' }
 ];
 
-const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAddClick, onBack, lang, dataVersion, triggerRefresh }) => {
+const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAddClick, onBack, lang, dataVersion, triggerRefresh, canAdd, canSendSMS }) => {
   const [students, setStudents] = useState<Student[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -170,18 +173,23 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
           </div>
           
           <div className="flex items-center gap-2">
-            {isSelectionMode && (
-              <button onClick={toggleSelectAll}
-                className={`shrink-0 h-10 px-3.5 rounded-2xl transition-all active:scale-95 border flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-wider ${allFilteredSelected ? 'bg-white text-[#8D30F4] border-white shadow-xl' : 'bg-white/20 text-white border-white/20'}`}>
-                <ListChecks size={18} strokeWidth={3} />
-                {allFilteredSelected ? (lang === 'bn' ? 'মুছুন' : 'Clear') : (lang === 'bn' ? 'সব' : 'All')}
-              </button>
+            {/* Only show selection mode tools if canSendSMS is permitted */}
+            {canSendSMS && (
+              <>
+                {isSelectionMode && (
+                  <button onClick={toggleSelectAll}
+                    className={`shrink-0 h-10 px-3.5 rounded-2xl transition-all active:scale-95 border flex items-center justify-center gap-2 font-black text-[10px] uppercase tracking-wider ${allFilteredSelected ? 'bg-white text-[#8D30F4] border-white shadow-xl' : 'bg-white/20 text-white border-white/20'}`}>
+                    <ListChecks size={18} strokeWidth={3} />
+                    {allFilteredSelected ? (lang === 'bn' ? 'মুছুন' : 'Clear') : (lang === 'bn' ? 'সব' : 'All')}
+                  </button>
+                )}
+                <button onClick={() => { setIsSelectionMode(!isSelectionMode); if (isSelectionMode) setSelectedIds(new Set()); }}
+                  className={`shrink-0 w-10 h-10 rounded-2xl transition-all active:scale-95 border flex items-center justify-center ${isSelectionMode ? 'bg-white text-[#8D30F4] border-white shadow-xl' : 'bg-white/20 text-white border-white/20'}`}>
+                  {isSelectionMode ? <X size={18} strokeWidth={3} /> : <CheckCircle2 size={18} strokeWidth={2.5} />}
+                </button>
+              </>
             )}
-            <button onClick={() => { setIsSelectionMode(!isSelectionMode); if (isSelectionMode) setSelectedIds(new Set()); }}
-              className={`shrink-0 w-10 h-10 rounded-2xl transition-all active:scale-95 border flex items-center justify-center ${isSelectionMode ? 'bg-white text-[#8D30F4] border-white shadow-xl' : 'bg-white/20 text-white border-white/20'}`}>
-              {isSelectionMode ? <X size={18} strokeWidth={3} /> : <CheckCircle2 size={18} strokeWidth={2.5} />}
-            </button>
-            {!isSelectionMode && (
+            {!isSelectionMode && canAdd && (
               <button onClick={onAddClick} className="premium-btn text-white px-4 py-2.5 rounded-2xl text-[11px] font-black flex items-center gap-2 shadow-xl active:scale-95 transition-all border border-white/20">
                 <Plus size={14} strokeWidth={4} /> {t('add_student', lang)}
               </button>

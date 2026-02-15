@@ -18,9 +18,11 @@ interface ClassesProps {
   madrasah: Madrasah | null;
   dataVersion: number;
   triggerRefresh: () => void;
+  // Added readOnly prop to fix property mismatch error in App.tsx
+  readOnly?: boolean;
 }
 
-const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVersion, triggerRefresh }) => {
+const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVersion, triggerRefresh, readOnly }) => {
   const [classes, setClasses] = useState<(Class & { student_count?: number })[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -137,9 +139,12 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
     <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-20">
       <div className="flex items-center justify-between px-2">
         <h1 className="text-xl font-noto font-black text-white drop-shadow-md">{t('classes_title', lang)}</h1>
-        <button onClick={() => { setNewClassName(''); setEditingClass(null); setShowModal(true); }} className="premium-btn text-white px-4 py-2.5 rounded-xl text-[12px] font-black flex items-center gap-2 active:scale-95 transition-all border border-white/20">
-          <Plus size={16} strokeWidth={4} /> {t('new_class', lang)}
-        </button>
+        {/* Only show Add Class button if not in readOnly mode */}
+        {!readOnly && (
+          <button onClick={() => { setNewClassName(''); setEditingClass(null); setShowModal(true); }} className="premium-btn text-white px-4 py-2.5 rounded-xl text-[12px] font-black flex items-center gap-2 active:scale-95 transition-all border border-white/20">
+            <Plus size={16} strokeWidth={4} /> {t('new_class', lang)}
+          </button>
+        )}
       </div>
 
       {loading && classes.length === 0 ? (
@@ -164,14 +169,19 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
               </div>
               
               <div className="flex items-center gap-1.5 ml-3">
-                <button onClick={(e) => { e.stopPropagation(); setNewClassName(cls.class_name); setEditingClass(cls); setShowModal(true); }} 
-                  className="w-9 h-9 bg-[#F2EBFF] text-[#8D30F4] rounded-lg flex items-center justify-center border border-[#8D30F4]/10 active:scale-90 transition-all shadow-sm">
-                  <Edit3 size={16} />
-                </button>
-                <button onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(cls); }} 
-                  className="w-9 h-9 bg-red-50 text-red-400 rounded-lg flex items-center justify-center border border-red-100 active:scale-90 transition-all shadow-sm">
-                  <Trash2 size={16} />
-                </button>
+                {/* Only show Edit/Delete buttons if not in readOnly mode */}
+                {!readOnly && (
+                  <>
+                    <button onClick={(e) => { e.stopPropagation(); setNewClassName(cls.class_name); setEditingClass(cls); setShowModal(true); }} 
+                      className="w-9 h-9 bg-[#F2EBFF] text-[#8D30F4] rounded-lg flex items-center justify-center border border-[#8D30F4]/10 active:scale-90 transition-all shadow-sm">
+                      <Edit3 size={16} />
+                    </button>
+                    <button onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(cls); }} 
+                      className="w-9 h-9 bg-red-50 text-red-500 rounded-lg flex items-center justify-center border border-red-100 active:scale-90 transition-all shadow-sm">
+                      <Trash2 size={16} />
+                    </button>
+                  </>
+                )}
                 <ChevronRight className="text-[#A179FF]/40 group-hover:text-[#8D30F4] transition-colors ml-0.5" size={20} strokeWidth={3} />
               </div>
             </div>
