@@ -31,14 +31,13 @@
       :root {
         --safe-top: env(safe-area-inset-top);
         --safe-bottom: env(safe-area-inset-bottom);
-        --app-height: 100vh;
       }
       html, body {
-        height: var(--app-height);
+        height: 100%;
         width: 100%;
         margin: 0;
         padding: 0;
-        overflow: hidden;
+        overflow: hidden; /* Prevent body from scrolling */
         background-color: #9D50FF;
         position: fixed; 
         left: 0;
@@ -83,12 +82,20 @@
         background-size: cover;
       }
 
-      ::-webkit-scrollbar { width: 4px; }
-      ::-webkit-scrollbar-thumb { background: rgba(46, 11, 94, 0.2); border-radius: 10px; }
+      /* Custom scrollbar for better look */
+      .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+      .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.3); border-radius: 10px; }
       
       input::placeholder, textarea::placeholder {
         color: #94A3B8;
         font-weight: 500;
+      }
+
+      /* Smooth content scrolling */
+      .scroll-container {
+        overflow-y: auto;
+        -webkit-overflow-scrolling: touch;
+        height: 100%;
       }
     </style>
   <script type="importmap">

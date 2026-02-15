@@ -171,7 +171,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
   const canAnySMS = canSendSystemSMS || canSendFreeSMS;
 
   return (
-    <div className="space-y-4 animate-in slide-in-from-right-4 duration-300 min-h-[85vh] pb-80">
+    <div className="space-y-4 animate-in slide-in-from-right-4 duration-300 pb-10">
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-3 min-w-0">

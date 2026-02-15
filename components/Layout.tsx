@@ -33,9 +33,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
   const canSeeWallet = !teacher || teacher.permissions?.can_send_sms;
 
   return (
-    <div className="flex flex-col w-full relative min-h-screen bg-transparent">
+    <div className="flex flex-col w-full h-full relative bg-transparent overflow-hidden">
       {/* Header with lower priority stack */}
-      <header className="flex-none px-6 pt-[calc(env(safe-area-inset-top)+8px)] pb-3 flex items-center justify-between relative">
+      <header className="flex-none px-6 pt-[calc(env(safe-area-inset-top)+8px)] pb-3 flex items-center justify-between relative z-10">
         <div className="flex items-center gap-4">
           <div className="w-11 h-11 rounded-[1rem] flex items-center justify-center bg-white shadow-sm border border-white/20 shrink-0 overflow-hidden">
             {isSuperAdmin ? (
@@ -61,8 +61,8 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
         </button>
       </header>
 
-      {/* Main Content without hard z-index to allow fixed modals to break out correctly */}
-      <main className="flex-1 overflow-y-auto px-5 pt-2 pb-32 w-full max-w-md mx-auto scroll-smooth">
+      {/* Main Scrollable Content */}
+      <main className="flex-1 overflow-y-auto px-5 pt-2 pb-40 w-full max-w-md mx-auto scroll-smooth custom-scrollbar">
         {children}
       </main>
 
