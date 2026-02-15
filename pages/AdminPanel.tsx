@@ -4,6 +4,11 @@ import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database,
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, Transaction, AdminSMSStock } from '../types';
 
+interface MadrasahWithStats extends Madrasah {
+  student_count?: number;
+  class_count?: number;
+}
+
 interface AdminPanelProps {
   lang: Language;
   currentView?: 'list' | 'dashboard' | 'approvals';
@@ -11,7 +16,7 @@ interface AdminPanelProps {
 }
 
 const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dataVersion = 0 }) => {
-  const [madrasahs, setMadrasahs] = useState<Madrasah[]>([]);
+  const [madrasahs, setMadrasahs] = useState<MadrasahWithStats[]>([]);
   const [pendingTrans, setPendingTrans] = useState<Transaction[]>([]);
   const [adminStock, setAdminStock] = useState<AdminSMSStock | null>(null);
   const [loading, setLoading] = useState(true);
@@ -19,8 +24,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   const [view, setView] = useState<'list' | 'approvals' | 'gateway' | 'details'>(currentView === 'approvals' ? 'approvals' : 'list');
   const [smsToCredit, setSmsToCredit] = useState<{ [key: string]: string }>({});
 
+  // Global Counts
+  const [globalStats, setGlobalStats] = useState({ totalStudents: 0, totalClasses: 0 });
+
   // Selected User Detail Management
-  const [selectedUser, setSelectedUser] = useState<Madrasah | null>(null);
+  const [selectedUser, setSelectedUser] = useState<MadrasahWithStats | null>(null);
   const [userStats, setUserStats] = useState({ students: 0, classes: 0 });
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
@@ -50,8 +58,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   const initData = async () => {
     setLoading(true);
     try {
-      await Promise.all([fetchAllMadrasahs(), fetchPendingTransactions(), fetchAdminStock(), fetchGlobalSettings()]);
+      await Promise.all([
+        fetchAllMadrasahs(), 
+        fetchPendingTransactions(), 
+        fetchAdminStock(), 
+        fetchGlobalSettings(),
+        fetchGlobalCounts()
+      ]);
     } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  const fetchGlobalCounts = async () => {
+    const [studentsRes, classesRes] = await Promise.all([
+      supabase.from('students').select('*', { count: 'exact', head: true }),
+      supabase.from('classes').select('*', { count: 'exact', head: true })
+    ]);
+    setGlobalStats({
+      totalStudents: studentsRes.count || 0,
+      totalClasses: classesRes.count || 0
+    });
   };
 
   const fetchGlobalSettings = async () => {
@@ -89,8 +114,19 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
 
   const fetchAllMadrasahs = async () => {
     const { data, error } = await supabase.from('madrasahs').select('*').neq('is_super_admin', true).order('created_at', { ascending: false });
-    if (error) console.error("Fetch Madrasahs Error:", error);
-    if (data) setMadrasahs(data);
+    if (error) throw error;
+    
+    if (data) {
+      // Fetch stats for each madrasah for list display
+      const withStats = await Promise.all(data.map(async (m) => {
+        const [stdCount, clsCount] = await Promise.all([
+          supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', m.id),
+          supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', m.id)
+        ]);
+        return { ...m, student_count: stdCount.count || 0, class_count: clsCount.count || 0 };
+      }));
+      setMadrasahs(withStats);
+    }
   };
 
   const fetchPendingTransactions = async () => {
@@ -120,7 +156,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     }
   };
 
-  const handleUserClick = async (m: Madrasah) => {
+  const handleUserClick = async (m: MadrasahWithStats) => {
     setSelectedUser(m);
     setEditName(m.name || '');
     setEditPhone(m.phone || '');
@@ -141,7 +177,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     if (!selectedUser) return;
     setIsUpdatingUser(true);
     try {
-      // 1. Perform the update
+      // Perform the update
       const { error: updateError } = await supabase.from('madrasahs').update({
         name: editName.trim(),
         phone: editPhone.trim(),
@@ -155,9 +191,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       
       if (updateError) throw updateError;
       
-      // 2. Refresh local state
       alert('User Settings Updated Successfully');
-      await fetchAllMadrasahs(); // Fetch fresh list from server
+      await initData(); // Refresh everything
       setView('list');
       setSelectedUser(null);
     } catch (err: any) { 
@@ -217,56 +252,88 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       {view === 'list' && (
         <div className="space-y-6">
           {/* Header Global Stats */}
+          <div className="grid grid-cols-2 gap-3">
+             <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
+                <div className="w-10 h-10 bg-[#F2F5FF] text-[#8D30F4] rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+                  <Database size={20} />
+                </div>
+                <p className="text-lg font-black text-slate-800">{adminStock?.remaining_sms || 0}</p>
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Global Stock</p>
+              </div>
+              <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
+                <div className="w-10 h-10 bg-green-50 text-green-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+                  <TrendingUp size={20} />
+                </div>
+                <p className="text-lg font-black text-slate-800">{totalDistributedSms}</p>
+                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Distributed</p>
+              </div>
+          </div>
           <div className="grid grid-cols-3 gap-3">
             <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
-              <div className="w-10 h-10 bg-[#F2F5FF] text-[#8D30F4] rounded-2xl flex items-center justify-center mb-2 shadow-inner">
-                <Database size={20} />
-              </div>
-              <p className="text-lg font-black text-slate-800 leading-none">{adminStock?.remaining_sms || 0}</p>
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Global Stock</p>
-            </div>
-            <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
-              <div className="w-10 h-10 bg-green-50 text-green-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
-                <TrendingUp size={20} />
-              </div>
-              <p className="text-lg font-black text-slate-800 leading-none">{totalDistributedSms}</p>
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Distributed</p>
-            </div>
-            <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
               <div className="w-10 h-10 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
-                <Users size={20} />
+                <Users size={18} />
               </div>
-              <p className="text-lg font-black text-slate-800 leading-none">{madrasahs.length}</p>
-              <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Total Users</p>
+              <p className="text-sm font-black text-slate-800">{madrasahs.length}</p>
+              <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">Madrasahs</p>
+            </div>
+            <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
+              <div className="w-10 h-10 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+                <Users size={18} />
+              </div>
+              <p className="text-sm font-black text-slate-800">{globalStats.totalStudents}</p>
+              <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">Total Std</p>
+            </div>
+            <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
+              <div className="w-10 h-10 bg-purple-50 text-purple-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
+                <Layers size={18} />
+              </div>
+              <p className="text-sm font-black text-slate-800">{globalStats.totalClasses}</p>
+              <p className="text-[7px] font-black text-slate-400 uppercase tracking-widest mt-1">Total Cls</p>
             </div>
           </div>
 
           <div className="relative group">
             <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#8D30F4] transition-colors" size={18} />
             <input type="text" placeholder="Search Madrasah..." className="w-full pl-14 pr-6 py-4 bg-white border border-[#8D30F4]/5 rounded-[1.8rem] outline-none text-slate-800 font-bold shadow-sm focus:border-[#8D30F4]/20 transition-all" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+            <button onClick={initData} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8D30F4] p-2 hover:bg-slate-50 rounded-xl transition-all">
+               <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
+            </button>
           </div>
 
           <div className="space-y-3">
             {filtered.map(m => (
-              <div key={m.id} onClick={() => handleUserClick(m)} className="bg-white/95 backdrop-blur-md p-5 rounded-[2.2rem] border border-white/50 flex items-center justify-between shadow-lg active:scale-[0.98] transition-all cursor-pointer group">
-                <div className="flex items-center gap-4 min-w-0">
-                  <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 border border-slate-100 shadow-inner overflow-hidden shrink-0">
-                    {m.logo_url ? <img src={m.logo_url} className="w-full h-full object-cover" /> : <UserIcon size={24} />}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="font-black text-slate-800 truncate font-noto text-lg">{m.name}</h3>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <p className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${m.is_active !== false ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
-                        {m.is_active !== false ? 'Active' : 'Blocked'}
-                      </p>
-                      <span className="text-[10px] text-slate-300">•</span>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{m.phone || 'No Phone'}</p>
+              <div key={m.id} onClick={() => handleUserClick(m)} className="bg-white/95 backdrop-blur-md p-5 rounded-[2.2rem] border border-white/50 flex flex-col shadow-lg active:scale-[0.98] transition-all cursor-pointer group">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <div className="w-14 h-14 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 border border-slate-100 shadow-inner overflow-hidden shrink-0">
+                      {m.logo_url ? <img src={m.logo_url} className="w-full h-full object-cover" /> : <UserIcon size={24} />}
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="font-black text-slate-800 truncate font-noto text-lg">{m.name}</h3>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <p className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${m.is_active !== false ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                          {m.is_active !== false ? 'Active' : 'Blocked'}
+                        </p>
+                        <span className="text-[10px] text-slate-300">•</span>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{m.phone || 'No Phone'}</p>
+                      </div>
                     </div>
                   </div>
+                  <div className="text-right shrink-0 bg-[#F2F5FF] px-4 py-2 rounded-2xl border border-blue-50 shadow-inner flex flex-col items-center justify-center">
+                     <p className="text-lg font-black text-[#8D30F4] leading-none">{m.sms_balance || 0}</p>
+                     <p className="text-[7px] font-black text-slate-400 uppercase tracking-tighter mt-1">SMS</p>
+                  </div>
                 </div>
-                <div className="text-right shrink-0 bg-slate-50 px-4 py-2 rounded-2xl border border-slate-100 shadow-inner flex flex-col items-center justify-center">
-                   <p className="text-lg font-black text-[#8D30F4] leading-none">{m.sms_balance || 0}</p>
-                   <p className="text-[7px] font-black text-slate-400 uppercase tracking-tighter mt-1">SMS LEFT</p>
+                
+                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-50">
+                   <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
+                      <Users size={12} className="text-slate-400" />
+                      <span className="text-[10px] font-black text-slate-600">{m.student_count} Students</span>
+                   </div>
+                   <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
+                      <Layers size={12} className="text-slate-400" />
+                      <span className="text-[10px] font-black text-slate-600">{m.class_count} Classes</span>
+                   </div>
                 </div>
               </div>
             ))}

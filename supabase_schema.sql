@@ -1,6 +1,6 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V10 - RLS & STATS FIX)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V11 - RLS & DYNAMIC STATS FIX)
 -- ======================================================
 
 -- Enable UUID extension
@@ -28,17 +28,19 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
 -- RLS Policies for Madrasahs table
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
--- 1. Selection Policy (Simplified to avoid recursion)
+-- 1. Selection Policy (Allow all authenticated users to read profiles - necessary for validation)
+DROP POLICY IF EXISTS "Enable select for users and superadmins" ON public.madrasahs;
 CREATE POLICY "Enable select for users and superadmins" 
 ON public.madrasahs FOR SELECT 
 USING (true);
 
--- 2. Update Policy (Using a more robust check for super_admin)
+-- 2. Update Policy (Super Admin check simplified)
+DROP POLICY IF EXISTS "Enable update for owners and superadmins" ON public.madrasahs;
 CREATE POLICY "Enable update for owners and superadmins" 
 ON public.madrasahs FOR UPDATE 
 USING (
     auth.uid() = id OR 
-    (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
+    (EXISTS (SELECT 1 FROM public.madrasahs WHERE id = auth.uid() AND is_super_admin = true))
 );
 
 -- ২. ক্লাস টেবিল
@@ -144,7 +146,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ১০. পেমেন্ট এপ্রুভাল আরপিসি (Fixed Admin Stock calculation)
+-- ১০. পেমেন্ট এপ্রুভাল আরপিসি
 CREATE OR REPLACE FUNCTION public.approve_payment_with_sms(
   t_id UUID,
   m_id UUID,
@@ -153,7 +155,7 @@ CREATE OR REPLACE FUNCTION public.approve_payment_with_sms(
 BEGIN
     UPDATE public.transactions SET status = 'approved' WHERE id = t_id;
     UPDATE public.madrasahs SET sms_balance = COALESCE(sms_balance, 0) + sms_to_give WHERE id = m_id;
-    UPDATE public.admin_sms_stock SET remaining_sms = COALESCE(remaining_sms, 0) - sms_to_give WHERE remaining_sms IS NOT NULL;
+    UPDATE public.admin_sms_stock SET remaining_sms = COALESCE(remaining_sms, 0) - sms_to_give WHERE id IS NOT NULL;
     RETURN json_build_object('success', true);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
