@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Loader2, Send, ChevronDown, BookOpen, Users, CheckCircle2, MessageSquare, Plus, Edit3, Trash2, Smartphone, X, Check, History, Zap, AlertTriangle, Clock } from 'lucide-react';
+import { CreditCard, Loader2, Send, ChevronDown, BookOpen, Users, CheckCircle2, MessageSquare, Plus, Edit3, Trash2, Smartphone, X, Check, History, Zap, AlertTriangle, Clock, Save } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { SMSTemplate, Language, Madrasah, Class, Student, Transaction } from '../types';
 import { t } from '../translations';
@@ -72,6 +72,31 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
     const { data } = await supabase.from('sms_templates').select('*').eq('madrasah_id', madrasah.id).order('created_at', { ascending: false });
     if (data) setTemplates(data);
     setLoading(false);
+  };
+
+  const handleSaveTemplate = async () => {
+    if (!madrasah || !tempTitle.trim() || !tempBody.trim()) return;
+    setIsSaving(true);
+    try {
+      if (editingId) {
+        await supabase.from('sms_templates').update({ title: tempTitle, body: tempBody }).eq('id', editingId);
+      } else {
+        await supabase.from('sms_templates').insert({ madrasah_id: madrasah.id, title: tempTitle, body: tempBody });
+      }
+      setShowAddModal(false);
+      setTempTitle('');
+      setTempBody('');
+      setEditingId(null);
+      fetchTemplates();
+    } catch (e: any) { alert(e.message); } finally { setIsSaving(false); }
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this template?')) return;
+    try {
+      await supabase.from('sms_templates').delete().eq('id', id);
+      fetchTemplates();
+    } catch (e: any) { alert(e.message); }
   };
 
   const fetchUserTransactions = async () => {
@@ -149,6 +174,45 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
         ))}
       </div>
 
+      {activeTab === 'templates' && (
+        <div className="space-y-5 animate-in slide-in-from-bottom-5">
+          <div className="flex items-center justify-between px-2">
+            <h2 className="text-[10px] font-black text-white uppercase tracking-[0.2em] opacity-80">Saved Message Templates</h2>
+            <button onClick={() => { setEditingId(null); setTempTitle(''); setTempBody(''); setShowAddModal(true); }} className="premium-btn text-white px-4 py-2 rounded-2xl text-[10px] font-black flex items-center gap-2 active:scale-95 transition-all border border-white/20 shadow-xl">
+               <Plus size={14} strokeWidth={4} /> {t('new_template', lang)}
+            </button>
+          </div>
+
+          <div className="space-y-3">
+             {loading ? (
+                <div className="flex justify-center py-10"><Loader2 className="animate-spin text-white" size={30} /></div>
+             ) : templates.length > 0 ? (
+                templates.map(tmp => (
+                  <div key={tmp.id} className="bg-white/95 backdrop-blur-md p-5 rounded-[2.2rem] border border-white/50 shadow-xl relative group">
+                     <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                           <div className="w-10 h-10 bg-[#8D30F4]/10 rounded-xl flex items-center justify-center text-[#8D30F4] border border-[#8D30F4]/10">
+                              <BookOpen size={18} />
+                           </div>
+                           <h4 className="font-black text-[#2E0B5E] text-[15px] font-noto">{tmp.title}</h4>
+                        </div>
+                        <div className="flex gap-1.5">
+                           <button onClick={() => { setEditingId(tmp.id); setTempTitle(tmp.title); setTempBody(tmp.body); setShowAddModal(true); }} className="w-8 h-8 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center active:scale-90 transition-all"><Edit3 size={14}/></button>
+                           <button onClick={() => handleDeleteTemplate(tmp.id)} className="w-8 h-8 bg-red-50 text-red-500 rounded-lg flex items-center justify-center active:scale-90 transition-all"><Trash2 size={14}/></button>
+                        </div>
+                     </div>
+                     <p className="text-sm font-bold text-slate-500 font-noto leading-relaxed">{tmp.body}</p>
+                  </div>
+                ))
+             ) : (
+                <div className="text-center py-20 bg-white/10 rounded-[3rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
+                   <p className="text-white/60 font-black text-[10px] uppercase tracking-widest">No templates found</p>
+                </div>
+             )}
+          </div>
+        </div>
+      )}
+
       {activeTab === 'bulk-sms' && (
         <div className="space-y-5 animate-in slide-in-from-bottom-5">
           <div className="bg-gradient-to-br from-[#8D30F4] to-[#A179FF] p-6 rounded-[2.2rem] shadow-xl border border-white/20 flex items-center justify-between text-white relative">
@@ -181,7 +245,12 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
 
             <div className="space-y-4">
               <h4 className="text-[11px] font-black text-[#2E0B5E] uppercase tracking-widest px-1">২. বার্তা লিখুন</h4>
-              <textarea className="w-full h-32 px-5 py-5 bg-slate-50 border-2 border-slate-100 rounded-[1.8rem] text-[#2E0B5E] font-bold outline-none font-noto resize-none" placeholder="বার্তা..." value={bulkMessage} onChange={(e) => setBulkMessage(e.target.value)} maxLength={160} />
+              <div className="relative">
+                <textarea className="w-full h-32 px-5 py-5 bg-slate-50 border-2 border-slate-100 rounded-[1.8rem] text-[#2E0B5E] font-bold outline-none font-noto resize-none" placeholder="বার্তা..." value={bulkMessage} onChange={(e) => setBulkMessage(e.target.value)} maxLength={160} />
+                <div className="absolute bottom-4 right-5 bg-white px-2 py-0.5 rounded-lg border border-slate-100 shadow-sm">
+                   <span className="text-[10px] font-black text-[#8D30F4]">{bulkMessage.length}/160</span>
+                </div>
+              </div>
             </div>
 
             <button onClick={handleSendBulk} disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId} className="w-full h-[64px] premium-btn text-white font-black rounded-full shadow-lg flex items-center justify-center gap-3 text-lg disabled:opacity-40">
@@ -258,6 +327,41 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
                      <p className="text-white/40 text-[9px] font-black uppercase tracking-widest">No history records</p>
                   </div>
                 )}
+              </div>
+           </div>
+        </div>
+      )}
+
+      {showAddModal && (
+        <div className="fixed inset-0 bg-[#080A12]/40 backdrop-blur-2xl z-[500] flex items-center justify-center p-6 animate-in fade-in duration-300">
+           <div className="bg-white w-full max-w-sm rounded-[3.5rem] p-10 shadow-[0_40px_100px_rgba(141,48,244,0.2)] border border-[#8D30F4]/5 relative animate-in zoom-in-95 duration-300">
+              <button onClick={() => setShowAddModal(false)} className="absolute top-10 right-10 text-slate-300 hover:text-[#8D30F4] transition-all p-1">
+                 <X size={26} strokeWidth={3} />
+              </button>
+              
+              <div className="flex items-center gap-5 mb-8">
+                 <div className="w-16 h-16 bg-[#8D30F4]/10 rounded-[1.8rem] flex items-center justify-center text-[#8D30F4] border border-[#8D30F4]/10 shadow-inner">
+                    <MessageSquare size={32} />
+                 </div>
+                 <div>
+                    <h2 className="text-xl font-black text-[#2E0B5E] font-noto tracking-tight">টেমপ্লেট যোগ করুন</h2>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">SMS Template</p>
+                 </div>
+              </div>
+
+              <div className="space-y-6">
+                 <div className="space-y-2 px-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-1">শিরোনাম</label>
+                    <input type="text" className="w-full h-14 bg-slate-50 border-2 border-slate-100 rounded-2xl px-6 font-black text-[#2E0B5E] font-noto outline-none focus:border-[#8D30F4]/30" placeholder="যেমন: উপস্থিতি" value={tempTitle} onChange={(e) => setTempTitle(e.target.value)} />
+                 </div>
+                 <div className="space-y-2 px-1">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block px-1">মেসেজ বডি</label>
+                    <textarea className="w-full h-32 bg-slate-50 border-2 border-slate-100 rounded-[1.8rem] px-6 py-4 font-bold text-slate-600 font-noto outline-none focus:border-[#8D30F4]/30 resize-none" placeholder="আপনার মেসেজ এখানে লিখুন..." value={tempBody} onChange={(e) => setTempBody(e.target.value)} />
+                 </div>
+                 
+                 <button onClick={handleSaveTemplate} disabled={isSaving || !tempTitle || !tempBody} className="w-full h-16 premium-btn text-white font-black rounded-full shadow-2xl flex items-center justify-center gap-3 active:scale-95 transition-all text-lg">
+                    {isSaving ? <Loader2 className="animate-spin" size={24} /> : <><Save size={24} /> {editingId ? 'আপডেট করুন' : 'সেভ করুন'}</>}
+                 </button>
               </div>
            </div>
         </div>
