@@ -36,7 +36,7 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
     <div className="flex flex-col w-full h-full relative bg-transparent overflow-hidden">
       {/* Header with lower priority stack */}
       <header className="flex-none px-6 pt-[calc(env(safe-area-inset-top)+8px)] pb-3 flex items-center justify-between relative z-10">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 flex-1 min-w-0">
           <div className="w-11 h-11 rounded-[1rem] flex items-center justify-center bg-white shadow-sm border border-white/20 shrink-0 overflow-hidden">
             {isSuperAdmin ? (
                <ShieldCheck size={24} className="text-[#8D30F4]" />
@@ -46,17 +46,17 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
               <BookOpen size={22} className="text-[#8D30F4]" />
             )}
           </div>
-          <div className="min-w-0">
-            <h1 className="text-[17px] font-black text-white truncate leading-none tracking-tight font-noto drop-shadow-md">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-[16px] font-black text-white leading-[1.2] tracking-tight font-noto drop-shadow-md line-clamp-2">
               {isSuperAdmin ? (lang === 'bn' ? 'সুপার অ্যাডমিন' : 'Super Admin') : (madrasah?.name || (lang === 'bn' ? 'মাদরাসা কন্টাক্ট' : 'Madrasah Contact'))}
             </h1>
-            <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.2em] mt-1.5 drop-shadow-sm font-noto">
+            <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.2em] mt-1 drop-shadow-sm font-noto">
               {teacher ? t('teacher_portal', lang) : t('admin_portal', lang)}
             </p>
           </div>
         </div>
         
-        <button onClick={() => window.location.reload()} className="p-2.5 bg-white/20 backdrop-blur-md rounded-[1rem] text-white active:scale-95 transition-all border border-white/20 shadow-xl">
+        <button onClick={() => window.location.reload()} className="p-2.5 bg-white/20 backdrop-blur-md rounded-[1rem] text-white active:scale-95 transition-all border border-white/20 shadow-xl ml-3">
           <RefreshCw size={18} />
         </button>
       </header>
