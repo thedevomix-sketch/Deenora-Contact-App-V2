@@ -33,7 +33,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.4.9-PREMIUM";
+  const APP_VERSION = "2.5.0-PREMIUM";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -62,7 +62,7 @@ const App: React.FC = () => {
         localStorage.setItem('teacher_session', JSON.stringify(data));
         setMadrasah({ 
           id: data.madrasah_id, 
-          name: data.madrasahs?.name || 'মাদরাসা কন্টাক্ট', 
+          name: data.madrasahs?.name || (lang === 'bn' ? 'মাদরাসা কন্টাক্ট' : 'Madrasah Contact'), 
           logo_url: data.madrasahs?.logo_url,
           is_super_admin: false,
           balance: 0,
@@ -86,7 +86,7 @@ const App: React.FC = () => {
         setTeacher(teacherData);
         setMadrasah({ 
           id: teacherData.madrasah_id, 
-          name: teacherData.madrasahs?.name || 'মাদরাসা কন্টাক্ট', 
+          name: teacherData.madrasahs?.name || (lang === 'bn' ? 'মাদরাসা কন্টাক্ট' : 'Madrasah Contact'), 
           logo_url: teacherData.madrasahs?.logo_url,
           is_super_admin: false,
           balance: 0,
@@ -277,6 +277,7 @@ const App: React.FC = () => {
         
         <div className="mt-8 mb-4 text-center opacity-30 select-none">
            <span className="text-[9px] font-black text-white uppercase tracking-widest">{APP_VERSION}</span>
+           <p className="text-[8px] font-bold text-white uppercase tracking-widest mt-1">{t('copyright', lang)}</p>
         </div>
       </Layout>
     </div>

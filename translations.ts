@@ -40,8 +40,8 @@ export const translations = {
     madrasah_name: 'মাদরাসার নাম',
     madrasah_phone: 'মাদরাসার মোবাইল নম্বর',
     language: 'ভাষা (Language)',
-    version: 'ভার্সন ১.০.০',
-    copyright: '© ২০২৪ Deenora মাদরাসা ম্যানেজমেন্ট',
+    version: 'ভার্সন ২.৫.০',
+    copyright: '© ২০২৫ Deenora মাদরাসা ম্যানেজমেন্ট',
     saving: 'সংরক্ষণ হচ্ছে...',
     success: 'সফলভাবে সংরক্ষিত',
     login_title: 'লগইন করুন',
@@ -97,7 +97,22 @@ export const translations = {
     approvals: 'পেমেন্ট',
     native_sms: 'সিম থেকে এসএমএস (Free)',
     multi_select: 'সিলেক্ট করুন',
-    stop_select: 'সিলেকশন বন্ধ করুন'
+    stop_select: 'সিলেকশন বন্ধ করুন',
+    // New Keys for Full Translation
+    manage_teachers: 'শিক্ষক ম্যানেজমেন্ট',
+    backup_restore: 'ব্যাকআপ ও রিস্টোর',
+    edit_account_info: 'অ্যাকাউন্ট তথ্য পরিবর্তন',
+    madrasah_uuid: 'মাদরাসা আইডি (UUID)',
+    login_gmail: 'লগইন জিমেইল',
+    madrasah_code_label: 'মাদরাসা কোড / পিন',
+    save_changes: 'পরিবর্তন সেভ করুন',
+    teacher_portal: 'শিক্ষক পোর্টাল',
+    admin_portal: 'অ্যাডমিন পোর্টাল',
+    sms: 'এসএমএস',
+    students: 'ছাত্রছাত্রী',
+    // Fix: Removed duplicate 'classes' key here.
+    copied: 'কপি হয়েছে!',
+    app_settings: 'অ্যাপ সেটিংস'
   },
   en: {
     home: 'Home',
@@ -137,8 +152,8 @@ export const translations = {
     madrasah_name: 'Madrasah Name',
     madrasah_phone: 'Madrasah Phone',
     language: 'Language',
-    version: 'Version 1.0.0',
-    copyright: '© 2024 Deenora Madrasah Management',
+    version: 'Version 2.5.0',
+    copyright: '© 2025 Deenora Madrasah Management',
     saving: 'Saving...',
     success: 'Successfully Saved',
     login_title: 'Login',
@@ -194,7 +209,22 @@ export const translations = {
     approvals: 'Payments',
     native_sms: 'SIM SMS (Free)',
     multi_select: 'Select Multiple',
-    stop_select: 'Stop Selection'
+    stop_select: 'Stop Selection',
+    // New Keys for Full Translation
+    manage_teachers: 'Manage Teachers',
+    backup_restore: 'Backup & Restore',
+    edit_account_info: 'Edit Account Info',
+    madrasah_uuid: 'Madrasah UUID',
+    login_gmail: 'Login Gmail',
+    madrasah_code_label: 'Madrasah PIN / Code',
+    save_changes: 'Save Changes',
+    teacher_portal: 'Teacher Portal',
+    admin_portal: 'Admin Portal',
+    sms: 'SMS',
+    students: 'Students',
+    // Fix: Removed duplicate 'classes' key here.
+    copied: 'Copied!',
+    app_settings: 'App Settings'
   }
 };
 

@@ -48,10 +48,10 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
           </div>
           <div className="min-w-0">
             <h1 className="text-[17px] font-black text-white truncate leading-none tracking-tight font-noto drop-shadow-md">
-              {isSuperAdmin ? (lang === 'bn' ? 'সুপার অ্যাডমিন' : 'Super Admin') : (madrasah?.name || 'মাদরাসা কন্টাক্ট')}
+              {isSuperAdmin ? (lang === 'bn' ? 'সুপার অ্যাডমিন' : 'Super Admin') : (madrasah?.name || (lang === 'bn' ? 'মাদরাসা কন্টাক্ট' : 'Madrasah Contact'))}
             </h1>
-            <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.2em] mt-1.5 drop-shadow-sm">
-              {teacher ? 'Teacher Portal' : 'Admin Portal'}
+            <p className="text-[9px] font-black text-white/60 uppercase tracking-[0.2em] mt-1.5 drop-shadow-sm font-noto">
+              {teacher ? t('teacher_portal', lang) : t('admin_portal', lang)}
             </p>
           </div>
         </div>

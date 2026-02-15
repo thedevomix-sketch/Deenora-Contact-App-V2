@@ -26,7 +26,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
   const [newName, setNewName] = useState(initialMadrasah?.name || '');
   const [newPhone, setNewPhone] = useState(initialMadrasah?.phone || '');
-  const [newEmail, setNewEmail] = useState(initialMadrasah?.email || '');
   const [newLoginCode, setNewLoginCode] = useState(initialMadrasah?.login_code || '');
   const [logoUrl, setLogoUrl] = useState(initialMadrasah?.logo_url || '');
   
@@ -58,10 +57,10 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     if (!madrasah || isTeacher) return;
     setSaving(true);
     try {
+      // Removed 'email' from the update payload to fix the "column not found" error
       const { error } = await supabase.from('madrasahs').update({ 
         name: newName.trim(), 
         phone: newPhone.trim(), 
-        email: newEmail.trim(),
         login_code: newLoginCode.trim(), 
         logo_url: logoUrl 
       }).eq('id', madrasah.id);
@@ -74,12 +73,13 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         ...prev, 
         name: newName.trim(), 
         phone: newPhone.trim(), 
-        email: newEmail.trim(),
         login_code: newLoginCode.trim() 
       } : null);
 
       alert(lang === 'bn' ? 'সব তথ্য আপডেট হয়েছে!' : 'Profile Updated!');
-    } catch (err: any) { alert(err.message); } finally { setSaving(false); }
+    } catch (err: any) { 
+      alert(lang === 'bn' ? `এরর: ${err.message}` : `Error: ${err.message}`);
+    } finally { setSaving(false); }
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -107,21 +107,21 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                <Users size={20} />
             </div>
             <p className="text-lg font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.students}</p>
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">Students</p>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{t('students', lang)}</p>
           </div>
           <div className="bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-white shadow-xl flex flex-col items-center text-center">
             <div className="w-10 h-10 bg-purple-50 text-purple-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
                <Layers size={20} />
             </div>
             <p className="text-lg font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.classes}</p>
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">Classes</p>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{t('classes', lang)}</p>
           </div>
           <div className="bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-white shadow-xl flex flex-col items-center text-center">
             <div className="w-10 h-10 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
                <Zap size={20} />
             </div>
             <p className="text-lg font-black text-[#2E0B5E] leading-none">{madrasah.sms_balance || 0}</p>
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">SMS</p>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{t('sms', lang)}</p>
           </div>
         </div>
       )}
@@ -131,7 +131,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         <div className="flex flex-col items-center gap-6 relative z-10">
           <div className="relative group">
             <div className="w-28 h-28 bg-white rounded-[2.5rem] border-4 border-slate-50 shadow-2xl flex items-center justify-center overflow-hidden">
-               {logoUrl ? <img src={logoUrl} className="w-full h-full object-cover" /> : isSuperAdmin ? <ShieldCheck size={45} className="text-[#8D30F4]" /> : <UserIcon size={40} className="text-[#A179FF]" />}
+               {logoUrl ? <img src={logoUrl} className="w-full h-full object-cover" alt="Logo" /> : isSuperAdmin ? <ShieldCheck size={45} className="text-[#8D30F4]" /> : <UserIcon size={40} className="text-[#A179FF]" />}
             </div>
             {isEditingProfile && !isTeacher && (
               <button onClick={() => fileInputRef.current?.click()} className="absolute -bottom-2 -right-2 w-10 h-10 bg-[#8D30F4] text-white rounded-xl flex items-center justify-center shadow-lg border-2 border-white">
@@ -150,7 +150,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
               >
                 <Fingerprint size={16} className="text-[#8D30F4]" />
                 <div className="flex flex-col items-start">
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Madrasah UUID</p>
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{t('madrasah_uuid', lang)}</p>
                   <p className="text-[11px] font-black text-[#8D30F4] tracking-tight truncate max-w-[150px]">
                     {madrasah.id}
                   </p>
@@ -158,7 +158,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                 {copiedId ? <Check size={14} className="text-green-500" /> : <Copy size={14} className="text-[#8D30F4]/40 group-hover:text-[#8D30F4]" />}
               </div>
             </div>
-            {isTeacher && <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest mt-4">Teacher Portal</p>}
+            {isTeacher && <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest mt-4">{t('teacher_portal', lang)}</p>}
           </div>
         </div>
 
@@ -167,25 +167,21 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
           {isEditingProfile && !isTeacher ? (
             <div className="space-y-4 animate-in slide-in-from-top-4">
               <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">মাদরাসার নাম</label>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">{t('madrasah_name', lang)}</label>
                 <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full font-noto" value={newName} onChange={(e) => setNewName(e.target.value)} />
               </div>
               <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">মোবাইল নম্বর</label>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">{t('madrasah_phone', lang)}</label>
                 <input type="tel" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
               </div>
               <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">লগইন জিমেইল</label>
-                <input type="email" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} />
-              </div>
-              <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">মাদরাসা কোড</label>
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">{t('madrasah_code_label', lang)}</label>
                 <input type="text" className="bg-transparent border-none outline-none font-black text-[#8D30F4] text-base w-full" value={newLoginCode} onChange={(e) => setNewLoginCode(e.target.value)} />
               </div>
               <div className="flex gap-3 pt-4">
-                <button onClick={() => setIsEditingProfile(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-2xl text-sm">Cancel</button>
+                <button onClick={() => setIsEditingProfile(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-2xl text-sm">{t('cancel', lang)}</button>
                 <button onClick={handleUpdate} disabled={saving} className="flex-[2] py-4 bg-[#8D30F4] text-white font-black rounded-2xl text-sm shadow-xl">
-                  {saving ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Save Changes'}
+                  {saving ? <Loader2 className="animate-spin mx-auto" size={18} /> : t('save_changes', lang)}
                 </button>
               </div>
             </div>
@@ -196,19 +192,19 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                   <button onClick={() => setView('teachers')} className="w-full bg-slate-50 p-5 rounded-2xl border border-slate-100 flex items-center justify-between group active:scale-[0.98] transition-all">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-500 shadow-inner"><UserPlus size={20} /></div>
-                      <span className="text-md font-black text-[#2E0B5E]">Manage Teachers</span>
+                      <span className="text-md font-black text-[#2E0B5E] font-noto">{t('manage_teachers', lang)}</span>
                     </div>
                     <ChevronRight size={20} className="text-slate-300" />
                   </button>
                   <button onClick={() => setView('data-management')} className="w-full bg-slate-50 p-5 rounded-2xl border border-slate-100 flex items-center justify-between group active:scale-[0.98] transition-all">
                     <div className="flex items-center gap-4">
                       <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-[#8D30F4] shadow-inner"><Database size={20} /></div>
-                      <span className="text-md font-black text-[#2E0B5E]">Backup & Restore</span>
+                      <span className="text-md font-black text-[#2E0B5E] font-noto">{t('backup_restore', lang)}</span>
                     </div>
                     <ChevronRight size={20} className="text-slate-300" />
                   </button>
-                  <button onClick={() => setIsEditingProfile(true)} className="w-full h-16 bg-[#F2EBFF] text-[#8D30F4] font-black rounded-3xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all border border-[#8D30F4]/10 mb-6">
-                    <Edit3 size={20} /> Edit Account Info
+                  <button onClick={() => setIsEditingProfile(true)} className="w-full h-16 bg-[#F2EBFF] text-[#8D30F4] font-black rounded-3xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all border border-[#8D30F4]/10 mb-6 font-noto">
+                    <Edit3 size={20} /> {t('edit_account_info', lang)}
                   </button>
                 </>
               )}
@@ -241,7 +237,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         </div>
       </div>
 
-      <button onClick={onLogout} className="w-full py-6 bg-red-500 text-white font-black rounded-[2.5rem] shadow-xl active:scale-[0.95] transition-all flex items-center justify-center gap-4 text-lg border-2 border-red-400">
+      <button onClick={onLogout} className="w-full py-6 bg-red-500 text-white font-black rounded-[2.5rem] shadow-xl active:scale-[0.95] transition-all flex items-center justify-center gap-4 text-lg border-2 border-red-400 font-noto">
         <LogOut size={26} /> {t('logout', lang)}
       </button>
     </div>
