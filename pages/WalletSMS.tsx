@@ -24,6 +24,7 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
   const [bulkSuccess, setBulkSuccess] = useState(false);
   const [classStudents, setClassStudents] = useState<Student[]>([]);
   const [showClassDropdown, setShowClassDropdown] = useState(false);
+  const [showTemplateDropdownBulk, setShowTemplateDropdownBulk] = useState(false);
   const [userTransactions, setUserTransactions] = useState<Transaction[]>([]);
   
   const [showAddModal, setShowAddModal] = useState(false);
@@ -151,6 +152,14 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
     } finally { setSendingBulk(false); }
   };
 
+  const handleSendFreeBulk = () => {
+    if (!bulkMessage.trim() || classStudents.length === 0) return;
+    const phones = classStudents.map(s => s.guardian_phone).join(',');
+    const encodedMsg = encodeURIComponent(bulkMessage);
+    const separator = /iPad|iPhone|iPod/.test(navigator.userAgent) ? '&' : '?';
+    window.location.href = `sms:${phones}${separator}body=${encodedMsg}`;
+  };
+
   const getSelectedClassName = () => {
     const cls = classes.find(c => c.id === selectedClassId);
     return cls ? cls.class_name : (lang === 'bn' ? 'ক্লাস নির্বাচন করুন' : 'Select Class');
@@ -254,7 +263,32 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
             </div>
 
             <div className="space-y-4">
-              <h4 className="text-[11px] font-black text-[#2E0B5E] uppercase tracking-widest px-1">২. বার্তা লিখুন</h4>
+              <h4 className="text-[11px] font-black text-[#2E0B5E] uppercase tracking-widest px-1">২. টেমপ্লেট বাছাই করুন (ঐচ্ছিক)</h4>
+              <div className="relative">
+                <button onClick={() => setShowTemplateDropdownBulk(!showTemplateDropdownBulk)} className="w-full h-[60px] px-6 rounded-[1.5rem] border-2 bg-slate-50 border-slate-100 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <BookOpen size={18} className="text-[#8D30F4]" />
+                    <span className="text-base font-black font-noto text-slate-400">টেমপ্লেট সিলেক্ট করুন</span>
+                  </div>
+                  <ChevronDown className={`text-slate-300 transition-all ${showTemplateDropdownBulk ? 'rotate-180' : ''}`} size={20} />
+                </button>
+                {showTemplateDropdownBulk && (
+                  <div className="absolute top-full left-0 right-0 mt-3 bg-white rounded-[2rem] shadow-2xl border border-slate-100 z-[100] p-2 max-h-60 overflow-y-auto animate-in slide-in-from-top-2">
+                    {templates.length > 0 ? templates.map(tmp => (
+                      <button key={tmp.id} onClick={() => { setBulkMessage(tmp.body); setShowTemplateDropdownBulk(false); }} className="w-full text-left px-5 py-3.5 rounded-xl mb-1 hover:bg-slate-50">
+                        <p className="text-[10px] font-black text-[#8D30F4] uppercase mb-0.5">{tmp.title}</p>
+                        <p className="text-xs font-bold text-[#2E0B5E] truncate">{tmp.body}</p>
+                      </button>
+                    )) : (
+                      <div className="p-5 text-center text-slate-400 text-xs font-bold">কোনো টেমপ্লেট পাওয়া যায়নি</div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h4 className="text-[11px] font-black text-[#2E0B5E] uppercase tracking-widest px-1">৩. বার্তা লিখুন</h4>
               <div className="relative">
                 <textarea className="w-full h-32 px-5 py-5 bg-slate-50 border-2 border-slate-100 rounded-[1.8rem] text-[#2E0B5E] font-bold outline-none font-noto resize-none" placeholder="বার্তা..." value={bulkMessage} onChange={(e) => setBulkMessage(e.target.value)} maxLength={160} />
                 <div className="absolute bottom-4 right-5 bg-white px-2 py-0.5 rounded-lg border border-slate-100 shadow-sm">
@@ -263,9 +297,15 @@ const WalletSMS: React.FC<WalletSMSProps> = ({ lang, madrasah, triggerRefresh, d
               </div>
             </div>
 
-            <button onClick={handleSendBulk} disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId || classStudents.length === 0} className="w-full h-[64px] premium-btn text-white font-black rounded-full shadow-lg flex items-center justify-center gap-3 text-lg disabled:opacity-40">
-              {sendingBulk ? <Loader2 className="animate-spin" size={24} /> : bulkSuccess ? 'সফল!' : 'বাল্ক এসএমএস পাঠান'}
-            </button>
+            <div className="grid grid-cols-1 gap-3">
+              <button onClick={handleSendBulk} disabled={sendingBulk || !bulkMessage.trim() || !selectedClassId || classStudents.length === 0} className="w-full h-[64px] premium-btn text-white font-black rounded-full shadow-lg flex items-center justify-center gap-3 text-lg disabled:opacity-40">
+                {sendingBulk ? <Loader2 className="animate-spin" size={24} /> : bulkSuccess ? 'সফল!' : <><Send size={20} /> বাল্ক এসএমএস পাঠান</>}
+              </button>
+              
+              <button onClick={handleSendFreeBulk} disabled={sendingBulk || !bulkMessage.trim() || classStudents.length === 0} className="w-full h-[54px] bg-[#1A0B2E] text-white font-black rounded-full shadow-lg flex items-center justify-center gap-3 text-sm disabled:opacity-40 active:scale-95 transition-all">
+                <Smartphone size={20} /> ফ্রি এসএমএস (সিম কার্ড)
+              </button>
+            </div>
           </div>
         </div>
       )}
