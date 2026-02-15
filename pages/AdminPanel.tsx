@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone } from 'lucide-react';
+import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, Transaction, AdminSMSStock } from '../types';
 
@@ -26,6 +26,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   const [editPhone, setEditPhone] = useState('');
   const [editLoginCode, setEditLoginCode] = useState('');
   const [editActive, setEditActive] = useState(true);
+  
+  // Madrasah Specific Gateway (Masking)
+  const [editReveApiKey, setEditReveApiKey] = useState('');
+  const [editReveSecretKey, setEditReveSecretKey] = useState('');
+  const [editReveCallerId, setEditReveCallerId] = useState('');
+  const [editReveClientId, setEditReveClientId] = useState('');
+
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   const [copied, setCopied] = useState(false);
 
@@ -95,6 +102,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     setEditPhone(m.phone || '');
     setEditLoginCode(m.login_code || '');
     setEditActive(m.is_active !== false);
+    
+    // Set Gateway fields
+    setEditReveApiKey(m.reve_api_key || '');
+    setEditReveSecretKey(m.reve_secret_key || '');
+    setEditReveCallerId(m.reve_caller_id || '');
+    setEditReveClientId(m.reve_client_id || '');
+    
     setView('details');
 
     // Fetch Stats
@@ -116,10 +130,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
         name: editName.trim(),
         phone: editPhone.trim(),
         login_code: editLoginCode.trim(),
-        is_active: editActive
+        is_active: editActive,
+        reve_api_key: editReveApiKey.trim() || null,
+        reve_secret_key: editReveSecretKey.trim() || null,
+        reve_caller_id: editReveCallerId.trim() || null,
+        reve_client_id: editReveClientId.trim() || null
       }).eq('id', selectedUser.id);
+      
       if (error) throw error;
-      alert('User Updated Successfully');
+      alert('User Settings Updated Successfully');
       fetchAllMadrasahs();
       setView('list');
       setSelectedUser(null);
@@ -279,8 +298,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                  </div>
               </div>
 
-              {/* Edit Form */}
+              {/* Basic Info Form */}
               <div className="space-y-4">
+                 <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2"><UserIcon size={14}/> Basic Information</h4>
                  <div className="space-y-1.5">
                     <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Madrasah Name</label>
                     <input type="text" className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-5 font-black text-slate-800 font-noto" value={editName} onChange={(e) => setEditName(e.target.value)} />
@@ -296,20 +316,47 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                        <Key size={16} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300" />
                     </div>
                  </div>
+              </div>
+
+              {/* SMS Gateway Settings (Masking) */}
+              <div className="space-y-4 pt-4 border-t border-slate-100">
+                 <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2"><Server size={14}/> SMS Gateway (Masking)</h4>
+                 <p className="text-[9px] text-slate-400 font-bold px-1 -mt-2 italic">খালি রাখলে গ্লোবাল গেটওয়ে (Non-Masking) ব্যবহৃত হবে।</p>
                  
-                 <div className="flex items-center justify-between bg-slate-50 p-5 rounded-[1.8rem] border border-slate-100">
-                    <div className="flex items-center gap-3">
-                       <div className={`w-3 h-3 rounded-full ${editActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
-                       <span className="text-sm font-black text-slate-700">Account Access</span>
+                 <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">API Key</label>
+                       <input type="text" className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 font-black text-slate-700 text-xs" value={editReveApiKey} onChange={(e) => setEditReveApiKey(e.target.value)} placeholder="Reve API Key" />
                     </div>
-                    <button onClick={() => setEditActive(!editActive)} className={`w-14 h-8 rounded-full transition-all relative ${editActive ? 'bg-green-500' : 'bg-slate-300'}`}>
-                      <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-all ${editActive ? 'right-1' : 'left-1'}`} />
-                    </button>
+                    <div className="space-y-1.5">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Secret Key</label>
+                       <input type="text" className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 font-black text-slate-700 text-xs" value={editReveSecretKey} onChange={(e) => setEditReveSecretKey(e.target.value)} placeholder="Secret Key" />
+                    </div>
                  </div>
+                 <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Sender ID</label>
+                       <input type="text" className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 font-black text-slate-700 text-xs" value={editReveCallerId} onChange={(e) => setEditReveCallerId(e.target.value)} placeholder="Masking Name" />
+                    </div>
+                    <div className="space-y-1.5">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Client ID</label>
+                       <input type="text" className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 font-black text-slate-700 text-xs" value={editReveClientId} onChange={(e) => setEditReveClientId(e.target.value)} placeholder="Client ID" />
+                    </div>
+                 </div>
+              </div>
+                 
+              <div className="flex items-center justify-between bg-slate-50 p-5 rounded-[1.8rem] border border-slate-100">
+                 <div className="flex items-center gap-3">
+                    <div className={`w-3 h-3 rounded-full ${editActive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></div>
+                    <span className="text-sm font-black text-slate-700">Account Access</span>
+                 </div>
+                 <button onClick={() => setEditActive(!editActive)} className={`w-14 h-8 rounded-full transition-all relative ${editActive ? 'bg-green-500' : 'bg-slate-300'}`}>
+                    <div className={`absolute top-1 w-6 h-6 bg-white rounded-full shadow-md transition-all ${editActive ? 'right-1' : 'left-1'}`} />
+                 </button>
               </div>
 
               <button onClick={updateUserProfile} disabled={isUpdatingUser} className="w-full h-16 premium-btn text-white font-black rounded-[2rem] flex items-center justify-center gap-3 shadow-xl active:scale-[0.98] transition-all">
-                 {isUpdatingUser ? <Loader2 className="animate-spin" size={24} /> : <><Save size={24} /> Save Changes</>}
+                 {isUpdatingUser ? <Loader2 className="animate-spin" size={24} /> : <><Save size={24} /> Save User Settings</>}
               </button>
            </div>
         </div>
@@ -338,6 +385,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
               <div className="space-y-1.5 px-1">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">System Secret Key</label>
                 <input type="password" title="Secret Key" className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-5 font-black text-slate-800 text-xs" value={reveSecretKey} onChange={(e) => setReveSecretKey(e.target.value)} />
+              </div>
+              <div className="space-y-1.5 px-1">
+                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">System Client ID</label>
+                <input type="text" className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-5 font-black text-slate-800 text-xs" value={reveClientId} onChange={(e) => setReveClientId(e.target.value)} />
               </div>
               <button onClick={saveGlobalSettings} disabled={savingGateway} className="w-full h-16 premium-btn text-white font-black rounded-[2rem] flex items-center justify-center gap-3 mt-4 shadow-xl active:scale-[0.98] transition-all">
                 {savingGateway ? <Loader2 className="animate-spin" size={24} /> : <><Save size={24} /> Save Global Config</>}
