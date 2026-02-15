@@ -30,11 +30,6 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
     } catch (e) { console.error("recordCall Error:", e); }
   };
 
-  const initiateNormalCall = async (phone: string) => {
-    await recordCall(phone);
-    window.location.href = `tel:${phone}`;
-  };
-
   const initiateWhatsAppCall = async (phone: string) => {
     await recordCall(phone);
     window.location.href = `https://wa.me/88${phone.replace(/\D/g, '')}`;
@@ -135,19 +130,9 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
                      <p className="text-[15px] font-black text-[#2E0B5E] tracking-tight">{student.guardian_phone_2}</p>
                   </div>
                 </div>
-                <div className="flex gap-1.5">
-                  <button onClick={() => initiateWhatsAppCall(student.guardian_phone_2!)} className="w-8 h-8 bg-[#25d366] text-white rounded-lg flex items-center justify-center active:scale-90 transition-all shadow-sm">
-                     <PhoneCall size={14} fill="currentColor" />
-                  </button>
-                </div>
              </div>
            )}
         </div>
-      </div>
-      
-      <div className="px-6 py-3.5 bg-white/10 backdrop-blur-md rounded-[2rem] border border-white/20 flex items-center justify-center gap-2.5 shadow-lg">
-          <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
-          <p className="text-[9px] font-black text-white uppercase tracking-widest">Call History Enabled</p>
       </div>
     </div>
   );
