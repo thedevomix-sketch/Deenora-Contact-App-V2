@@ -17,22 +17,27 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 export const smsApi = {
   getGlobalSettings: async () => {
     const { data } = await supabase.from('system_settings').select('*').eq('id', '00000000-0000-0000-0000-000000000001').maybeSingle();
-    return data || { reve_api_key: 'aa407e1c6629da8e', reve_secret_key: '91051e7e', bkash_number: '০১৭৬৬-XXXXXX' };
+    return data || { reve_api_key: 'aa407e1c6629da8e', reve_secret_key: '91051e7e', bkash_number: '০১৭৬৬-XXXXXX', reve_caller_id: '1234' };
   },
 
   sendBulk: async (madrasahId: string, students: Student[], message: string) => {
-    // 1. Fetch Madrasah specifics (Balance, CallerID)
-    const { data: mData } = await supabase.from('madrasahs').select('sms_balance, reve_caller_id, reve_client_id').eq('id', madrasahId).single();
+    // 1. Fetch Madrasah data including its own API credentials (Masking)
+    const { data: mData } = await supabase.from('madrasahs').select('sms_balance, reve_api_key, reve_secret_key, reve_caller_id').eq('id', madrasahId).single();
     if (!mData || (mData.sms_balance || 0) < students.length) {
       throw new Error("Insufficient SMS balance.");
     }
 
-    // 2. Get Global API Keys
-    const creds = await smsApi.getGlobalSettings();
+    // 2. Get Global Credentials
+    const global = await smsApi.getGlobalSettings();
     
-    // Use Madrasah specific CallerID if set by Admin, otherwise global
-    const callerId = mData.reve_caller_id || creds.reve_caller_id;
-    if (!callerId) throw new Error("Caller ID is not configured for this user.");
+    // Logic: Use Masking Credentials if set, otherwise use Global (Non-Masking)
+    const apiKey = mData.reve_api_key || global.reve_api_key;
+    const secretKey = mData.reve_secret_key || global.reve_secret_key;
+    const callerId = mData.reve_caller_id || global.reve_caller_id;
+
+    if (!apiKey || !secretKey || !callerId) {
+      throw new Error("SMS Gateway is not configured for this user.");
+    }
 
     const phoneList = students.map(s => {
       let p = s.guardian_phone.replace(/\D/g, '');
@@ -45,7 +50,7 @@ export const smsApi = {
       messageContent: message
     }];
 
-    const apiUrl = `https://smpp.revesms.com:7790/send?apikey=${creds.reve_api_key}&secretkey=${creds.reve_secret_key}&content=${encodeURIComponent(JSON.stringify(contentArray))}`;
+    const apiUrl = `https://smpp.revesms.com:7790/send?apikey=${apiKey}&secretkey=${secretKey}&content=${encodeURIComponent(JSON.stringify(contentArray))}`;
 
     try {
       const response = await fetch(apiUrl);
@@ -65,22 +70,25 @@ export const smsApi = {
     }
   },
 
-  // Direct send for single notification (used by Admin)
   sendDirect: async (phone: string, message: string, madrasahId?: string) => {
-    const creds = await smsApi.getGlobalSettings();
-    let callerId = creds.reve_caller_id;
+    const global = await smsApi.getGlobalSettings();
+    let apiKey = global.reve_api_key;
+    let secretKey = global.reve_secret_key;
+    let callerId = global.reve_caller_id;
 
     if (madrasahId) {
-      const { data } = await supabase.from('madrasahs').select('reve_caller_id').eq('id', madrasahId).single();
+      const { data } = await supabase.from('madrasahs').select('reve_api_key, reve_secret_key, reve_caller_id').eq('id', madrasahId).single();
+      if (data?.reve_api_key) apiKey = data.reve_api_key;
+      if (data?.reve_secret_key) secretKey = data.reve_secret_key;
       if (data?.reve_caller_id) callerId = data.reve_caller_id;
     }
 
-    if (!callerId) return;
+    if (!apiKey || !callerId) return;
 
     const p = phone.replace(/\D/g, '');
     const target = p.startsWith('88') ? p : `88${p}`;
     const content = [{ callerID: callerId, toUser: target, messageContent: message }];
-    const apiUrl = `https://smpp.revesms.com:7790/send?apikey=${creds.reve_api_key}&secretkey=${creds.reve_secret_key}&content=${encodeURIComponent(JSON.stringify(content))}`;
+    const apiUrl = `https://smpp.revesms.com:7790/send?apikey=${apiKey}&secretkey=${secretKey}&content=${encodeURIComponent(JSON.stringify(content))}`;
     
     try { await fetch(apiUrl); } catch (e) {}
   }
