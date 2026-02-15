@@ -14,51 +14,33 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   }
 });
 
-/**
- * REVE SMS GATEWAY INTEGRATION (Admin Controlled)
- */
 export const smsApi = {
-  // Fetch Global Gateway Credentials
   getGlobalSettings: async () => {
-    const { data, error } = await supabase
-      .from('system_settings')
-      .select('*')
-      .eq('id', '00000000-0000-0000-0000-000000000001')
-      .maybeSingle();
-    
-    // If no settings exist, return default structure
-    return data || { 
-      reve_api_key: '', 
-      reve_secret_key: '', 
-      reve_caller_id: '', 
-      reve_client_id: '',
-      bkash_number: '০১৭৬৬-XXXXXX'
-    };
+    const { data } = await supabase.from('system_settings').select('*').eq('id', '00000000-0000-0000-0000-000000000001').maybeSingle();
+    return data || { reve_api_key: 'aa407e1c6629da8e', reve_secret_key: '91051e7e', bkash_number: '০১৭৬৬-XXXXXX' };
   },
 
-  // Send SMS via REVE
   sendBulk: async (madrasahId: string, students: Student[], message: string) => {
-    // 1. Check Madrasah Balance
-    const { data: mData } = await supabase.from('madrasahs').select('sms_balance').eq('id', madrasahId).single();
+    // 1. Fetch Madrasah specifics (Balance, CallerID)
+    const { data: mData } = await supabase.from('madrasahs').select('sms_balance, reve_caller_id, reve_client_id').eq('id', madrasahId).single();
     if (!mData || (mData.sms_balance || 0) < students.length) {
-      throw new Error("Insufficient SMS balance. Please recharge via bKash.");
+      throw new Error("Insufficient SMS balance.");
     }
 
-    // 2. Get Admin's Global Gateway Credentials
+    // 2. Get Global API Keys
     const creds = await smsApi.getGlobalSettings();
-    if (!creds.reve_api_key || !creds.reve_secret_key || !creds.reve_caller_id) {
-      throw new Error("SMS Gateway is not configured by the system administrator.");
-    }
+    
+    // Use Madrasah specific CallerID if set by Admin, otherwise global
+    const callerId = mData.reve_caller_id || creds.reve_caller_id;
+    if (!callerId) throw new Error("Caller ID is not configured for this user.");
 
-    // 3. Prepare REVE API Payload (Bulk format)
-    // REVE Documentation suggests: https://smpp.revesms.com:7790/send?apikey=...&secretkey=...&content=[...]
     const phoneList = students.map(s => {
       let p = s.guardian_phone.replace(/\D/g, '');
       return p.startsWith('88') ? p : `88${p}`;
     }).join(',');
 
     const contentArray = [{
-      callerID: creds.reve_caller_id,
+      callerID: callerId,
       toUser: phoneList,
       messageContent: message
     }];
@@ -68,51 +50,45 @@ export const smsApi = {
     try {
       const response = await fetch(apiUrl);
       const result = await response.json();
-
-      // REVE response check: {"Status":"0","Text":"ACCEPTD","Message_ID":"444"}
       if (result.Status === "0") {
-        // Log locally and update balance via RPC
-        const { error: rpcError } = await supabase.rpc('send_bulk_sms_rpc', {
+        await supabase.rpc('send_bulk_sms_rpc', {
           p_madrasah_id: madrasahId,
           p_student_ids: students.map(s => s.id),
           p_message: message
         });
-        if (rpcError) throw rpcError;
-        return { success: true, count: students.length };
+        return { success: true };
       } else {
-        throw new Error(`Gateway Error: ${result.Text || 'Rejected'} (Code: ${result.Status})`);
+        throw new Error(`Gateway: ${result.Text || 'Error'}`);
       }
     } catch (err: any) {
-      console.error("SMS Sending Error:", err);
       throw new Error(err.message || "Failed to connect to SMS Gateway.");
     }
   },
 
-  // Get Live Balance from REVE (Optional monitoring)
-  getReveBalance: async (clientId: string) => {
-    if (!clientId) return null;
-    try {
-      const response = await fetch(`https://smpp.revesms.com/sms/smsConfiguration/smsClientBalance.jsp?client=${clientId}`);
-      return await response.text();
-    } catch (err) {
-      return null;
+  // Direct send for single notification (used by Admin)
+  sendDirect: async (phone: string, message: string, madrasahId?: string) => {
+    const creds = await smsApi.getGlobalSettings();
+    let callerId = creds.reve_caller_id;
+
+    if (madrasahId) {
+      const { data } = await supabase.from('madrasahs').select('reve_caller_id').eq('id', madrasahId).single();
+      if (data?.reve_caller_id) callerId = data.reve_caller_id;
     }
+
+    if (!callerId) return;
+
+    const p = phone.replace(/\D/g, '');
+    const target = p.startsWith('88') ? p : `88${p}`;
+    const content = [{ callerID: callerId, toUser: target, messageContent: message }];
+    const apiUrl = `https://smpp.revesms.com:7790/send?apikey=${creds.reve_api_key}&secretkey=${creds.reve_secret_key}&content=${encodeURIComponent(JSON.stringify(content))}`;
+    
+    try { await fetch(apiUrl); } catch (e) {}
   }
 };
 
-/**
- * OFFLINE MANAGEMENT SYSTEM
- */
 export const offlineApi = {
-  setCache: (key: string, data: any) => {
-    try { localStorage.setItem(`cache_${key}`, JSON.stringify(data)); } catch (e) {}
-  },
-  getCache: (key: string) => {
-    try {
-      const cached = localStorage.getItem(`cache_${key}`);
-      return cached ? JSON.parse(cached) : null;
-    } catch (e) { return null; }
-  },
+  setCache: (key: string, data: any) => { try { localStorage.setItem(`cache_${key}`, JSON.stringify(data)); } catch (e) {} },
+  getCache: (key: string) => { try { const cached = localStorage.getItem(`cache_${key}`); return cached ? JSON.parse(cached) : null; } catch (e) { return null; } },
   removeCache: (key: string) => localStorage.removeItem(`cache_${key}`),
   queueAction: (table: string, type: 'INSERT' | 'UPDATE' | 'DELETE', payload: any) => {
     const queue = JSON.parse(localStorage.getItem('sync_queue') || '[]');
