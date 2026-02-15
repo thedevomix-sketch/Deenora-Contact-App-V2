@@ -16,7 +16,7 @@ interface StudentDetailsProps {
 
 const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack, lang, readOnly, madrasahId, triggerRefresh }) => {
   
-  const recordCall = async () => {
+  const recordCall = async (specificPhone?: string) => {
     if (!madrasahId || !student.id) return;
     try {
       const { error } = await supabase.from('recent_calls').insert({
@@ -30,19 +30,19 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
     } catch (e) { console.error("recordCall Error:", e); }
   };
 
-  const initiateNormalCall = async () => {
-    await recordCall();
-    window.location.href = `tel:${student.guardian_phone}`;
+  const initiateNormalCall = async (phone: string) => {
+    await recordCall(phone);
+    window.location.href = `tel:${phone}`;
   };
 
-  const initiateWhatsAppCall = async () => {
-    await recordCall();
-    window.location.href = `https://wa.me/88${student.guardian_phone.replace(/\D/g, '')}`;
+  const initiateWhatsAppCall = async (phone: string) => {
+    await recordCall(phone);
+    window.location.href = `https://wa.me/88${phone.replace(/\D/g, '')}`;
   };
 
-  const initiateWhatsAppMessage = async () => {
-    await recordCall();
-    window.location.href = `https://wa.me/88${student.guardian_phone.replace(/\D/g, '')}?text=${encodeURIComponent('আস-সালামু আলাইকুম')}`;
+  const initiateWhatsAppMessage = async (phone: string) => {
+    await recordCall(phone);
+    window.location.href = `https://wa.me/88${phone.replace(/\D/g, '')}?text=${encodeURIComponent('আস-সালামু আলাইকুম')}`;
   };
 
   return (
@@ -81,7 +81,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
 
         <div className="mt-8 grid grid-cols-3 gap-2">
            <button 
-             onClick={initiateNormalCall} 
+             onClick={() => initiateNormalCall(student.guardian_phone)} 
              className="flex flex-col items-center justify-center p-3 bg-[#8D30F4]/5 border border-[#8D30F4]/20 rounded-[1.5rem] text-[#8D30F4] active:scale-95 transition-all group"
            >
               <div className="w-10 h-10 bg-[#8D30F4] text-white rounded-xl flex items-center justify-center mb-2 shadow-md group-active:scale-90 transition-transform">
@@ -91,7 +91,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
            </button>
 
            <button 
-             onClick={initiateWhatsAppCall} 
+             onClick={() => initiateWhatsAppCall(student.guardian_phone)} 
              className="flex flex-col items-center justify-center p-3 bg-[#25d366]/5 border border-[#25d366]/20 rounded-[1.5rem] text-[#25d366] active:scale-95 transition-all group"
            >
               <div className="w-10 h-10 bg-[#25d366] text-white rounded-xl flex items-center justify-center mb-2 shadow-md group-active:scale-90 transition-transform">
@@ -101,7 +101,7 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
            </button>
            
            <button 
-             onClick={initiateWhatsAppMessage} 
+             onClick={() => initiateWhatsAppMessage(student.guardian_phone)} 
              className="flex flex-col items-center justify-center p-3 bg-[#25d366]/5 border border-[#25d366]/20 rounded-[1.5rem] text-[#25d366] active:scale-95 transition-all group"
            >
               <div className="w-10 h-10 bg-[#25d366] text-white rounded-xl flex items-center justify-center mb-2 shadow-md group-active:scale-90 transition-transform">
@@ -122,15 +122,42 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
               </div>
            </div>
 
-           <div className="flex items-center gap-3.5 p-3.5 bg-[#F2EBFF]/40 rounded-xl border border-white">
-              <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center text-[#8D30F4] shrink-0 shadow-sm border border-[#8D30F4]/5">
-                 <Smartphone size={18} />
+           <div className="flex items-center justify-between p-3.5 bg-[#F2EBFF]/40 rounded-xl border border-white">
+              <div className="flex items-center gap-3.5 min-w-0">
+                <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center text-[#8D30F4] shrink-0 shadow-sm border border-[#8D30F4]/5">
+                   <Smartphone size={18} />
+                </div>
+                <div className="min-w-0">
+                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Guardian Phone (Primary)</p>
+                   <p className="text-[15px] font-black text-[#2E0B5E] tracking-tight">{student.guardian_phone}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Guardian Phone</p>
-                 <p className="text-[15px] font-black text-[#2E0B5E] tracking-tight">{student.guardian_phone}</p>
-              </div>
+              <button onClick={() => initiateNormalCall(student.guardian_phone)} className="w-8 h-8 bg-[#8D30F4] text-white rounded-lg flex items-center justify-center active:scale-90 transition-all shadow-sm">
+                 <Phone size={14} fill="currentColor" />
+              </button>
            </div>
+
+           {student.guardian_phone_2 && (
+             <div className="flex items-center justify-between p-3.5 bg-[#F2EBFF]/40 rounded-xl border border-white animate-in slide-in-from-top-2">
+                <div className="flex items-center gap-3.5 min-w-0">
+                  <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center text-[#A179FF] shrink-0 shadow-sm border border-[#A179FF]/5">
+                     <Smartphone size={18} />
+                  </div>
+                  <div className="min-w-0">
+                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Guardian Phone 2</p>
+                     <p className="text-[15px] font-black text-[#2E0B5E] tracking-tight">{student.guardian_phone_2}</p>
+                  </div>
+                </div>
+                <div className="flex gap-1.5">
+                  <button onClick={() => initiateWhatsAppCall(student.guardian_phone_2!)} className="w-8 h-8 bg-[#25d366] text-white rounded-lg flex items-center justify-center active:scale-90 transition-all shadow-sm">
+                     <PhoneCall size={14} fill="currentColor" />
+                  </button>
+                  <button onClick={() => initiateNormalCall(student.guardian_phone_2!)} className="w-8 h-8 bg-[#A179FF] text-white rounded-lg flex items-center justify-center active:scale-90 transition-all shadow-sm">
+                     <Phone size={14} fill="currentColor" />
+                  </button>
+                </div>
+             </div>
+           )}
         </div>
       </div>
       
