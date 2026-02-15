@@ -29,9 +29,9 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
     return false;
   };
 
-  // Improved visibility check using the teacher object passed from App.tsx
-  const canSeeClasses = !teacher || (teacher.permissions.can_manage_students || teacher.permissions.can_manage_classes);
-  const canSeeWallet = !teacher || teacher.permissions.can_send_sms;
+  // Logic based on teacher object
+  const canSeeClasses = !teacher || (teacher.permissions?.can_manage_students || teacher.permissions?.can_manage_classes);
+  const canSeeWallet = !teacher || teacher.permissions?.can_send_sms;
 
   return (
     <div className="flex flex-col overflow-hidden w-full relative" style={{ height: 'var(--app-height, 100%)' }}>

@@ -33,7 +33,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.4.5-PREMIUM";
+  const APP_VERSION = "2.4.6-PREMIUM";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -50,39 +50,46 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const savedTeacher = localStorage.getItem('teacher_session');
-    if (savedTeacher) {
-      const teacherData = JSON.parse(savedTeacher);
-      setTeacher(teacherData);
-      setMadrasah({ 
-        id: teacherData.madrasah_id, 
-        name: teacherData.madrasahs.name, 
-        logo_url: teacherData.madrasahs.logo_url,
-        is_super_admin: false,
-        balance: 0,
-        sms_balance: 0,
-        is_active: true,
-        created_at: teacherData.created_at
-      } as Madrasah);
-      setLoading(false);
-      return;
-    }
+    const initializeSession = async () => {
+      // Check for teacher session first
+      const savedTeacher = localStorage.getItem('teacher_session');
+      if (savedTeacher) {
+        const teacherData = JSON.parse(savedTeacher);
+        setTeacher(teacherData);
+        setMadrasah({ 
+          id: teacherData.madrasah_id, 
+          name: teacherData.madrasahs?.name || 'মাদরাসা কন্টাক্ট', 
+          logo_url: teacherData.madrasahs?.logo_url,
+          is_super_admin: false,
+          balance: 0,
+          sms_balance: 0,
+          is_active: true,
+          created_at: teacherData.created_at
+        } as Madrasah);
+        setLoading(false);
+        return;
+      }
 
-    (supabase.auth as any).getSession().then(({ data: { session: currentSession } }: any) => {
+      // If no teacher session, check for admin session
+      const { data: { session: currentSession } } = await (supabase.auth as any).getSession();
       setSession(currentSession);
       if (currentSession) {
-        fetchMadrasahProfile(currentSession.user.id);
+        await fetchMadrasahProfile(currentSession.user.id);
       } else {
         setLoading(false);
       }
-    });
+    };
+
+    initializeSession();
 
     const { data: { subscription } } = (supabase.auth as any).onAuthStateChange((_event: any, session: any) => {
       setSession(session);
       if (session) {
         fetchMadrasahProfile(session.user.id);
       } else {
-        setMadrasah(null);
+        if (!localStorage.getItem('teacher_session')) {
+          setMadrasah(null);
+        }
         setLoading(false);
       }
     });
@@ -119,11 +126,10 @@ const App: React.FC = () => {
 
   const navigateTo = (newView: View) => {
     if (teacher) {
-      const { permissions } = teacher;
-      // Block views based on specific teacher permissions
-      if (newView === 'classes' && !permissions.can_manage_classes && !permissions.can_manage_students) return;
-      if (newView === 'wallet-sms' && !permissions.can_send_sms) return;
-      // Always block admin features for teachers
+      const perms = teacher.permissions;
+      // Strict access control
+      if (newView === 'classes' && !perms.can_manage_classes && !perms.can_manage_students) return;
+      if (newView === 'wallet-sms' && !perms.can_send_sms) return;
       if (['admin-panel', 'admin-dashboard', 'admin-approvals', 'teachers', 'data-management'].includes(newView)) return;
     }
     triggerRefresh();
