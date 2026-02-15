@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings } from 'lucide-react';
+import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
@@ -30,6 +30,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [newLoginCode, setNewLoginCode] = useState(initialMadrasah?.login_code || '');
   const [logoUrl, setLogoUrl] = useState(initialMadrasah?.logo_url || '');
   
+  const [copiedId, setCopiedId] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -45,6 +46,12 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       ]);
       setStats({ students: stdRes.count || 0, classes: clsRes.count || 0 });
     } catch (e) { console.error(e); } finally { setLoadingStats(false); }
+  };
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedId(true);
+    setTimeout(() => setCopiedId(false), 2000);
   };
 
   const handleUpdate = async () => {
@@ -136,14 +143,19 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
           <div className="text-center w-full px-2">
             <h2 className="text-2xl font-black text-[#2E0B5E] font-noto leading-tight">{madrasah.name}</h2>
-            <div className="mt-2 flex flex-col items-center gap-1.5">
-              <div className="flex items-center gap-2 text-slate-400">
-                <Mail size={12} className="shrink-0" />
-                <span className="text-[11px] font-bold truncate max-w-[200px]">{madrasah.email || 'No login gmail set'}</span>
-              </div>
-              <div className="mt-1 bg-[#F2EBFF] px-4 py-1.5 rounded-xl border border-[#8D30F4]/10 inline-flex items-center gap-2">
-                <Key size={12} className="text-[#8D30F4]" />
-                <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest">Code: {madrasah.login_code || 'N/A'}</p>
+            <div className="mt-4 flex flex-col items-center gap-1.5">
+              <div 
+                onClick={() => copyToClipboard(madrasah.id)}
+                className="bg-[#F2EBFF] px-5 py-2.5 rounded-2xl border border-[#8D30F4]/10 inline-flex items-center gap-2.5 active:scale-95 transition-all cursor-pointer group"
+              >
+                <Fingerprint size={16} className="text-[#8D30F4]" />
+                <div className="flex flex-col items-start">
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Madrasah UUID</p>
+                  <p className="text-[11px] font-black text-[#8D30F4] tracking-tight truncate max-w-[150px]">
+                    {madrasah.id}
+                  </p>
+                </div>
+                {copiedId ? <Check size={14} className="text-green-500" /> : <Copy size={14} className="text-[#8D30F4]/40 group-hover:text-[#8D30F4]" />}
               </div>
             </div>
             {isTeacher && <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest mt-4">Teacher Portal</p>}
