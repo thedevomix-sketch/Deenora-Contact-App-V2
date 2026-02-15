@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp, RefreshCcw, Clock, Hash } from 'lucide-react';
+import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp, RefreshCcw, Clock, Hash, History as HistoryIcon } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, Transaction, AdminSMSStock } from '../types';
 
@@ -18,6 +18,7 @@ interface AdminPanelProps {
 const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dataVersion = 0 }) => {
   const [madrasahs, setMadrasahs] = useState<MadrasahWithStats[]>([]);
   const [pendingTrans, setPendingTrans] = useState<Transaction[]>([]);
+  const [transactionHistory, setTransactionHistory] = useState<Transaction[]>([]);
   const [adminStock, setAdminStock] = useState<AdminSMSStock | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,6 +54,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       await Promise.all([
         fetchAllMadrasahs(), 
         fetchPendingTransactions(), 
+        fetchTransactionHistory(),
         fetchAdminStock(),
         fetchGlobalCounts()
       ]);
@@ -112,6 +114,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     if (data) setPendingTrans(data);
   };
 
+  const fetchTransactionHistory = async () => {
+    const { data } = await supabase.from('transactions')
+      .select('*, madrasahs(*)')
+      .neq('status', 'pending')
+      .order('created_at', { ascending: false })
+      .limit(30);
+    if (data) setTransactionHistory(data);
+  };
+
   const totalDistributedSms = useMemo(() => {
     return madrasahs.reduce((acc, curr) => acc + (curr.sms_balance || 0), 0);
   }, [madrasahs]);
@@ -154,7 +165,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     if (!selectedUser) return;
     setIsUpdatingUser(true);
     try {
-      // FIX: Changed editReve_callerId to editReveCallerId
       const { error: updateError } = await supabase.from('madrasahs').update({
         name: editName.trim(),
         phone: editPhone.trim(),
@@ -187,10 +197,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       const { error } = await supabase.rpc('approve_payment_with_sms', { t_id: tr.id, m_id: tr.madrasah_id, sms_to_give: sms });
       if (error) throw error;
       
-      if (tr.madrasahs?.phone) {
-        const msg = `আস-সালামু আলাইকুম, আপনার ${tr.amount} টাকার রিচার্জ সফল হয়েছে এবং ${sms} টি SMS ক্রেডিট করা হয়েছে। ধন্যবাদ।`;
-        await smsApi.sendDirect(tr.madrasahs.phone, msg, tr.madrasah_id);
-      }
+      // Removed automated SMS notification as requested
 
       setPendingTrans(p => p.filter(t => t.id !== tr.id));
       alert('Approved Successfully!');
@@ -450,78 +457,110 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       )}
 
       {view === 'approvals' && (
-        <div className="space-y-4 px-1">
-          {pendingTrans.length > 0 ? pendingTrans.map(tr => (
-            <div key={tr.id} className="bg-white p-5 rounded-[2rem] border border-white shadow-xl space-y-4 animate-in slide-in-from-bottom-3">
-              {/* Header: Amount & Date */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <div className="bg-green-50 text-green-600 px-3 py-1 rounded-full text-[14px] font-black border border-green-100 flex items-center gap-1.5 shadow-sm">
-                    <TrendingUp size={14} /> {tr.amount} ৳
+        <div className="space-y-8 px-1">
+          {/* Pending Section */}
+          <div className="space-y-4">
+            <h2 className="text-[10px] font-black text-white uppercase tracking-[0.2em] px-2 opacity-80 flex items-center gap-2">
+              <Clock size={12} /> Pending Requests
+            </h2>
+            {pendingTrans.length > 0 ? pendingTrans.map(tr => (
+              <div key={tr.id} className="bg-white p-5 rounded-[2rem] border border-white shadow-xl space-y-4 animate-in slide-in-from-bottom-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="bg-green-50 text-green-600 px-3 py-1 rounded-full text-[14px] font-black border border-green-100 flex items-center gap-1.5 shadow-sm">
+                      <TrendingUp size={14} /> {tr.amount} ৳
+                    </div>
+                    <div className="bg-slate-50 text-slate-400 px-3 py-1 rounded-full text-[9px] font-black border border-slate-100 flex items-center gap-1">
+                      <Clock size={12} /> {new Date(tr.created_at).toLocaleDateString('bn-BD')}
+                    </div>
                   </div>
-                  <div className="bg-slate-50 text-slate-400 px-3 py-1 rounded-full text-[9px] font-black border border-slate-100 flex items-center gap-1">
-                    <Clock size={12} /> {new Date(tr.created_at).toLocaleDateString('bn-BD')}
+                  <div className="w-9 h-9 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center border border-blue-100 shadow-inner">
+                    <CreditCard size={18} />
                   </div>
                 </div>
-                <div className="w-9 h-9 bg-blue-50 text-blue-500 rounded-xl flex items-center justify-center border border-blue-100 shadow-inner">
-                   <CreditCard size={18} />
-                </div>
-              </div>
 
-              {/* Madrasah Info */}
-              <div className="px-1">
-                 <p className="text-[14px] font-black text-slate-800 font-noto leading-tight">{tr.madrasahs?.name}</p>
-                 <div className="flex items-center gap-2 mt-1 opacity-60">
+                <div className="px-1">
+                  <p className="text-[14px] font-black text-slate-800 font-noto leading-tight">{tr.madrasahs?.name}</p>
+                  <div className="flex items-center gap-2 mt-1 opacity-60">
                     <Smartphone size={10} className="text-[#8D30F4]" />
                     <span className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest">{tr.madrasahs?.phone || 'No Phone'}</span>
-                 </div>
-              </div>
+                  </div>
+                </div>
 
-              {/* Transaction Grid */}
-              <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 grid grid-cols-2 gap-3">
-                 <div className="min-w-0">
+                <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 grid grid-cols-2 gap-3">
+                  <div className="min-w-0">
                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Sender</p>
                     <p className="text-[11px] font-black text-slate-700 truncate">{tr.sender_phone}</p>
-                 </div>
-                 <div className="min-w-0 text-right">
+                  </div>
+                  <div className="min-w-0 text-right">
                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-0.5">TrxID</p>
                     <p className="text-[11px] font-black text-[#8D30F4] uppercase truncate">{tr.transaction_id}</p>
-                 </div>
-              </div>
+                  </div>
+                </div>
 
-              {/* Input for SMS Credits */}
-              <div className="relative group">
-                 <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#8D30F4]" size={14} />
-                 <input 
-                   type="number" 
-                   className="w-full h-12 pl-10 pr-5 bg-slate-50 border border-slate-100 rounded-xl font-black text-sm outline-none focus:border-[#8D30F4]/30 transition-all text-center" 
-                   value={smsToCredit[tr.id] || ''} 
-                   onChange={(e) => setSmsToCredit({...smsToCredit, [tr.id]: e.target.value})} 
-                   placeholder="Give SMS Credits (e.g. 500)" 
-                 />
-              </div>
+                <div className="relative group">
+                  <Hash className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#8D30F4]" size={14} />
+                  <input 
+                    type="number" 
+                    className="w-full h-12 pl-10 pr-5 bg-slate-50 border border-slate-100 rounded-xl font-black text-sm outline-none focus:border-[#8D30F4]/30 transition-all text-center" 
+                    value={smsToCredit[tr.id] || ''} 
+                    onChange={(e) => setSmsToCredit({...smsToCredit, [tr.id]: e.target.value})} 
+                    placeholder="Give SMS Credits (e.g. 500)" 
+                  />
+                </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-2">
-                 <button 
-                   onClick={() => approveTransaction(tr)} 
-                   className="flex-[2] h-12 bg-green-500 text-white font-black rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-green-100 active:scale-95 transition-all text-xs"
-                 >
-                   <CheckCircle size={16} /> Approve
-                 </button>
-                 <button 
-                   onClick={async () => { if(confirm('Reject?')) { await supabase.from('transactions').update({ status: 'rejected' }).eq('id', tr.id); initData(); } }} 
-                   className="flex-1 h-12 bg-red-50 text-red-500 font-black rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all text-xs border border-red-100"
-                 >
-                   <XCircle size={16} /> Reject
-                 </button>
+                <div className="flex gap-2">
+                  <button 
+                    onClick={() => approveTransaction(tr)} 
+                    className="flex-[2] h-12 bg-green-500 text-white font-black rounded-xl flex items-center justify-center gap-2 shadow-lg shadow-green-100 active:scale-95 transition-all text-xs"
+                  >
+                    <CheckCircle size={16} /> Approve
+                  </button>
+                  <button 
+                    onClick={async () => { if(confirm('Reject?')) { await supabase.from('transactions').update({ status: 'rejected' }).eq('id', tr.id); initData(); } }} 
+                    className="flex-1 h-12 bg-red-50 text-red-500 font-black rounded-xl flex items-center justify-center gap-2 active:scale-95 transition-all text-xs border border-red-100"
+                  >
+                    <XCircle size={16} /> Reject
+                  </button>
+                </div>
               </div>
+            )) : (
+              <div className="text-center py-10 bg-white/10 rounded-[2.5rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
+                <p className="text-white font-black uppercase text-[10px] tracking-[0.2em] drop-shadow-sm">No pending requests</p>
+              </div>
+            )}
+          </div>
+
+          {/* History Section */}
+          <div className="space-y-4">
+            <h2 className="text-[10px] font-black text-white uppercase tracking-[0.2em] px-2 opacity-80 flex items-center gap-2">
+              <HistoryIcon size={12} /> Transaction History
+            </h2>
+            <div className="space-y-2">
+              {transactionHistory.length > 0 ? transactionHistory.map(tr => (
+                <div key={tr.id} className="bg-white/95 backdrop-blur-md p-4 rounded-[1.8rem] border border-white/40 flex items-center justify-between shadow-lg">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className="font-black text-slate-800 text-sm truncate font-noto">{tr.madrasahs?.name}</h4>
+                      <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${tr.status === 'approved' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
+                        {tr.status}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-3 mt-1">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{tr.amount} ৳</p>
+                      <span className="text-slate-200 text-xs">•</span>
+                      <p className="text-[9px] font-bold text-slate-400 truncate">{new Date(tr.created_at).toLocaleDateString('bn-BD')}</p>
+                    </div>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="text-[8px] font-black text-[#8D30F4] uppercase tracking-tighter truncate max-w-[80px]">{tr.transaction_id}</p>
+                  </div>
+                </div>
+              )) : (
+                <p className="text-center text-white/40 text-[9px] font-black uppercase tracking-widest py-4">No history records yet</p>
+              )}
             </div>
-          )) : (
-            <div className="text-center py-20 bg-white/10 rounded-[2.5rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
-               <p className="text-white font-black uppercase text-[10px] tracking-[0.2em] drop-shadow-sm">No pending requests</p>
-            </div>
-          )}
+          </div>
         </div>
       )}
     </div>
