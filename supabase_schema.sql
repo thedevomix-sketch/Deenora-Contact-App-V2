@@ -1,6 +1,6 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V8 - RPC FIX)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V9 - ADMIN RLS & BLOCK FIX)
 -- ======================================================
 
 -- Enable UUID extension
@@ -24,6 +24,19 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     reve_client_id TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- RLS Policies for Madrasahs table
+ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
+
+-- Users can read their own data OR admins can read all
+CREATE POLICY "Users can view own profile or admins view all" 
+ON public.madrasahs FOR SELECT 
+USING (auth.uid() = id OR (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true);
+
+-- ONLY Super Admins or the User themselves can update
+CREATE POLICY "Users can update own profile or admins update all" 
+ON public.madrasahs FOR UPDATE 
+USING (auth.uid() = id OR (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true);
 
 -- ২. ক্লাস টেবিল
 CREATE TABLE IF NOT EXISTS public.classes (
@@ -145,7 +158,7 @@ BEGIN
     SET sms_balance = COALESCE(sms_balance, 0) + sms_to_give 
     WHERE id = m_id;
 
-    -- Update admin stock (Crucial: Added WHERE clause to satisfy DB constraints)
+    -- Update admin stock
     UPDATE public.admin_sms_stock 
     SET remaining_sms = COALESCE(remaining_sms, 0) - sms_to_give
     WHERE id IS NOT NULL;

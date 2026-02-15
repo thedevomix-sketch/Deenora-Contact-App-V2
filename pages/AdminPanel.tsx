@@ -77,7 +77,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
         updated_at: new Date().toISOString()
       });
       if (error) throw error;
-      alert('Global Settings Saved');
+      alert('Global Settings Saved Successfully');
     } catch (err: any) { alert(err.message); } finally { setSavingGateway(false); }
   };
 
@@ -126,6 +126,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     if (!selectedUser) return;
     setIsUpdatingUser(true);
     try {
+      // Direct update to Supabase
       const { error } = await supabase.from('madrasahs').update({
         name: editName.trim(),
         phone: editPhone.trim(),
@@ -138,11 +139,17 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       }).eq('id', selectedUser.id);
       
       if (error) throw error;
+      
       alert('User Settings Updated Successfully');
-      fetchAllMadrasahs();
-      setView('list');
+      await fetchAllMadrasahs(); // Refresh the list
+      setView('list'); // Back to list view
       setSelectedUser(null);
-    } catch (err: any) { alert(err.message); } finally { setIsUpdatingUser(false); }
+    } catch (err: any) { 
+      alert('Update Error: ' + err.message); 
+      console.error(err);
+    } finally { 
+      setIsUpdatingUser(false); 
+    }
   };
 
   const approveTransaction = async (tr: Transaction) => {
@@ -252,7 +259,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                  <h2 className="text-2xl font-black text-slate-800 font-noto tracking-tight">{selectedUser.name}</h2>
                  <div onClick={() => copyToClipboard(selectedUser.id)} className="mt-3 bg-[#F2EBFF] px-4 py-1.5 rounded-xl border border-[#8D30F4]/10 flex items-center gap-2 cursor-pointer active:scale-95 transition-all">
                     <Shield size={12} className="text-[#8D30F4]" />
-                    <p className="text-[9px] font-black text-[#8D30F4] uppercase tracking-widest">ID: {selectedUser.id.split('-')[0]}...</p>
+                    <p className="text-[9px] font-black text-[#8D30F4] uppercase tracking-widest">ID: {selectedUser.id}</p>
                     {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} className="text-[#8D30F4]/40" />}
                  </div>
               </div>

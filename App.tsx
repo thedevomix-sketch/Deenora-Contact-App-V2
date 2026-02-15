@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase, offlineApi } from './supabase';
 import Auth from './pages/Auth';
@@ -12,7 +13,7 @@ import AdminPanel from './pages/AdminPanel';
 import WalletSMS from './pages/WalletSMS';
 import DataManagement from './pages/DataManagement';
 import { View, Class, Student, Language, Madrasah } from './types';
-import { WifiOff, Loader2, AlertCircle, RefreshCw, X, Sparkles, Zap } from 'lucide-react';
+import { WifiOff, Loader2, AlertCircle, RefreshCw, X, Sparkles, Zap, ShieldAlert } from 'lucide-react';
 import { t } from './translations';
 
 const App: React.FC = () => {
@@ -32,7 +33,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.2.2-STABLE";
+  const APP_VERSION = "2.2.3-STABLE";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -160,6 +161,27 @@ const App: React.FC = () => {
   }
 
   if (!session) return <Auth lang={lang} />;
+
+  // Account Block Enforcement
+  if (madrasah && madrasah.is_active === false) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#9D50FF] p-8 text-center animate-in fade-in">
+        <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-[2.5rem] flex items-center justify-center text-white mb-8 border border-white/20 shadow-2xl">
+           <ShieldAlert size={50} />
+        </div>
+        <h2 className="text-2xl font-black text-white mb-3 font-noto tracking-tight">আপনার অ্যাকাউন্ট নিষ্ক্রিয়!</h2>
+        <p className="text-white/70 font-bold font-noto mb-10 leading-relaxed max-w-xs">
+           দুঃখিত, আপনার মাদরাসার অ্যাকাউন্টটি বর্তমানে অ্যাডমিন কর্তৃক ব্লক করা হয়েছে। বিস্তারিত জানতে বা অ্যাকাউন্ট সক্রিয় করতে আমাদের সাথে যোগাযোগ করুন।
+        </p>
+        <button 
+          onClick={() => supabase.auth.signOut()} 
+          className="bg-white text-red-500 px-10 py-4 rounded-full font-black shadow-2xl active:scale-95 transition-all"
+        >
+          লগ আউট করুন
+        </button>
+      </div>
+    );
+  }
 
   if (error) {
     return (
