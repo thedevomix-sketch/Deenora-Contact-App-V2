@@ -1,4 +1,8 @@
 
+/**
+ * Global Type Definitions for Madrasah Management App
+ */
+
 export type Language = 'bn' | 'en';
 
 export interface Madrasah {
@@ -13,11 +17,75 @@ export interface Madrasah {
   login_code?: string;
   balance: number;
   sms_balance: number;
-  // REVE SMS Credentials
   reve_api_key?: string;
   reve_secret_key?: string;
   reve_caller_id?: string;
   reve_client_id?: string;
+}
+
+export interface Class {
+  id: string;
+  madrasah_id: string;
+  class_name: string;
+  created_at?: string;
+}
+
+export interface Student {
+  id: string;
+  madrasah_id: string;
+  class_id: string;
+  student_name: string;
+  roll: number | null;
+  guardian_name?: string;
+  guardian_phone: string;
+  guardian_phone_2?: string;
+  photo_url?: string;
+  created_at?: string;
+  classes?: Class;
+}
+
+export interface Teacher {
+  id: string;
+  madrasah_id: string;
+  name: string;
+  phone: string;
+  login_code: string;
+  is_active: boolean;
+  permissions: {
+    can_manage_students: boolean;
+    can_manage_classes: boolean;
+    can_send_sms: boolean;
+  };
+  created_at: string;
+}
+
+export interface RecentCall {
+  id: string;
+  madrasah_id: string;
+  student_id: string;
+  called_at: string;
+  students?: Student;
+}
+
+export interface SMSTemplate {
+  id: string;
+  madrasah_id?: string;
+  title: string;
+  body: string;
+  created_at?: string;
+}
+
+export interface Transaction {
+  id: string;
+  madrasah_id: string;
+  amount: number;
+  transaction_id: string;
+  sender_phone: string;
+  description?: string;
+  type: 'credit' | 'debit';
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  madrasahs?: Madrasah;
 }
 
 export interface AdminSMSStock {
@@ -26,70 +94,7 @@ export interface AdminSMSStock {
   updated_at: string;
 }
 
-export interface Class {
-  id: string;
-  class_name: string;
-  madrasah_id: string;
-  created_at: string;
-}
-
-export interface Student {
-  id: string;
-  student_name: string;
-  guardian_name?: string;
-  roll?: number;
-  guardian_phone: string;
-  guardian_phone_2?: string;
-  photo_url?: string;
-  class_id: string;
-  madrasah_id: string;
-  created_at: string;
-  classes?: Class;
-}
-
-export interface Transaction {
-  id: string;
-  madrasah_id: string;
-  amount: number;
-  type: 'credit' | 'debit';
-  status: 'pending' | 'approved' | 'rejected';
-  transaction_id?: string;
-  sender_phone?: string;
-  description: string;
-  sms_count?: number;
-  created_at: string;
-  madrasahs?: Madrasah;
-}
-
-export interface SMSTemplate {
-  id: string;
-  madrasah_id: string;
-  title: string;
-  body: string;
-  created_at: string;
-}
-
-export interface SMSLog {
-  id: string;
-  madrasah_id: string;
-  student_id?: string;
-  recipient_phone: string;
-  message: string;
-  cost: number;
-  status: 'sent' | 'failed';
-  created_at: string;
-}
-
-export interface RecentCall {
-  id: string;
-  student_id: string;
-  guardian_phone: string;
-  madrasah_id: string;
-  called_at: string;
-  students?: Student;
-}
-
-export type View = 'home' | 'classes' | 'account' | 'students' | 'student-details' | 'student-form' | 'class-form' | 'admin-panel' | 'transactions' | 'wallet-sms' | 'admin-dashboard' | 'admin-approvals' | 'data-management';
+export type View = 'home' | 'classes' | 'account' | 'students' | 'student-details' | 'student-form' | 'class-form' | 'admin-panel' | 'transactions' | 'wallet-sms' | 'admin-dashboard' | 'admin-approvals' | 'data-management' | 'teachers';
 
 export interface AppState {
   currentView: View;
