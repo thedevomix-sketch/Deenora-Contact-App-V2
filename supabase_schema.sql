@@ -1,6 +1,6 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V15 - ROBUST BALANCE)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V16 - POLICY FIX)
 -- ======================================================
 
 -- Enable UUID extension
@@ -24,7 +24,6 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- RLS Enable
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
 -- সিকিউরিটি ডিফাইনার ফাংশন
@@ -38,7 +37,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Madrasahs Policies
+-- Madrasahs Policies (FIXED: DROP IF EXISTS)
 DROP POLICY IF EXISTS "madrasah_select_policy" ON public.madrasahs;
 DROP POLICY IF EXISTS "madrasah_update_own" ON public.madrasahs;
 DROP POLICY IF EXISTS "madrasah_admin_policy" ON public.madrasahs;
@@ -56,6 +55,10 @@ CREATE TABLE IF NOT EXISTS public.classes (
 );
 
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "class_select_policy" ON public.classes;
+DROP POLICY IF EXISTS "class_manage_policy" ON public.classes;
+
 CREATE POLICY "class_select_policy" ON public.classes FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "class_manage_policy" ON public.classes FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
@@ -75,6 +78,10 @@ CREATE TABLE IF NOT EXISTS public.students (
 );
 
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "student_select_policy" ON public.students;
+DROP POLICY IF EXISTS "student_manage_policy" ON public.students;
+
 CREATE POLICY "student_select_policy" ON public.students FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "student_manage_policy" ON public.students FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
@@ -92,15 +99,40 @@ CREATE TABLE IF NOT EXISTS public.transactions (
 );
 
 ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "trans_select_policy" ON public.transactions;
+DROP POLICY IF EXISTS "trans_insert_policy" ON public.transactions;
+DROP POLICY IF EXISTS "trans_admin_policy" ON public.transactions;
+
 CREATE POLICY "trans_select_policy" ON public.transactions FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "trans_insert_policy" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = madrasah_id);
 CREATE POLICY "trans_admin_policy" ON public.transactions FOR ALL USING (public.is_admin(auth.uid()));
 
 -- ৫. এসএমএস টেমপ্লেট ও লগ
-ALTER TABLE public.sms_templates ENABLE ROW LEVEL SECURITY;
-CREATE POLICY "template_policy" ON public.sms_templates FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
+CREATE TABLE IF NOT EXISTS public.sms_templates (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
+    title TEXT NOT NULL,
+    body TEXT NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 
+CREATE TABLE IF NOT EXISTS public.sms_logs (
+    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
+    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
+    recipient_phone TEXT NOT NULL,
+    message TEXT NOT NULL,
+    status TEXT DEFAULT 'sent',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.sms_templates ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.sms_logs ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "template_policy" ON public.sms_templates;
+DROP POLICY IF EXISTS "logs_policy" ON public.sms_logs;
+
+CREATE POLICY "template_policy" ON public.sms_templates FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "logs_policy" ON public.sms_logs FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
 -- ৬. অ্যাডমিন এসএমএস স্টক টেবিল
@@ -110,7 +142,6 @@ CREATE TABLE IF NOT EXISTS public.admin_sms_stock (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- নিশ্চিত করুন যে স্টক টেবিলে একটি রো আছে
 INSERT INTO public.admin_sms_stock (remaining_sms) 
 SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM public.admin_sms_stock);
 
@@ -125,12 +156,11 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- নিশ্চিত করুন যে সেটিংস টেবিলে একটি রো আছে
 INSERT INTO public.system_settings (id, bkash_number) 
 SELECT '00000000-0000-0000-0000-000000000001', '017XXXXXXXX' 
 WHERE NOT EXISTS (SELECT 1 FROM public.system_settings WHERE id = '00000000-0000-0000-0000-000000000001');
 
--- ৮. বাল্ক এসএমএস আরপিসি (UPDATED WITH COALESCE)
+-- ৮. বাল্ক এসএমএস আরপিসি
 CREATE OR REPLACE FUNCTION public.send_bulk_sms_rpc(
   p_madrasah_id UUID,
   p_student_ids UUID[],
@@ -154,7 +184,7 @@ BEGIN
     SET sms_balance = COALESCE(sms_balance, 0) - v_sms_count 
     WHERE id = p_madrasah_id;
 
-    -- ২. অ্যাডমিন স্টক থেকেও কমানো (গ্লোবাল ট্র্যাকিং এর জন্য)
+    -- ২. অ্যাডমিন স্টক থেকেও কমানো
     UPDATE public.admin_sms_stock 
     SET remaining_sms = COALESCE(remaining_sms, 0) - v_sms_count 
     WHERE id IS NOT NULL;
