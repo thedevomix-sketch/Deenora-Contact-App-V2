@@ -21,11 +21,15 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
   const [loadingRecent, setLoadingRecent] = useState(true);
 
   const fetchRecentCalls = async (isManual = false) => {
+    if (!madrasahId) {
+      setLoadingRecent(false);
+      return;
+    }
+    
     if (isManual) setLoadingRecent(true);
-    if (!madrasahId) return;
     
     const cached = offlineApi.getCache('recent_calls');
-    if (cached) setRecentCalls(cached);
+    if (cached && !isManual) setRecentCalls(cached);
 
     if (navigator.onLine) {
       try {
@@ -35,27 +39,46 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
           .eq('madrasah_id', madrasahId)
           .order('called_at', { ascending: false })
           .limit(10);
-        if (!error && data) {
+        
+        if (error) throw error;
+        
+        if (data) {
           setRecentCalls(data);
           offlineApi.setCache('recent_calls', data);
         }
-      } catch (err) { console.error(err); } finally { setLoadingRecent(false); }
-    } else { setLoadingRecent(false); }
+      } catch (err) { 
+        console.error("Fetch Recent Calls Error:", err); 
+      } finally { 
+        setLoadingRecent(false); 
+      }
+    } else { 
+      setLoadingRecent(false); 
+    }
   };
 
-  useEffect(() => { fetchRecentCalls(); }, [dataVersion, madrasahId]);
+  useEffect(() => { 
+    fetchRecentCalls(); 
+  }, [dataVersion, madrasahId]);
 
   const recordCall = async (studentId: string) => {
     if (!madrasahId || !studentId) return;
     try {
-      await supabase.from('recent_calls').insert({
+      // Optimistically update local state for better UX
+      const { error } = await supabase.from('recent_calls').insert({
         madrasah_id: madrasahId,
         student_id: studentId,
         called_at: new Date().toISOString()
       });
+      
+      if (error) {
+        console.error("DB Recording Error:", error);
+        // If DB fails, we still want to refresh to see what's actually there
+      }
+      
+      // Trigger global refresh to update lists
       triggerRefresh();
     } catch (e) {
-      console.error("Error recording call:", e);
+      console.error("Critical Call Recording Error:", e);
     }
   };
 

@@ -1,32 +1,31 @@
 
--- ... (পূর্বের টেবিলগুলো অপরিবর্তিত থাকবে) ...
+-- ... (পূর্বের পলিসিগুলো থাকবে) ...
 
--- ১. ক্লাস (Classes) টেবিলের জন্য রিড পারমিশন (শিক্ষকদের জন্য)
-DROP POLICY IF EXISTS "Allow teachers to read classes" ON public.classes;
-CREATE POLICY "Allow teachers to read classes" ON public.classes
-    FOR SELECT TO anon
-    USING (true); -- অ্যাপ লেভেলে মাদরাসা আইডি দিয়ে ফিল্টার করা হচ্ছে
-
--- ২. ছাত্র (Students) টেবিলের জন্য রিড পারমিশন (শিক্ষকদের জন্য)
-DROP POLICY IF EXISTS "Allow teachers to read students" ON public.students;
-CREATE POLICY "Allow teachers to read students" ON public.students
-    FOR SELECT TO anon
-    USING (true);
-
--- ৩. রিসেন্ট কল (Recent Calls) টেবিলের জন্য রিড পারমিশন
+-- ৩. রিসেন্ট কল (Recent Calls) টেবিলের জন্য রিড ও রাইট পারমিশন
 DROP POLICY IF EXISTS "Allow teachers to read recent calls" ON public.recent_calls;
 CREATE POLICY "Allow teachers to read recent calls" ON public.recent_calls
     FOR SELECT TO anon
     USING (true);
 
--- ৪. শিক্ষক (Teacher) টেবিলের পলিসি আপডেট
-DROP POLICY IF EXISTS "Allow teacher login check" ON public.teachers;
-CREATE POLICY "Allow teacher login check" ON public.teachers
-    FOR SELECT TO anon
-    USING (is_active = true);
+DROP POLICY IF EXISTS "Allow anyone to insert recent calls" ON public.recent_calls;
+CREATE POLICY "Allow anyone to insert recent calls" ON public.recent_calls
+    FOR INSERT TO anon
+    WITH CHECK (true);
 
--- ৫. মাদরাসা (Madrasahs) টেবিলের বেসিক রিড (লোগো ও নামের জন্য)
-DROP POLICY IF EXISTS "Allow public to see madrasah basic info" ON public.madrasahs;
-CREATE POLICY "Allow public to see madrasah basic info" ON public.madrasahs
+-- ৪. ট্রানজ্যাকশন (Transactions) টেবিলের জন্য রাইট পারমিশন (রিচার্জ রিকোয়েস্টের জন্য)
+DROP POLICY IF EXISTS "Allow users to insert transaction requests" ON public.transactions;
+CREATE POLICY "Allow users to insert transaction requests" ON public.transactions
+    FOR INSERT TO anon
+    WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow users to read own transactions" ON public.transactions;
+CREATE POLICY "Allow users to read own transactions" ON public.transactions
     FOR SELECT TO anon
-    USING (is_active = true);
+    USING (true);
+
+-- ৫. স্টুডেন্ট টেবিলের জন্য আপডেট পারমিশন (যদি শিক্ষককে এডিট পারমিশন দেওয়া হয়)
+DROP POLICY IF EXISTS "Allow updates to students" ON public.students;
+CREATE POLICY "Allow updates to students" ON public.students
+    FOR UPDATE TO anon
+    USING (true)
+    WITH CHECK (true);
