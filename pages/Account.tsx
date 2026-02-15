@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Camera, Loader2, Lock, User as UserIcon, ShieldCheck, Database, Phone, ChevronRight, Hash, Copy, Check, MessageSquare, Zap, Globe, Smartphone, Server, Star, Save, Users, Layers, Edit3, X, UserPlus, Languages, Mail, Key } from 'lucide-react';
+import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
@@ -30,19 +30,11 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [newLoginCode, setNewLoginCode] = useState(initialMadrasah?.login_code || '');
   const [logoUrl, setLogoUrl] = useState(initialMadrasah?.logo_url || '');
   
-  const [reveApiKey, setReveApiKey] = useState('');
-  const [reveSecretKey, setReveSecretKey] = useState('');
-  const [reveCallerId, setReveCallerId] = useState('');
-  const [reveClientId, setReveClientId] = useState('');
-  const [bkashNumber, setBkashNumber] = useState('');
-
-  const [copied, setCopied] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetchStats();
-    if (isSuperAdmin) fetchGlobalSettings();
-  }, [isSuperAdmin, initialMadrasah?.id]);
+  }, [initialMadrasah?.id]);
 
   const fetchStats = async () => {
     if (!initialMadrasah) return;
@@ -53,17 +45,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       ]);
       setStats({ students: stdRes.count || 0, classes: clsRes.count || 0 });
     } catch (e) { console.error(e); } finally { setLoadingStats(false); }
-  };
-
-  const fetchGlobalSettings = async () => {
-    const settings = await smsApi.getGlobalSettings();
-    if (settings) {
-      setReveApiKey(settings.reve_api_key || '');
-      setReveSecretKey(settings.reve_secret_key || '');
-      setReveCallerId(settings.reve_caller_id || '');
-      setReveClientId(settings.reve_client_id || '');
-      setBkashNumber(settings.bkash_number || '');
-    }
   };
 
   const handleUpdate = async () => {
@@ -82,7 +63,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       if (onProfileUpdate) onProfileUpdate();
       setIsEditingProfile(false);
       
-      // Update local state to reflect changes immediately
       setMadrasah(prev => prev ? { 
         ...prev, 
         name: newName.trim(), 
@@ -112,7 +92,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-24">
-      {/* Premium Stats Grid */}
+      {/* Stats Summary Area */}
       {!isSuperAdmin && (
         <div className="grid grid-cols-3 gap-3 px-1">
           <div className="bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-white shadow-xl flex flex-col items-center text-center">
@@ -120,51 +100,26 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                <Users size={20} />
             </div>
             <p className="text-lg font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.students}</p>
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Students</p>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">Students</p>
           </div>
           <div className="bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-white shadow-xl flex flex-col items-center text-center">
             <div className="w-10 h-10 bg-purple-50 text-purple-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
                <Layers size={20} />
             </div>
             <p className="text-lg font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.classes}</p>
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Classes</p>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">Classes</p>
           </div>
           <div className="bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-white shadow-xl flex flex-col items-center text-center">
             <div className="w-10 h-10 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
                <Zap size={20} />
             </div>
             <p className="text-lg font-black text-[#2E0B5E] leading-none">{madrasah.sms_balance || 0}</p>
-            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">SMS</p>
+            <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1.5">SMS</p>
           </div>
         </div>
       )}
 
-      {/* Language Selection Card */}
-      <div className="bg-white/95 backdrop-blur-xl p-6 rounded-[2.5rem] border border-white shadow-xl space-y-4">
-        <div className="flex items-center gap-3 px-2">
-           <div className="w-9 h-9 bg-[#F2EBFF] text-[#8D30F4] rounded-xl flex items-center justify-center">
-              <Languages size={20} />
-           </div>
-           <h3 className="text-md font-black text-[#2E0B5E] uppercase tracking-wider">{t('language', lang)}</h3>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-           <button 
-             onClick={() => setLang('bn')} 
-             className={`p-4 rounded-2xl flex items-center justify-between transition-all border-2 ${lang === 'bn' ? 'bg-[#8D30F4]/5 border-[#8D30F4]/30 text-[#8D30F4]' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
-           >
-              <span className="font-black text-sm">বাংলা</span>
-              {lang === 'bn' && <Check size={18} strokeWidth={4} />}
-           </button>
-           <button 
-             onClick={() => setLang('en')} 
-             className={`p-4 rounded-2xl flex items-center justify-between transition-all border-2 ${lang === 'en' ? 'bg-[#8D30F4]/5 border-[#8D30F4]/30 text-[#8D30F4]' : 'bg-slate-50 border-slate-100 text-slate-400'}`}
-           >
-              <span className="font-black text-sm">English</span>
-              {lang === 'en' && <Check size={18} strokeWidth={4} />}
-           </button>
-        </div>
-      </div>
-
+      {/* Main Profile Card */}
       <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] border border-white/50 shadow-2xl space-y-8 relative overflow-hidden">
         <div className="flex flex-col items-center gap-6 relative z-10">
           <div className="relative group">
@@ -179,25 +134,26 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
           </div>
 
-          <div className="text-center w-full px-4">
+          <div className="text-center w-full px-2">
             <h2 className="text-2xl font-black text-[#2E0B5E] font-noto leading-tight">{madrasah.name}</h2>
-            <div className="mt-2 flex flex-col items-center gap-1">
-              <div className="flex items-center gap-1.5 text-slate-400">
-                <Mail size={12} />
-                <span className="text-[11px] font-bold">{madrasah.email || 'No email set'}</span>
+            <div className="mt-2 flex flex-col items-center gap-1.5">
+              <div className="flex items-center gap-2 text-slate-400">
+                <Mail size={12} className="shrink-0" />
+                <span className="text-[11px] font-bold truncate max-w-[200px]">{madrasah.email || 'No login gmail set'}</span>
               </div>
-              <div className="mt-2 bg-[#F2EBFF] px-4 py-1.5 rounded-xl border border-[#8D30F4]/10 inline-flex items-center gap-2">
+              <div className="mt-1 bg-[#F2EBFF] px-4 py-1.5 rounded-xl border border-[#8D30F4]/10 inline-flex items-center gap-2">
                 <Key size={12} className="text-[#8D30F4]" />
                 <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest">Code: {madrasah.login_code || 'N/A'}</p>
               </div>
             </div>
-            {isTeacher && <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest mt-3">Logged in as Teacher</p>}
+            {isTeacher && <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest mt-4">Teacher Portal</p>}
           </div>
         </div>
 
-        <div className="space-y-4">
+        {/* Action List / Form */}
+        <div className="space-y-4 pt-2">
           {isEditingProfile && !isTeacher ? (
-            <div className="space-y-4">
+            <div className="space-y-4 animate-in slide-in-from-top-4">
               <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">মাদরাসার নাম</label>
                 <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full font-noto" value={newName} onChange={(e) => setNewName(e.target.value)} />
@@ -214,10 +170,10 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">মাদরাসা কোড</label>
                 <input type="text" className="bg-transparent border-none outline-none font-black text-[#8D30F4] text-base w-full" value={newLoginCode} onChange={(e) => setNewLoginCode(e.target.value)} />
               </div>
-              <div className="flex gap-3 pt-2">
+              <div className="flex gap-3 pt-4">
                 <button onClick={() => setIsEditingProfile(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-2xl text-sm">Cancel</button>
-                <button onClick={handleUpdate} disabled={saving} className="flex-[2] py-4 bg-[#8D30F4] text-white font-black rounded-2xl text-sm shadow-lg">
-                  {saving ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Update Info'}
+                <button onClick={handleUpdate} disabled={saving} className="flex-[2] py-4 bg-[#8D30F4] text-white font-black rounded-2xl text-sm shadow-xl">
+                  {saving ? <Loader2 className="animate-spin mx-auto" size={18} /> : 'Save Changes'}
                 </button>
               </div>
             </div>
@@ -239,11 +195,35 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                     </div>
                     <ChevronRight size={20} className="text-slate-300" />
                   </button>
-                  <button onClick={() => setIsEditingProfile(true)} className="w-full h-16 bg-[#F2EBFF] text-[#8D30F4] font-black rounded-3xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all border border-[#8D30F4]/10">
+                  <button onClick={() => setIsEditingProfile(true)} className="w-full h-16 bg-[#F2EBFF] text-[#8D30F4] font-black rounded-3xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all border border-[#8D30F4]/10 mb-6">
                     <Edit3 size={20} /> Edit Account Info
                   </button>
                 </>
               )}
+
+              {/* Language Selection Row (Bottom of Card) */}
+              <div className="pt-6 border-t border-slate-100 space-y-4">
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2 text-slate-400">
+                    <Languages size={14} />
+                    <span className="text-[10px] font-black uppercase tracking-widest">{t('language', lang)}</span>
+                  </div>
+                  <div className="flex p-1 bg-slate-100 rounded-xl">
+                    <button 
+                      onClick={() => setLang('bn')} 
+                      className={`px-4 py-1.5 rounded-lg text-[11px] font-black transition-all ${lang === 'bn' ? 'bg-white text-[#8D30F4] shadow-sm' : 'text-slate-400'}`}
+                    >
+                      বাংলা
+                    </button>
+                    <button 
+                      onClick={() => setLang('en')} 
+                      className={`px-4 py-1.5 rounded-lg text-[11px] font-black transition-all ${lang === 'en' ? 'bg-white text-[#8D30F4] shadow-sm' : 'text-slate-400'}`}
+                    >
+                      EN
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
         </div>
