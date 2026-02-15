@@ -38,7 +38,7 @@ export const smsApi = {
         reve_secret_key: data.reve_secret_key || defaults.reve_secret_key,
         reve_caller_id: data.reve_caller_id || defaults.reve_caller_id,
         bkash_number: data.bkash_number || defaults.bkash_number,
-        reve_client_id: data.reve_client_id || ''
+        reve_client_id: data.reve_client_id || defaults.reve_client_id
       };
     } catch (e) {
       return { 
@@ -54,7 +54,7 @@ export const smsApi = {
   sendBulk: async (madrasahId: string, students: Student[], message: string) => {
     // 1. Fetch settings and profile
     const [mRes, global] = await Promise.all([
-      supabase.from('madrasahs').select('sms_balance, reve_api_key, reve_secret_key, reve_caller_id').eq('id', madrasahId).single(),
+      supabase.from('madrasahs').select('sms_balance, reve_api_key, reve_secret_key, reve_caller_id, reve_client_id').eq('id', madrasahId).single(),
       smsApi.getGlobalSettings()
     ]);
 
@@ -66,8 +66,7 @@ export const smsApi = {
       throw new Error(`Insufficient SMS balance. Needed: ${students.length}, Available: ${balance}`);
     }
 
-    // 2. CRITICAL: Call RPC FIRST to deduct balance.
-    // If this fails, we stop here.
+    // 2. Deduct balance via RPC
     const { data: rpcData, error: rpcError } = await supabase.rpc('send_bulk_sms_rpc', {
       p_madrasah_id: madrasahId,
       p_student_ids: students.map(s => s.id),
@@ -77,10 +76,12 @@ export const smsApi = {
     if (rpcError) throw new Error("Balance Update Failed: " + rpcError.message);
     if (rpcData && rpcData.success === false) throw new Error(rpcData.error || "Transaction denied");
 
-    // 3. SECOND: Fire the SMS request to the gateway
+    // 3. Send SMS to gateway
     const apiKey = (mData.reve_api_key && mData.reve_api_key.trim() !== '') ? mData.reve_api_key : global.reve_api_key;
     const secretKey = (mData.reve_secret_key && mData.reve_secret_key.trim() !== '') ? mData.reve_secret_key : global.reve_secret_key;
     const callerId = (mData.reve_caller_id && mData.reve_caller_id.trim() !== '') ? mData.reve_caller_id : global.reve_caller_id;
+    // client_id support can be added to URL params if required by REVE SMS version
+    const clientId = (mData.reve_client_id && mData.reve_client_id.trim() !== '') ? mData.reve_client_id : global.reve_client_id;
 
     const phoneList = students.map(s => {
       let p = s.guardian_phone.replace(/\D/g, '');
@@ -93,17 +94,18 @@ export const smsApi = {
       messageContent: message
     }];
 
-    const apiUrl = `https://smpp.revesms.com:7790/send?apikey=${apiKey}&secretkey=${secretKey}&content=${encodeURIComponent(JSON.stringify(contentArray))}`;
+    let apiUrl = `https://smpp.revesms.com:7790/send?apikey=${apiKey}&secretkey=${secretKey}&content=${encodeURIComponent(JSON.stringify(contentArray))}`;
+    
+    // Add clientid if provided
+    if (clientId) {
+      apiUrl += `&clientid=${clientId}`;
+    }
 
     try {
-      // Use mode: 'no-cors' to bypass browser safety blocks on API response reading.
-      // This will still send the request, but we won't see the result.
       await fetch(apiUrl, { mode: 'no-cors', cache: 'no-cache' });
       return { success: true };
     } catch (err) {
-      // If the RPC succeeded, we treat the SMS as successfully triggered 
-      // even if the fetch throws a "Failed to fetch" (usually CORS).
-      console.warn("SMS triggered, but response not readable by browser:", err);
+      console.warn("SMS triggered, but response not readable (CORS):", err);
       return { success: true };
     }
   },
@@ -113,11 +115,12 @@ export const smsApi = {
     let apiKey = global.reve_api_key;
     let secretKey = global.reve_secret_key;
     let callerId = global.reve_caller_id;
+    let clientId = global.reve_client_id;
 
     if (madrasahId) {
       const { data } = await supabase
         .from('madrasahs')
-        .select('reve_api_key, reve_secret_key, reve_caller_id')
+        .select('reve_api_key, reve_secret_key, reve_caller_id, reve_client_id')
         .eq('id', madrasahId)
         .maybeSingle();
         
@@ -125,13 +128,16 @@ export const smsApi = {
         if (data.reve_api_key && data.reve_api_key.trim() !== '') apiKey = data.reve_api_key;
         if (data.reve_secret_key && data.reve_secret_key.trim() !== '') secretKey = data.reve_secret_key;
         if (data.reve_caller_id && data.reve_caller_id.trim() !== '') callerId = data.reve_caller_id;
+        if (data.reve_client_id && data.reve_client_id.trim() !== '') clientId = data.reve_client_id;
       }
     }
 
     const p = phone.replace(/\D/g, '');
     const target = p.startsWith('88') ? p : `88${p}`;
     const content = [{ callerID: callerId, toUser: target, messageContent: message }];
-    const apiUrl = `https://smpp.revesms.com:7790/send?apikey=${apiKey}&secretkey=${secretKey}&content=${encodeURIComponent(JSON.stringify(content))}`;
+    let apiUrl = `https://smpp.revesms.com:7790/send?apikey=${apiKey}&secretkey=${secretKey}&content=${encodeURIComponent(JSON.stringify(content))}`;
+    
+    if (clientId) apiUrl += `&clientid=${clientId}`;
     
     try { await fetch(apiUrl, { mode: 'no-cors' }); } catch (e) {}
   }

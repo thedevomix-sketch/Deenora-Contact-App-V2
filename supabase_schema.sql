@@ -1,13 +1,12 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V21 - ROBUST FIX)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V22 - FINAL STABLE)
 -- ======================================================
 
 -- ১. এক্সটেনশন এনাবল করা
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- ২. মাদরাসা প্রোফাইল টেবিল
--- নতুন মাদরাসার জন্য সব কলাম শুরুতেই যোগ করা হয়েছে
+-- ২. মাদরাসা প্রোফাইল টেবিল তৈরি
 CREATE TABLE IF NOT EXISTS public.madrasahs (
     id UUID REFERENCES auth.users ON DELETE CASCADE PRIMARY KEY,
     name TEXT NOT NULL DEFAULT 'নতুন মাদরাসা',
@@ -18,14 +17,11 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     balance DECIMAL DEFAULT 0,
     sms_balance INTEGER DEFAULT 0,
     login_code TEXT,
-    reve_api_key TEXT,
-    reve_secret_key TEXT,
-    reve_caller_id TEXT,
-    reve_client_id TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- পুরনো মাদরাসা যাদের টেবিলে এই কলামগুলো নেই, তাদের জন্য নিরাপদভাবে যোগ করা
+-- ৩. মাদরাসা টেবিলে REVE SMS কলামগুলো নিরাপদভাবে যোগ করা
+-- ADD COLUMN IF NOT EXISTS ব্যবহার করা হয়েছে যাতে পুরনো টেবিলেও এগুলো যোগ হয়
 ALTER TABLE public.madrasahs ADD COLUMN IF NOT EXISTS reve_api_key TEXT;
 ALTER TABLE public.madrasahs ADD COLUMN IF NOT EXISTS reve_secret_key TEXT;
 ALTER TABLE public.madrasahs ADD COLUMN IF NOT EXISTS reve_caller_id TEXT;
@@ -33,7 +29,7 @@ ALTER TABLE public.madrasahs ADD COLUMN IF NOT EXISTS reve_client_id TEXT;
 
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
--- ৩. সিকিউরিটি ফাংশন
+-- ৪. সিকিউরিটি ফাংশন (টেবিল তৈরির পর)
 CREATE OR REPLACE FUNCTION public.is_admin(user_id UUID)
 RETURNS BOOLEAN AS $$
 BEGIN
@@ -44,7 +40,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ৪. মাদরাসা পলিসি
+-- ৫. মাদরাসা পলিসি
 DROP POLICY IF EXISTS "madrasah_select_policy" ON public.madrasahs;
 DROP POLICY IF EXISTS "madrasah_update_own" ON public.madrasahs;
 DROP POLICY IF EXISTS "madrasah_admin_policy" ON public.madrasahs;
@@ -53,7 +49,7 @@ CREATE POLICY "madrasah_select_policy" ON public.madrasahs FOR SELECT USING (tru
 CREATE POLICY "madrasah_update_own" ON public.madrasahs FOR UPDATE USING (auth.uid() = id);
 CREATE POLICY "madrasah_admin_policy" ON public.madrasahs FOR ALL USING (public.is_admin(auth.uid()));
 
--- ৫. ক্লাস টেবিল
+-- ৬. ক্লাস টেবিল
 CREATE TABLE IF NOT EXISTS public.classes (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
@@ -67,7 +63,7 @@ DROP POLICY IF EXISTS "class_manage_policy" ON public.classes;
 CREATE POLICY "class_select_policy" ON public.classes FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "class_manage_policy" ON public.classes FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
--- ৬. স্টুডেন্ট টেবিল
+-- ৭. স্টুডেন্ট টেবিল
 CREATE TABLE IF NOT EXISTS public.students (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
@@ -88,7 +84,7 @@ DROP POLICY IF EXISTS "student_manage_policy" ON public.students;
 CREATE POLICY "student_select_policy" ON public.students FOR SELECT USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "student_manage_policy" ON public.students FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
--- ৭. ট্রানজ্যাকশন টেবিল
+-- ৮. ট্রানজ্যাকশন টেবিল
 CREATE TABLE IF NOT EXISTS public.transactions (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
@@ -109,7 +105,7 @@ CREATE POLICY "trans_select_policy" ON public.transactions FOR SELECT USING (aut
 CREATE POLICY "trans_insert_policy" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = madrasah_id);
 CREATE POLICY "trans_admin_policy" ON public.transactions FOR ALL USING (public.is_admin(auth.uid()));
 
--- ৮. এসএমএস টেমপ্লেট ও লগ
+-- ৯. এসএমএস টেমপ্লেট ও লগ
 CREATE TABLE IF NOT EXISTS public.sms_templates (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
@@ -134,7 +130,7 @@ DROP POLICY IF EXISTS "logs_policy" ON public.sms_logs;
 CREATE POLICY "template_policy" ON public.sms_templates FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 CREATE POLICY "logs_policy" ON public.sms_logs FOR ALL USING (auth.uid() = madrasah_id OR public.is_admin(auth.uid()));
 
--- ৯. স্টক এবং সেটিংস
+-- ১০. স্টক এবং সিস্টেম সেটিংস
 CREATE TABLE IF NOT EXISTS public.admin_sms_stock (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     remaining_sms INTEGER DEFAULT 0,
@@ -144,7 +140,7 @@ CREATE TABLE IF NOT EXISTS public.admin_sms_stock (
 INSERT INTO public.admin_sms_stock (remaining_sms) 
 SELECT 0 WHERE NOT EXISTS (SELECT 1 FROM public.admin_sms_stock);
 
--- সিস্টেম সেটিংস টেবিল
+-- সিস্টেম সেটিংস টেবিল (REVE SMS Credentials and more)
 CREATE TABLE IF NOT EXISTS public.system_settings (
     id UUID PRIMARY KEY DEFAULT '00000000-0000-0000-0000-000000000001',
     reve_api_key TEXT,
@@ -155,11 +151,14 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- কলাম নিশ্চিত করা (idempotent)
+-- সিস্টেম সেটিংসে নিরাপদভাবে কলাম যোগ করা
 ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS bkash_number TEXT;
 ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS reve_client_id TEXT;
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS reve_api_key TEXT;
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS reve_secret_key TEXT;
+ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS reve_caller_id TEXT;
 
--- ডাইনামিক ইনসার্ট (পার্সিং এরর এড়াতে)
+-- ডিফল্ট সেটিং রো ইনসার্ট করা (ডাইনামিক SQL ব্যবহার করে যাতে পার্সিং এরর না আসে)
 DO $$
 BEGIN
     IF NOT EXISTS (SELECT 1 FROM public.system_settings WHERE id = '00000000-0000-0000-0000-000000000001') THEN
@@ -167,7 +166,7 @@ BEGIN
     END IF;
 END $$;
 
--- ১০. আরপিসি ফাংশনসমূহ
+-- ১১. আরপিসি ফাংশনসমূহ (সবশেষে)
 CREATE OR REPLACE FUNCTION public.send_bulk_sms_rpc(
   p_madrasah_id UUID,
   p_student_ids UUID[],
