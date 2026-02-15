@@ -28,6 +28,7 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
     
     if (isManual) setLoadingRecent(true);
     
+    // Check cache first for instant UI
     const cached = offlineApi.getCache('recent_calls');
     if (cached && !isManual) setRecentCalls(cached);
 
@@ -38,16 +39,21 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
           .select('*, students(*, classes(*))')
           .eq('madrasah_id', madrasahId)
           .order('called_at', { ascending: false })
-          .limit(10);
+          .limit(15);
         
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase Fetch Error:", error.message);
+          throw error;
+        }
         
         if (data) {
-          setRecentCalls(data);
-          offlineApi.setCache('recent_calls', data);
+          // Filter out calls where student data might be missing due to RLS or deletion
+          const validCalls = data.filter(call => call.students);
+          setRecentCalls(validCalls);
+          offlineApi.setCache('recent_calls', validCalls);
         }
       } catch (err) { 
-        console.error("Fetch Recent Calls Error:", err); 
+        console.error("Critical Fetch Error:", err); 
       } finally { 
         setLoadingRecent(false); 
       }
@@ -63,7 +69,6 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
   const recordCall = async (studentId: string) => {
     if (!madrasahId || !studentId) return;
     try {
-      // Optimistically update local state for better UX
       const { error } = await supabase.from('recent_calls').insert({
         madrasah_id: madrasahId,
         student_id: studentId,
@@ -71,14 +76,13 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
       });
       
       if (error) {
-        console.error("DB Recording Error:", error);
-        // If DB fails, we still want to refresh to see what's actually there
+        console.error("Recording Call Failed:", error.message);
       }
       
-      // Trigger global refresh to update lists
+      // Force refresh data
       triggerRefresh();
     } catch (e) {
-      console.error("Critical Call Recording Error:", e);
+      console.error("Call Recording Exception:", e);
     }
   };
 
