@@ -15,59 +15,87 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 });
 
 /**
- * REVE SMS GATEWAY INTEGRATION (Global Admin Controlled)
+ * REVE SMS GATEWAY INTEGRATION (Admin Controlled)
  */
 export const smsApi = {
   // Fetch Global Gateway Credentials
   getGlobalSettings: async () => {
-    const { data } = await supabase.from('system_settings').select('*').eq('id', '00000000-0000-0000-0000-000000000001').single();
-    return data || {};
+    const { data, error } = await supabase
+      .from('system_settings')
+      .select('*')
+      .eq('id', '00000000-0000-0000-0000-000000000001')
+      .maybeSingle();
+    
+    // If no settings exist, return default structure
+    return data || { 
+      reve_api_key: '', 
+      reve_secret_key: '', 
+      reve_caller_id: '', 
+      reve_client_id: '',
+      bkash_number: '০১৭৬৬-XXXXXX'
+    };
   },
 
-  // Send SMS via REVE (Uses Global Settings)
+  // Send SMS via REVE
   sendBulk: async (madrasahId: string, students: Student[], message: string) => {
-    // 1. Check Madrasah Balance First
+    // 1. Check Madrasah Balance
     const { data: mData } = await supabase.from('madrasahs').select('sms_balance').eq('id', madrasahId).single();
     if (!mData || (mData.sms_balance || 0) < students.length) {
-      throw new Error("Insufficient local SMS balance. Please recharge.");
+      throw new Error("Insufficient SMS balance. Please recharge via bKash.");
     }
 
-    // 2. Get Global Gateway Credentials
+    // 2. Get Admin's Global Gateway Credentials
     const creds = await smsApi.getGlobalSettings();
     if (!creds.reve_api_key || !creds.reve_secret_key || !creds.reve_caller_id) {
-      throw new Error("SMS Gateway is not configured by the administrator.");
+      throw new Error("SMS Gateway is not configured by the system administrator.");
     }
 
-    // REVE Bulk endpoint uses a JSON content array
-    const content = [{
+    // 3. Prepare REVE API Payload (Bulk format)
+    // REVE Documentation suggests: https://smpp.revesms.com:7790/send?apikey=...&secretkey=...&content=[...]
+    const phoneList = students.map(s => {
+      let p = s.guardian_phone.replace(/\D/g, '');
+      return p.startsWith('88') ? p : `88${p}`;
+    }).join(',');
+
+    const contentArray = [{
       callerID: creds.reve_caller_id,
-      toUser: students.map(s => {
-        let p = s.guardian_phone.replace(/\D/g, '');
-        return p.startsWith('88') ? p : `88${p}`;
-      }).join(','),
+      toUser: phoneList,
       messageContent: message
     }];
 
-    const apiUrl = `https://smpp.revesms.com:7790/send?apikey=${creds.reve_api_key}&secretkey=${creds.reve_secret_key}&content=${encodeURIComponent(JSON.stringify(content))}`;
+    const apiUrl = `https://smpp.revesms.com:7790/send?apikey=${creds.reve_api_key}&secretkey=${creds.reve_secret_key}&content=${encodeURIComponent(JSON.stringify(contentArray))}`;
 
     try {
       const response = await fetch(apiUrl);
       const result = await response.json();
 
+      // REVE response check: {"Status":"0","Text":"ACCEPTD","Message_ID":"444"}
       if (result.Status === "0") {
-        // Update local balance via RPC
-        await supabase.rpc('send_bulk_sms_rpc', {
+        // Log locally and update balance via RPC
+        const { error: rpcError } = await supabase.rpc('send_bulk_sms_rpc', {
           p_madrasah_id: madrasahId,
           p_student_ids: students.map(s => s.id),
           p_message: message
         });
+        if (rpcError) throw rpcError;
         return { success: true, count: students.length };
       } else {
-        throw new Error(`Gateway: ${result.Text || 'Unknown Error'}`);
+        throw new Error(`Gateway Error: ${result.Text || 'Rejected'} (Code: ${result.Status})`);
       }
     } catch (err: any) {
-      console.error("SMS Error:", err);
-      throw new Error(err.message || "Gateway Communication Failed");
+      console.error("SMS Sending Error:", err);
+      throw new Error(err.message || "Failed to connect to SMS Gateway.");
+    }
+  },
+
+  // Get Live Balance from REVE (Optional monitoring)
+  getReveBalance: async (clientId: string) => {
+    if (!clientId) return null;
+    try {
+      const response = await fetch(`https://smpp.revesms.com/sms/smsConfiguration/smsClientBalance.jsp?client=${clientId}`);
+      return await response.text();
+    } catch (err) {
+      return null;
     }
   }
 };
