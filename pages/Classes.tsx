@@ -18,7 +18,6 @@ interface ClassesProps {
   madrasah: Madrasah | null;
   dataVersion: number;
   triggerRefresh: () => void;
-  // Added readOnly prop to fix property mismatch error in App.tsx
   readOnly?: boolean;
 }
 
@@ -35,12 +34,8 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
 
   const fetchClasses = async () => {
     setLoading(true);
-    
-    // Check cache first
     const cached = offlineApi.getCache('classes');
-    if (cached) {
-      setClasses(sortMadrasahClasses(cached));
-    }
+    if (cached) setClasses(sortMadrasahClasses(cached));
 
     if (navigator.onLine && madrasah) {
       try {
@@ -48,9 +43,7 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
           .from('classes')
           .select('*')
           .eq('madrasah_id', madrasah.id);
-        
         if (error) throw error;
-
         if (classesData) {
           const withCounts = await Promise.all(classesData.map(async (cls) => {
             const { count } = await supabase
@@ -59,19 +52,12 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
               .eq('class_id', cls.id);
             return { ...cls, student_count: count || 0 };
           }));
-          
           const sorted = sortMadrasahClasses(withCounts);
           setClasses(sorted);
           offlineApi.setCache('classes', sorted);
         }
-      } catch (err) {
-        console.error("Fetch classes failed", err);
-      } finally {
-        setLoading(false);
-      }
-    } else {
-      setLoading(false);
-    }
+      } catch (err) { console.error(err); } finally { setLoading(false); }
+    } else { setLoading(false); }
   };
 
   const handleSaveClass = async () => {
@@ -80,20 +66,13 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
     try {
       if (editingClass) {
         if (navigator.onLine) {
-          const { error } = await supabase
-            .from('classes')
-            .update({ class_name: newClassName.trim() })
-            .eq('id', editingClass.id);
+          const { error } = await supabase.from('classes').update({ class_name: newClassName.trim() }).eq('id', editingClass.id);
           if (error) throw error;
         } else {
           offlineApi.queueAction('classes', 'UPDATE', { id: editingClass.id, class_name: newClassName.trim() });
         }
       } else {
-        const payload = { 
-          class_name: newClassName.trim(), 
-          madrasah_id: madrasah.id 
-        };
-        
+        const payload = { class_name: newClassName.trim(), madrasah_id: madrasah.id };
         if (navigator.onLine) {
           const { error } = await supabase.from('classes').insert(payload);
           if (error) throw error;
@@ -101,16 +80,13 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
           offlineApi.queueAction('classes', 'INSERT', payload);
         }
       }
-      
       setShowModal(false);
       setNewClassName('');
       setEditingClass(null);
       triggerRefresh();
     } catch (err: any) {
       alert(lang === 'bn' ? `ব্যর্থ হয়েছে: ${err.message}` : `Failed: ${err.message}`);
-    } finally {
-      setModalLoading(false);
-    }
+    } finally { setModalLoading(false); }
   };
 
   const handleDeleteClass = async () => {
@@ -118,28 +94,20 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
     setModalLoading(true);
     try {
       if (navigator.onLine) {
-        const { error } = await supabase
-          .from('classes')
-          .delete()
-          .eq('id', showDeleteConfirm.id);
+        const { error } = await supabase.from('classes').delete().eq('id', showDeleteConfirm.id);
         if (error) throw error;
       } else {
         offlineApi.queueAction('classes', 'DELETE', { id: showDeleteConfirm.id });
       }
       setShowDeleteConfirm(null);
       triggerRefresh();
-    } catch (err: any) {
-      alert(err.message);
-    } finally {
-      setModalLoading(false);
-    }
+    } catch (err: any) { alert(err.message); } finally { setModalLoading(false); }
   };
 
   return (
     <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-20">
       <div className="flex items-center justify-between px-2">
         <h1 className="text-xl font-noto font-black text-white drop-shadow-md">{t('classes_title', lang)}</h1>
-        {/* Only show Add Class button if not in readOnly mode */}
         {!readOnly && (
           <button onClick={() => { setNewClassName(''); setEditingClass(null); setShowModal(true); }} className="premium-btn text-white px-4 py-2.5 rounded-xl text-[12px] font-black flex items-center gap-2 active:scale-95 transition-all border border-white/20">
             <Plus size={16} strokeWidth={4} /> {t('new_class', lang)}
@@ -147,57 +115,43 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
         )}
       </div>
 
-      {loading && classes.length === 0 ? (
-        <div className="space-y-3">
-          {[1, 2, 3].map(i => <div key={i} className="h-24 bg-white/20 animate-pulse rounded-3xl border border-white/10"></div>)}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4">
-          {classes.map(cls => (
-            <div key={cls.id} onClick={() => onClassClick(cls)} className="bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-white/40 flex items-center justify-between active:scale-[0.98] transition-all group shadow-lg relative overflow-hidden">
-              <div className="flex items-center gap-4 min-w-0 flex-1">
-                <div className="w-12 h-12 bg-[#8D30F4]/10 rounded-[1.2rem] flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
-                  <BookOpen size={24} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h3 className="font-black text-[#2E0B5E] text-[18px] font-noto truncate leading-tight tracking-tight">{cls.class_name}</h3>
-                  <div className="flex items-center gap-1.5 mt-1">
-                    <Users size={12} className="text-[#8D30F4]/60" />
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em]">{cls.student_count || 0} {t('students_count', lang)}</p>
-                  </div>
+      <div className="grid grid-cols-1 gap-4">
+        {classes.map(cls => (
+          <div key={cls.id} onClick={() => onClassClick(cls)} className="bg-white/95 backdrop-blur-md p-4 rounded-3xl border border-white/40 flex items-center justify-between active:scale-[0.98] transition-all group shadow-lg relative overflow-hidden">
+            <div className="flex items-center gap-4 min-w-0 flex-1">
+              <div className="w-12 h-12 bg-[#8D30F4]/10 rounded-[1.2rem] flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
+                <BookOpen size={24} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-black text-[#2E0B5E] text-[18px] font-noto truncate leading-tight tracking-tight">{cls.class_name}</h3>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <Users size={12} className="text-[#8D30F4]/60" />
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em]">{cls.student_count || 0} {t('students_count', lang)}</p>
                 </div>
               </div>
-              
-              <div className="flex items-center gap-1.5 ml-3">
-                {/* Only show Edit/Delete buttons if not in readOnly mode */}
-                {!readOnly && (
-                  <>
-                    <button onClick={(e) => { e.stopPropagation(); setNewClassName(cls.class_name); setEditingClass(cls); setShowModal(true); }} 
-                      className="w-9 h-9 bg-[#F2EBFF] text-[#8D30F4] rounded-lg flex items-center justify-center border border-[#8D30F4]/10 active:scale-90 transition-all shadow-sm">
-                      <Edit3 size={16} />
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(cls); }} 
-                      className="w-9 h-9 bg-red-50 text-red-500 rounded-lg flex items-center justify-center border border-red-100 active:scale-90 transition-all shadow-sm">
-                      <Trash2 size={16} />
-                    </button>
-                  </>
-                )}
-                <ChevronRight className="text-[#A179FF]/40 group-hover:text-[#8D30F4] transition-colors ml-0.5" size={20} strokeWidth={3} />
-              </div>
             </div>
-          ))}
-
-          {classes.length === 0 && !loading && (
-            <div className="py-20 text-center bg-white/10 rounded-[2.5rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
-              <p className="text-white font-black text-[11px] uppercase tracking-widest">{t('no_classes', lang)}</p>
+            <div className="flex items-center gap-1.5 ml-3">
+              {!readOnly && (
+                <>
+                  <button onClick={(e) => { e.stopPropagation(); setNewClassName(cls.class_name); setEditingClass(cls); setShowModal(true); }} 
+                    className="w-9 h-9 bg-[#F2EBFF] text-[#8D30F4] rounded-lg flex items-center justify-center border border-[#8D30F4]/10 active:scale-90 transition-all shadow-sm">
+                    <Edit3 size={16} />
+                  </button>
+                  <button onClick={(e) => { e.stopPropagation(); setShowDeleteConfirm(cls); }} 
+                    className="w-9 h-9 bg-red-50 text-red-500 rounded-lg flex items-center justify-center border border-red-100 active:scale-90 transition-all shadow-sm">
+                    <Trash2 size={16} />
+                  </button>
+                </>
+              )}
+              <ChevronRight className="text-[#A179FF]/40 group-hover:text-[#8D30F4] transition-colors ml-0.5" size={20} strokeWidth={3} />
             </div>
-          )}
-        </div>
-      )}
+          </div>
+        ))}
+      </div>
 
-      {/* Add/Edit Modal */}
+      {/* MODAL: Added fixed inset-0 and very high z-index */}
       {showModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[500] flex items-center justify-center p-8 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xl z-[999] flex items-center justify-center p-8 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border-2 border-[#8D30F4]/10 relative animate-in zoom-in-95">
             <button onClick={() => setShowModal(false)} className="absolute top-6 right-6 text-slate-300 hover:text-[#8D30F4] transition-all"><X size={24} strokeWidth={3} /></button>
             <h2 className="text-lg font-black text-[#2E0B5E] mb-5 font-noto tracking-tight">
@@ -223,9 +177,8 @@ const Classes: React.FC<ClassesProps> = ({ onClassClick, lang, madrasah, dataVer
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 bg-red-900/40 backdrop-blur-xl z-[600] flex items-center justify-center p-8 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-red-900/40 backdrop-blur-xl z-[1000] flex items-center justify-center p-8 animate-in fade-in duration-300">
           <div className="bg-white w-full max-w-sm rounded-[2.5rem] p-8 shadow-2xl border-2 border-red-50 text-center space-y-5 animate-in zoom-in-95">
              <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mx-auto shadow-inner">
                 <AlertTriangle size={32} />

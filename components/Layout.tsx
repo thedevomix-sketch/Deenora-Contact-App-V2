@@ -29,13 +29,13 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
     return false;
   };
 
-  // Logic based on teacher object
   const canSeeClasses = !teacher || (teacher.permissions?.can_manage_students || teacher.permissions?.can_manage_classes);
   const canSeeWallet = !teacher || teacher.permissions?.can_send_sms;
 
   return (
-    <div className="flex flex-col overflow-hidden w-full relative" style={{ height: 'var(--app-height, 100%)' }}>
-      <header className="flex-none px-6 pt-[calc(env(safe-area-inset-top)+4px)] pb-3 flex items-center justify-between z-50">
+    <div className="flex flex-col w-full relative min-h-screen bg-transparent">
+      {/* Header with lower priority stack */}
+      <header className="flex-none px-6 pt-[calc(env(safe-area-inset-top)+8px)] pb-3 flex items-center justify-between relative">
         <div className="flex items-center gap-4">
           <div className="w-11 h-11 rounded-[1rem] flex items-center justify-center bg-white shadow-sm border border-white/20 shrink-0 overflow-hidden">
             {isSuperAdmin ? (
@@ -61,11 +61,13 @@ const Layout: React.FC<LayoutProps> = ({ children, currentView, setView, lang, m
         </button>
       </header>
 
-      <main className="flex-1 overflow-y-auto px-5 pt-2 pb-32 w-full max-w-md mx-auto scroll-smooth relative z-10">
+      {/* Main Content without hard z-index to allow fixed modals to break out correctly */}
+      <main className="flex-1 overflow-y-auto px-5 pt-2 pb-32 w-full max-w-md mx-auto scroll-smooth">
         {children}
       </main>
 
-      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-[100]">
+      {/* Navigation - Needs higher stack than page content but lower than modals */}
+      <div className="fixed bottom-8 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-[50]">
         <nav className="bg-white/90 backdrop-blur-[25px] border border-white/50 flex justify-around items-center py-4 px-3 rounded-[2.2rem] shadow-[0_20px_50px_-10px_rgba(46,11,94,0.3)]">
           <button onClick={() => setView('home')} className={`relative flex flex-col items-center gap-1 group transition-all ${isTabActive('home') ? 'text-[#8D30F4]' : 'text-[#A179FF]'}`}>
             <Home size={26} strokeWidth={isTabActive('home') ? 3 : 2} />
