@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, UserPlus, ShieldCheck, User as UserIcon, Loader2, Save, X, Phone, Key, CheckCircle2, Trash2, Edit3, Smartphone, MessageSquare, Layers, MessageCircle, Shield, Check } from 'lucide-react';
+import { ArrowLeft, UserPlus, ShieldCheck, User as UserIcon, Loader2, Save, X, Phone, Key, CheckCircle2, Trash2, Edit3, Smartphone, MessageSquare, Layers, MessageCircle, Shield, Check, ChevronRight } from 'lucide-react';
 import { supabase } from '../supabase';
 import { Teacher, Language, Madrasah } from '../types';
 
@@ -80,6 +80,42 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
     } catch (e: any) { alert(e.message); }
   };
 
+  const PermissionToggle = ({ 
+    active, 
+    onClick, 
+    icon: Icon, 
+    label, 
+    color 
+  }: { 
+    active: boolean, 
+    onClick: () => void, 
+    icon: any, 
+    label: string, 
+    color: string 
+  }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`relative flex items-center justify-between p-3.5 rounded-2xl border-2 transition-all duration-300 active:scale-95 ${
+        active 
+          ? `bg-white border-${color}-400 shadow-[0_8px_20px_-6px_rgba(0,0,0,0.1)]` 
+          : 'bg-slate-50 border-transparent grayscale'
+      }`}
+    >
+      <div className="flex items-center gap-3">
+        <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${active ? `bg-${color}-50 text-${color}-500` : 'bg-slate-200 text-slate-400'}`}>
+          <Icon size={16} />
+        </div>
+        <span className={`text-[11px] font-black uppercase tracking-wider ${active ? 'text-slate-800' : 'text-slate-400'}`}>
+          {label}
+        </span>
+      </div>
+      <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${active ? `bg-${color}-500 text-white` : 'bg-slate-200'}`}>
+        {active && <Check size={12} strokeWidth={4} />}
+      </div>
+    </button>
+  );
+
   return (
     <div className="space-y-6 animate-in slide-in-from-right-4 duration-500 pb-24">
       <div className="flex items-center gap-4 px-2">
@@ -142,142 +178,106 @@ const Teachers: React.FC<TeachersProps> = ({ lang, madrasah, onBack }) => {
 
       {isModalOpen && (
         <div className="fixed inset-0 bg-[#080A12]/60 backdrop-blur-xl z-[500] flex items-end sm:items-center justify-center p-0 sm:p-6 animate-in fade-in duration-300">
-           {/* Modal Content */}
-           <div className="bg-white w-full max-w-lg rounded-t-[3rem] sm:rounded-[3.5rem] p-6 sm:p-10 shadow-2xl space-y-6 relative animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300 border border-[#8D30F4]/5 max-h-[90vh] overflow-y-auto custom-scrollbar">
+           <div className="bg-white w-full max-w-sm rounded-t-[3rem] sm:rounded-[3rem] p-8 shadow-2xl relative animate-in slide-in-from-bottom-10 sm:zoom-in-95 duration-300 border border-[#8D30F4]/5">
               
-              {/* Close Handle for Mobile */}
-              <div className="sm:hidden w-12 h-1.5 bg-slate-100 rounded-full mx-auto -mt-2 mb-4"></div>
+              <div className="sm:hidden w-12 h-1 bg-slate-100 rounded-full mx-auto -mt-4 mb-6"></div>
               
-              <button onClick={() => setIsModalOpen(false)} className="absolute top-6 sm:top-10 right-6 sm:right-10 text-slate-300 hover:text-[#8D30F4] transition-all p-1">
-                 <X size={28} strokeWidth={3}/>
+              <button onClick={() => setIsModalOpen(false)} className="absolute top-8 right-8 text-slate-300 hover:text-[#8D30F4] transition-all p-1">
+                 <X size={24} strokeWidth={3}/>
               </button>
               
-              <div className="flex items-center gap-4 sm:gap-6">
-                 <div className="w-14 sm:w-16 h-14 sm:h-16 bg-[#8D30F4]/10 rounded-2xl sm:rounded-[1.8rem] flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10 shadow-inner">
-                    {/* Fixed Error: Lucide icons do not support tailwind-like responsive props like 'sm:size'. Use fixed size. */}
-                    <Shield size={32} />
+              <div className="flex items-center gap-4 mb-8">
+                 <div className="w-14 h-14 bg-[#8D30F4]/10 rounded-2xl flex items-center justify-center text-[#8D30F4] shrink-0 border border-[#8D30F4]/10">
+                    <Shield size={28} />
                  </div>
                  <div>
-                    <h2 className="text-xl sm:text-2xl font-black text-[#2E0B5E] font-noto tracking-tight leading-tight">
-                      {editId ? 'Edit Teacher' : 'Add New Teacher'}
+                    <h2 className="text-xl font-black text-[#2E0B5E] font-noto tracking-tight">
+                      {editId ? 'Edit Teacher' : 'Add Teacher'}
                     </h2>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Staff Access Credentials</p>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Access Credentials</p>
                  </div>
               </div>
               
-              <div className="space-y-4">
-                 <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-5">
+                 <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Name</label>
+                    <input 
+                      type="text" 
+                      className="w-full h-12 bg-slate-50 rounded-xl px-4 font-black text-[#2E0B5E] outline-none border-2 border-transparent focus:border-[#8D30F4]/20 transition-all text-sm" 
+                      value={name} 
+                      onChange={(e) => setName(e.target.value)} 
+                      placeholder="e.g. Abdur Rahman" 
+                    />
+                 </div>
+                 
+                 <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
-                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
-                         <UserIcon size={12}/> Teacher Name
-                       </label>
-                       <div className="relative">
-                          <input 
-                            type="text" 
-                            className="w-full h-[56px] bg-slate-50 rounded-2xl px-5 font-black text-[#2E0B5E] outline-none focus:border-[#8D30F4]/30 focus:bg-white border-2 border-transparent transition-all shadow-inner" 
-                            value={name} 
-                            onChange={(e) => setName(e.target.value)} 
-                            placeholder="e.g. Abdur Rahman" 
-                          />
-                       </div>
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Phone</label>
+                       <input 
+                         type="tel" 
+                         className="w-full h-12 bg-slate-50 rounded-xl px-4 font-black text-[#2E0B5E] outline-none border-2 border-transparent focus:border-[#8D30F4]/20 transition-all text-sm" 
+                         value={phone} 
+                         onChange={(e) => setPhone(e.target.value)} 
+                         placeholder="017..." 
+                       />
                     </div>
-                    
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                       <div className="space-y-1.5">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
-                            <Phone size={12}/> Mobile Number
-                          </label>
-                          <input 
-                            type="tel" 
-                            className="w-full h-[56px] bg-slate-50 rounded-2xl px-5 font-black text-[#2E0B5E] outline-none focus:border-[#8D30F4]/30 focus:bg-white border-2 border-transparent transition-all shadow-inner" 
-                            value={phone} 
-                            onChange={(e) => setPhone(e.target.value)} 
-                            placeholder="017XXXXXXXX" 
-                          />
-                       </div>
-                       <div className="space-y-1.5">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1 flex items-center gap-2">
-                            <Key size={12}/> Login PIN
-                          </label>
-                          <input 
-                            type="text" 
-                            className="w-full h-[56px] bg-slate-50 rounded-2xl px-5 font-black text-[#8D30F4] outline-none focus:border-[#8D30F4]/30 focus:bg-white border-2 border-transparent transition-all shadow-inner" 
-                            value={code} 
-                            onChange={(e) => setCode(e.target.value)} 
-                            placeholder="Secret Code" 
-                          />
-                       </div>
+                    <div className="space-y-1.5">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">PIN</label>
+                       <input 
+                         type="text" 
+                         className="w-full h-12 bg-slate-50 rounded-xl px-4 font-black text-[#8D30F4] outline-none border-2 border-transparent focus:border-[#8D30F4]/20 transition-all text-sm" 
+                         value={code} 
+                         onChange={(e) => setCode(e.target.value)} 
+                         placeholder="1234" 
+                       />
                     </div>
                  </div>
 
-                 <div className="pt-4 space-y-4">
+                 <div className="pt-2 space-y-3">
                     <div className="flex items-center justify-between px-1">
-                       <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-[0.2em] flex items-center gap-2">Permissions</p>
+                       <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest">Permissions</p>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                       <button 
-                         type="button"
+                    <div className="grid grid-cols-1 gap-2">
+                       <PermissionToggle 
+                         active={perms.can_manage_students} 
                          onClick={() => setPerms({...perms, can_manage_students: !perms.can_manage_students})} 
-                         className={`p-4 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all active:scale-[0.95] text-center ${perms.can_manage_students ? 'bg-green-50/50 border-green-200 text-green-700 shadow-sm' : 'bg-slate-50 border-transparent text-slate-400 opacity-60'}`}
-                       >
-                          <Smartphone size={22} className={perms.can_manage_students ? 'text-green-500' : ''} />
-                          <span className="text-[10px] font-black uppercase leading-tight">Students</span>
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${perms.can_manage_students ? 'bg-green-500 text-white' : 'bg-slate-200'}`}>
-                             {perms.can_manage_students && <Check size={12} strokeWidth={4} />}
-                          </div>
-                       </button>
-
-                       <button 
-                         type="button"
+                         icon={Smartphone} 
+                         label="Students" 
+                         color="green" 
+                       />
+                       <PermissionToggle 
+                         active={perms.can_manage_classes} 
                          onClick={() => setPerms({...perms, can_manage_classes: !perms.can_manage_classes})} 
-                         className={`p-4 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all active:scale-[0.95] text-center ${perms.can_manage_classes ? 'bg-blue-50/50 border-blue-200 text-blue-700 shadow-sm' : 'bg-slate-50 border-transparent text-slate-400 opacity-60'}`}
-                       >
-                          <Layers size={22} className={perms.can_manage_classes ? 'text-blue-500' : ''} />
-                          <span className="text-[10px] font-black uppercase leading-tight">Classes</span>
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${perms.can_manage_classes ? 'bg-blue-500 text-white' : 'bg-slate-200'}`}>
-                             {perms.can_manage_classes && <Check size={12} strokeWidth={4} />}
-                          </div>
-                       </button>
-
-                       <button 
-                         type="button"
+                         icon={Layers} 
+                         label="Classes" 
+                         color="blue" 
+                       />
+                       <PermissionToggle 
+                         active={perms.can_send_sms} 
                          onClick={() => setPerms({...perms, can_send_sms: !perms.can_send_sms})} 
-                         className={`p-4 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all active:scale-[0.95] text-center ${perms.can_send_sms ? 'bg-orange-50/50 border-orange-200 text-orange-700 shadow-sm' : 'bg-slate-50 border-transparent text-slate-400 opacity-60'}`}
-                       >
-                          <MessageSquare size={22} className={perms.can_send_sms ? 'text-orange-500' : ''} />
-                          <span className="text-[10px] font-black uppercase leading-tight">System SMS</span>
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${perms.can_send_sms ? 'bg-orange-500 text-white' : 'bg-slate-200'}`}>
-                             {perms.can_send_sms && <Check size={12} strokeWidth={4} />}
-                          </div>
-                       </button>
-
-                       <button 
-                         type="button"
+                         icon={MessageSquare} 
+                         label="System SMS" 
+                         color="orange" 
+                       />
+                       <PermissionToggle 
+                         active={perms.can_send_free_sms} 
                          onClick={() => setPerms({...perms, can_send_free_sms: !perms.can_send_free_sms})} 
-                         className={`p-4 rounded-3xl border-2 flex flex-col items-center gap-3 transition-all active:scale-[0.95] text-center ${perms.can_send_free_sms ? 'bg-indigo-50/50 border-indigo-200 text-indigo-700 shadow-sm' : 'bg-slate-50 border-transparent text-slate-400 opacity-60'}`}
-                       >
-                          <MessageCircle size={22} className={perms.can_send_free_sms ? 'text-indigo-500' : ''} />
-                          <span className="text-[10px] font-black uppercase leading-tight">Free SMS</span>
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${perms.can_send_free_sms ? 'bg-indigo-500 text-white' : 'bg-slate-200'}`}>
-                             {perms.can_send_free_sms && <Check size={12} strokeWidth={4} />}
-                          </div>
-                       </button>
+                         icon={MessageCircle} 
+                         label="Free SMS" 
+                         color="indigo" 
+                       />
                     </div>
                  </div>
-              </div>
 
-              <div className="pt-4">
                  <button 
                    onClick={handleSave} 
                    disabled={saving || !name || !phone || !code} 
-                   className="w-full h-16 premium-btn text-white font-black rounded-[2rem] shadow-[0_20px_40px_rgba(141,48,244,0.3)] flex items-center justify-center gap-3 active:scale-95 transition-all text-lg font-noto disabled:opacity-30 disabled:grayscale"
+                   className="w-full h-14 premium-btn text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-3 active:scale-95 transition-all text-sm font-noto disabled:opacity-30 mt-4"
                  >
-                    {saving ? <Loader2 className="animate-spin" size={24} /> : (
+                    {saving ? <Loader2 className="animate-spin" size={20} /> : (
                        <>
-                         <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                            <Save size={22} />
-                         </div>
-                         <span>{editId ? 'Update Teacher' : 'Add Teacher'}</span>
+                         <Save size={18} />
+                         <span>{editId ? 'Update Profile' : 'Save Teacher'}</span>
                        </>
                     )}
                  </button>
