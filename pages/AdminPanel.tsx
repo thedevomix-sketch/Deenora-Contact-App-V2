@@ -65,18 +65,26 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
         fetchGlobalSettings(),
         fetchGlobalCounts()
       ]);
-    } catch (err) { console.error(err); } finally { setLoading(false); }
+    } catch (err) { 
+      console.error("AdminPanel Init Error:", err); 
+    } finally { 
+      setLoading(false); 
+    }
   };
 
   const fetchGlobalCounts = async () => {
-    const [studentsRes, classesRes] = await Promise.all([
-      supabase.from('students').select('*', { count: 'exact', head: true }),
-      supabase.from('classes').select('*', { count: 'exact', head: true })
-    ]);
-    setGlobalStats({
-      totalStudents: studentsRes.count || 0,
-      totalClasses: classesRes.count || 0
-    });
+    try {
+      const [studentsRes, classesRes] = await Promise.all([
+        supabase.from('students').select('*', { count: 'exact', head: true }),
+        supabase.from('classes').select('*', { count: 'exact', head: true })
+      ]);
+      setGlobalStats({
+        totalStudents: studentsRes.count || 0,
+        totalClasses: classesRes.count || 0
+      });
+    } catch (e) {
+      console.error("Global stats error:", e);
+    }
   };
 
   const fetchGlobalSettings = async () => {
@@ -114,16 +122,23 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
 
   const fetchAllMadrasahs = async () => {
     const { data, error } = await supabase.from('madrasahs').select('*').neq('is_super_admin', true).order('created_at', { ascending: false });
-    if (error) throw error;
+    if (error) {
+      console.error("Fetch Madrasahs Error:", error);
+      return;
+    }
     
     if (data) {
-      // Fetch stats for each madrasah for list display
       const withStats = await Promise.all(data.map(async (m) => {
-        const [stdCount, clsCount] = await Promise.all([
-          supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', m.id),
-          supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', m.id)
-        ]);
-        return { ...m, student_count: stdCount.count || 0, class_count: clsCount.count || 0 };
+        try {
+          const [stdCount, clsCount] = await Promise.all([
+            supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', m.id),
+            supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', m.id)
+          ]);
+          return { ...m, student_count: stdCount.count || 0, class_count: clsCount.count || 0 };
+        } catch (e) {
+          console.error(`Error fetching stats for madrasah ${m.id}:`, e);
+          return { ...m, student_count: 0, class_count: 0 };
+        }
       }));
       setMadrasahs(withStats);
     }
@@ -169,7 +184,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     setEditReveClientId(m.reve_client_id || '');
     
     setView('details');
-    // Fetch Dynamic Stats immediately
     await fetchDynamicStats(m.id);
   };
 
@@ -177,7 +191,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     if (!selectedUser) return;
     setIsUpdatingUser(true);
     try {
-      // Perform the update
       const { error: updateError } = await supabase.from('madrasahs').update({
         name: editName.trim(),
         phone: editPhone.trim(),
@@ -192,7 +205,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       if (updateError) throw updateError;
       
       alert('User Settings Updated Successfully');
-      await initData(); // Refresh everything
+      await initData(); 
       setView('list');
       setSelectedUser(null);
     } catch (err: any) { 
@@ -251,7 +264,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
 
       {view === 'list' && (
         <div className="space-y-6">
-          {/* Header Global Stats */}
           <div className="grid grid-cols-2 gap-3">
              <div className="bg-white p-4 rounded-3xl shadow-sm border border-white/40 flex flex-col items-center text-center">
                 <div className="w-10 h-10 bg-[#F2F5FF] text-[#8D30F4] rounded-2xl flex items-center justify-center mb-2 shadow-inner">
@@ -391,7 +403,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                  </div>
               </div>
 
-              {/* Subscription Card */}
               <div className="bg-gradient-to-br from-[#8D30F4] to-[#A179FF] p-6 rounded-[2.2rem] text-white shadow-xl relative overflow-hidden">
                  <Calendar className="absolute -right-4 -bottom-4 opacity-10" size={100} />
                  <div className="relative z-10 flex items-center justify-between">
@@ -413,7 +424,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                  </div>
               </div>
 
-              {/* Basic Info Form */}
               <div className="space-y-4">
                  <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2"><UserIcon size={14}/> Basic Information</h4>
                  <div className="space-y-1.5">
@@ -433,7 +443,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                  </div>
               </div>
 
-              {/* SMS Gateway Settings (Masking) */}
               <div className="space-y-4 pt-4 border-t border-slate-100">
                  <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2"><Server size={14}/> SMS Gateway (Masking)</h4>
                  <p className="text-[9px] text-slate-400 font-bold px-1 -mt-2 italic">খালি রাখলে গ্লোবাল গেটওয়ে (Non-Masking) ব্যবহৃত হবে।</p>

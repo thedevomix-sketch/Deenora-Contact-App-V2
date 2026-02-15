@@ -1,6 +1,6 @@
 
 -- ======================================================
--- MADRASAH CONTACT APP COMPLETE SCHEMA (V11 - RLS & DYNAMIC STATS FIX)
+-- MADRASAH CONTACT APP COMPLETE SCHEMA (V12 - ADMIN ACCESS FIX)
 -- ======================================================
 
 -- Enable UUID extension
@@ -25,22 +25,12 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- RLS Policies for Madrasahs table
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
--- 1. Selection Policy (Allow all authenticated users to read profiles - necessary for validation)
-DROP POLICY IF EXISTS "Enable select for users and superadmins" ON public.madrasahs;
-CREATE POLICY "Enable select for users and superadmins" 
-ON public.madrasahs FOR SELECT 
-USING (true);
-
--- 2. Update Policy (Super Admin check simplified)
-DROP POLICY IF EXISTS "Enable update for owners and superadmins" ON public.madrasahs;
-CREATE POLICY "Enable update for owners and superadmins" 
-ON public.madrasahs FOR UPDATE 
-USING (
-    auth.uid() = id OR 
-    (EXISTS (SELECT 1 FROM public.madrasahs WHERE id = auth.uid() AND is_super_admin = true))
+CREATE POLICY "Allow public select for validation" ON public.madrasahs FOR SELECT USING (true);
+CREATE POLICY "Allow individual update" ON public.madrasahs FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Super Admin Full Access" ON public.madrasahs FOR ALL USING (
+    (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
 );
 
 -- ২. ক্লাস টেবিল
@@ -49,6 +39,14 @@ CREATE TABLE IF NOT EXISTS public.classes (
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
     class_name TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can see own classes" ON public.classes FOR SELECT USING (auth.uid() = madrasah_id);
+CREATE POLICY "Users can manage own classes" ON public.classes FOR ALL USING (auth.uid() = madrasah_id);
+CREATE POLICY "Super Admin View All Classes" ON public.classes FOR SELECT USING (
+    (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
 );
 
 -- ৩. স্টুডেন্ট টেবিল
@@ -66,26 +64,15 @@ CREATE TABLE IF NOT EXISTS public.students (
     CONSTRAINT unique_roll_per_class UNIQUE (class_id, roll)
 );
 
--- ৪. এসএমএস টেমপ্লেট টেবিল
-CREATE TABLE IF NOT EXISTS public.sms_templates (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
-    title TEXT NOT NULL,
-    body TEXT NOT NULL,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can see own students" ON public.students FOR SELECT USING (auth.uid() = madrasah_id);
+CREATE POLICY "Users can manage own students" ON public.students FOR ALL USING (auth.uid() = madrasah_id);
+CREATE POLICY "Super Admin View All Students" ON public.students FOR SELECT USING (
+    (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
 );
 
--- ৫. এসএমএস লগ টেবিল
-CREATE TABLE IF NOT EXISTS public.sms_logs (
-    id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
-    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
-    recipient_phone TEXT NOT NULL,
-    message TEXT NOT NULL,
-    status TEXT DEFAULT 'sent',
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
-
--- ৬. ট্রানজ্যাকশন টেবিল
+-- ৪. ট্রানজ্যাকশন টেবিল
 CREATE TABLE IF NOT EXISTS public.transactions (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE NOT NULL,
@@ -98,14 +85,29 @@ CREATE TABLE IF NOT EXISTS public.transactions (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ৭. অ্যাডমিন এসএমএস স্টক টেবিল
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can see own transactions" ON public.transactions FOR SELECT USING (auth.uid() = madrasah_id);
+CREATE POLICY "Users can request recharge" ON public.transactions FOR INSERT WITH CHECK (auth.uid() = madrasah_id);
+CREATE POLICY "Super Admin Manage Transactions" ON public.transactions FOR ALL USING (
+    (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
+);
+
+-- ৫. এসএমএস টেমপ্লেট ও লগ (RLS Enabled)
+ALTER TABLE public.sms_templates ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Template access" ON public.sms_templates FOR ALL USING (auth.uid() = madrasah_id);
+
+ALTER TABLE public.sms_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Logs access" ON public.sms_logs FOR ALL USING (auth.uid() = madrasah_id);
+
+-- ৬. অ্যাডমিন এসএমএস স্টক টেবিল
 CREATE TABLE IF NOT EXISTS public.admin_sms_stock (
     id UUID DEFAULT uuid_generate_v4() PRIMARY KEY,
     remaining_sms INTEGER DEFAULT 0,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ৮. সিস্টেম সেটিংস টেবিল
+-- ৭. সিস্টেম সেটিংস টেবিল
 CREATE TABLE IF NOT EXISTS public.system_settings (
     id UUID PRIMARY KEY DEFAULT '00000000-0000-0000-0000-000000000001',
     reve_api_key TEXT,
@@ -116,7 +118,7 @@ CREATE TABLE IF NOT EXISTS public.system_settings (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
--- ৯. বাল্ক এসএমএস আরপিসি
+-- ৮. বাল্ক এসএমএস আরপিসি
 CREATE OR REPLACE FUNCTION public.send_bulk_sms_rpc(
   p_madrasah_id UUID,
   p_student_ids UUID[],
@@ -146,7 +148,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ১০. পেমেন্ট এপ্রুভাল আরপিসি
+-- ৯. পেমেন্ট এপ্রুভাল আরপিসি
 CREATE OR REPLACE FUNCTION public.approve_payment_with_sms(
   t_id UUID,
   m_id UUID,
