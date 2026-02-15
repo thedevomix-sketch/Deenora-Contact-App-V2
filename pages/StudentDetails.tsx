@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { ArrowLeft, Edit3, User as UserIcon, Smartphone, PhoneCall, UserCheck, MessageCircle, Hash, BookOpen } from 'lucide-react';
+import { ArrowLeft, Edit3, User as UserIcon, Smartphone, PhoneCall, UserCheck, MessageCircle, Hash, BookOpen, Phone } from 'lucide-react';
 import { Student, Language } from '../types';
 import { supabase } from '../supabase';
 
@@ -25,17 +25,22 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
         called_at: new Date().toISOString()
       });
       if (triggerRefresh) triggerRefresh();
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("recordCall Error:", e); }
   };
 
-  const initiateWhatsAppCall = () => {
-    recordCall();
-    window.location.href = `https://wa.me/88${student.guardian_phone}`;
+  const initiateNormalCall = async () => {
+    await recordCall();
+    window.location.href = `tel:${student.guardian_phone}`;
   };
 
-  const initiateWhatsAppMessage = () => {
-    recordCall();
-    window.location.href = `https://wa.me/88${student.guardian_phone}?text=${encodeURIComponent('আস-সালামু আলাইকুম')}`;
+  const initiateWhatsAppCall = async () => {
+    await recordCall();
+    window.location.href = `https://wa.me/88${student.guardian_phone.replace(/\D/g, '')}`;
+  };
+
+  const initiateWhatsAppMessage = async () => {
+    await recordCall();
+    window.location.href = `https://wa.me/88${student.guardian_phone.replace(/\D/g, '')}?text=${encodeURIComponent('আস-সালামু আলাইকুম')}`;
   };
 
   return (
@@ -72,25 +77,35 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
            </div>
         </div>
 
-        <div className="mt-8 grid grid-cols-2 gap-3.5">
+        <div className="mt-8 grid grid-cols-3 gap-2">
+           <button 
+             onClick={initiateNormalCall} 
+             className="flex flex-col items-center justify-center p-3 bg-[#8D30F4]/5 border border-[#8D30F4]/20 rounded-[1.5rem] text-[#8D30F4] active:scale-95 transition-all group"
+           >
+              <div className="w-10 h-10 bg-[#8D30F4] text-white rounded-xl flex items-center justify-center mb-2 shadow-md group-active:scale-90 transition-transform">
+                <Phone size={20} fill="currentColor" />
+              </div>
+              <span className="text-[8px] font-black uppercase tracking-widest">Phone</span>
+           </button>
+
            <button 
              onClick={initiateWhatsAppCall} 
-             className="flex flex-col items-center justify-center p-4 bg-[#25d366]/5 border border-[#25d366]/20 rounded-[1.5rem] text-[#25d366] active:scale-95 transition-all group"
+             className="flex flex-col items-center justify-center p-3 bg-[#25d366]/5 border border-[#25d366]/20 rounded-[1.5rem] text-[#25d366] active:scale-95 transition-all group"
            >
-              <div className="w-12 h-12 bg-[#25d366] text-white rounded-2xl flex items-center justify-center mb-2.5 shadow-md group-active:scale-90 transition-transform">
-                <PhoneCall size={22} fill="currentColor" />
+              <div className="w-10 h-10 bg-[#25d366] text-white rounded-xl flex items-center justify-center mb-2 shadow-md group-active:scale-90 transition-transform">
+                <PhoneCall size={20} fill="currentColor" />
               </div>
-              <span className="text-[9px] font-black uppercase tracking-widest">WA Call</span>
+              <span className="text-[8px] font-black uppercase tracking-widest">WA Call</span>
            </button>
            
            <button 
              onClick={initiateWhatsAppMessage} 
-             className="flex flex-col items-center justify-center p-4 bg-[#25d366]/5 border border-[#25d366]/20 rounded-[1.5rem] text-[#25d366] active:scale-95 transition-all group"
+             className="flex flex-col items-center justify-center p-3 bg-[#25d366]/5 border border-[#25d366]/20 rounded-[1.5rem] text-[#25d366] active:scale-95 transition-all group"
            >
-              <div className="w-12 h-12 bg-[#25d366] text-white rounded-2xl flex items-center justify-center mb-2.5 shadow-md group-active:scale-90 transition-transform">
-                <MessageCircle size={22} fill="currentColor" />
+              <div className="w-10 h-10 bg-[#25d366] text-white rounded-xl flex items-center justify-center mb-2 shadow-md group-active:scale-90 transition-transform">
+                <MessageCircle size={20} fill="currentColor" />
               </div>
-              <span className="text-[9px] font-black uppercase tracking-widest">WA Message</span>
+              <span className="text-[8px] font-black uppercase tracking-widest">WA Chat</span>
            </button>
         </div>
 
@@ -114,24 +129,12 @@ const StudentDetails: React.FC<StudentDetailsProps> = ({ student, onEdit, onBack
                  <p className="text-[15px] font-black text-[#2E0B5E] tracking-tight">{student.guardian_phone}</p>
               </div>
            </div>
-
-           {student.guardian_phone_2 && (
-             <div className="flex items-center gap-3.5 p-3.5 bg-[#F2EBFF]/20 rounded-xl border border-white/50">
-                <div className="w-9 h-9 bg-white rounded-lg flex items-center justify-center text-slate-400 shrink-0 shadow-sm">
-                   <Smartphone size={16} />
-                </div>
-                <div className="min-w-0">
-                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Secondary Phone</p>
-                   <p className="text-[14px] font-black text-slate-600 tracking-tight">{student.guardian_phone_2}</p>
-                </div>
-             </div>
-           )}
         </div>
       </div>
       
       <div className="px-6 py-3.5 bg-white/10 backdrop-blur-md rounded-[2rem] border border-white/20 flex items-center justify-center gap-2.5 shadow-lg">
           <div className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse"></div>
-          <p className="text-[9px] font-black text-white uppercase tracking-widest">Active WhatsApp Connection</p>
+          <p className="text-[9px] font-black text-white uppercase tracking-widest">Call History Enabled</p>
       </div>
     </div>
   );

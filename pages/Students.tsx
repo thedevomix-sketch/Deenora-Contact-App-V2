@@ -75,8 +75,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
       try {
         const { data } = await supabase
           .from('students')
-          .select('*, classes(*)')
-          .eq('madrasah_id', madrasahId)
+          .select('*, classes(*)').eq('madrasah_id', madrasahId)
           .eq('class_id', selectedClass.id)
           .order('roll', { ascending: true, nullsFirst: false });
         if (data) setStudents(data);
@@ -93,7 +92,7 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
         called_at: new Date().toISOString()
       });
       triggerRefresh();
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("recordCall Error:", e); }
   };
 
   const toggleSelection = (id: string) => {
@@ -157,17 +156,16 @@ const Students: React.FC<StudentsProps> = ({ selectedClass, onStudentClick, onAd
     }
   };
 
-  const initiateNormalCall = (studentId: string, phone: string) => {
-    recordCall(studentId);
+  const initiateNormalCall = async (studentId: string, phone: string) => {
+    await recordCall(studentId);
     window.location.href = `tel:${phone}`;
   };
 
-  const initiateWhatsAppCall = (studentId: string, phone: string) => {
-     recordCall(studentId);
+  const initiateWhatsAppCall = async (studentId: string, phone: string) => {
+     await recordCall(studentId);
      window.location.href = `https://wa.me/88${phone.replace(/\D/g, '')}`;
   }
 
-  // Teacher specific permissions
   const canSendSystemSMS = !teacher || teacher.permissions?.can_send_sms;
   const canSendFreeSMS = !teacher || teacher.permissions?.can_send_free_sms;
   const canAnySMS = canSendSystemSMS || canSendFreeSMS;

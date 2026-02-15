@@ -28,7 +28,6 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
     
     if (isManual) setLoadingRecent(true);
     
-    // Check cache first for instant UI
     const cached = offlineApi.getCache('recent_calls');
     if (cached && !isManual) setRecentCalls(cached);
 
@@ -41,19 +40,15 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
           .order('called_at', { ascending: false })
           .limit(15);
         
-        if (error) {
-          console.error("Supabase Fetch Error:", error.message);
-          throw error;
-        }
+        if (error) throw error;
         
         if (data) {
-          // Filter out calls where student data might be missing due to RLS or deletion
           const validCalls = data.filter(call => call.students);
           setRecentCalls(validCalls);
           offlineApi.setCache('recent_calls', validCalls);
         }
       } catch (err) { 
-        console.error("Critical Fetch Error:", err); 
+        console.error("Recent Calls Fetch Error:", err); 
       } finally { 
         setLoadingRecent(false); 
       }
@@ -69,20 +64,17 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
   const recordCall = async (studentId: string) => {
     if (!madrasahId || !studentId) return;
     try {
+      // Return the promise to await it in caller functions
       const { error } = await supabase.from('recent_calls').insert({
         madrasah_id: madrasahId,
         student_id: studentId,
         called_at: new Date().toISOString()
       });
       
-      if (error) {
-        console.error("Recording Call Failed:", error.message);
-      }
-      
-      // Force refresh data
+      if (error) console.error("Error saving call record:", error);
       triggerRefresh();
     } catch (e) {
-      console.error("Call Recording Exception:", e);
+      console.error("recordCall Exception:", e);
     }
   };
 
@@ -112,13 +104,14 @@ const Home: React.FC<HomeProps> = ({ onStudentClick, lang, dataVersion, triggerR
     return () => clearTimeout(timer);
   }, [searchQuery, handleSearch]);
 
-  const initiateNormalCall = (studentId: string, phone: string) => {
-    recordCall(studentId);
+  const initiateNormalCall = async (studentId: string, phone: string) => {
+    // Crucial: Wait for the record to be saved before navigating away
+    await recordCall(studentId);
     window.location.href = `tel:${phone}`;
   };
 
-  const initiateWhatsAppCall = (studentId: string, phone: string) => {
-     recordCall(studentId);
+  const initiateWhatsAppCall = async (studentId: string, phone: string) => {
+     await recordCall(studentId);
      window.location.href = `https://wa.me/88${phone.replace(/\D/g, '')}`;
   }
 
