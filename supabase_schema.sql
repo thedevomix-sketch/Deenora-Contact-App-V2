@@ -1,8 +1,8 @@
 
--- ১. মাদরাসা টেবিল তৈরি (যদি না থাকে)
+-- ১. মাদরাসা টেবিল নিশ্চিত করা
 CREATE TABLE IF NOT EXISTS public.madrasahs (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    name TEXT NOT NULL DEFAULT 'নতুন মাদরাসা',
+    name TEXT NOT NULL DEFAULT 'অ্যাডমিন মাদরাসা',
     phone TEXT,
     logo_url TEXT,
     is_active BOOLEAN DEFAULT true,
@@ -15,19 +15,24 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ২. RLS এনাবল করা
+-- ২. আপনার নতুন ইউজারের জন্য ম্যানুয়ালি প্রোফাইল রেকর্ড তৈরি করা
+-- এটি আপনার দেওয়া UUID কে সুপার অ্যাডমিন হিসেবে সেট করবে
+INSERT INTO public.madrasahs (id, name, is_super_admin, is_active, sms_balance)
+VALUES ('2310a484-0df2-479d-bd43-54c964c27d65', 'Super Admin', true, true, 99999)
+ON CONFLICT (id) DO UPDATE SET is_super_admin = true, is_active = true;
+
+-- ৩. RLS পলিসি সমুহ (সবার জন্য রিড এক্সেস নিশ্চিত করা যাতে ডাটা শো করে)
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
--- ৩. পলিসি সেটআপ (যাতে ইউজাররা তাদের ডাটা দেখতে পারে)
-DROP POLICY IF EXISTS "Users can view their own madrasah" ON public.madrasahs;
-CREATE POLICY "Users can view their own madrasah" ON public.madrasahs 
-FOR SELECT TO authenticated USING (auth.uid() = id);
+DROP POLICY IF EXISTS "Public Read Access" ON public.madrasahs;
+CREATE POLICY "Public Read Access" ON public.madrasahs 
+FOR SELECT TO authenticated USING (true);
 
-DROP POLICY IF EXISTS "Users can update their own madrasah" ON public.madrasahs;
-CREATE POLICY "Users can update their own madrasah" ON public.madrasahs 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.madrasahs;
+CREATE POLICY "Users can update own profile" ON public.madrasahs 
 FOR UPDATE TO authenticated USING (auth.uid() = id);
 
--- ৪. নতুন ইউজার সিঙ্ক ফাংশন
+-- ৪. অটোমেটিক প্রোফাইল ক্রিয়েশন ট্রিগার (ভবিষ্যতের জন্য)
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS trigger AS $$
 BEGIN
@@ -38,7 +43,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ট্রিগার সেটআপ
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
