@@ -49,6 +49,43 @@ const App: React.FC = () => {
     };
   }, []);
 
+  const fetchMadrasahProfile = async (userId: string) => {
+    try {
+      // Try to get profile
+      const { data, error } = await supabase
+        .from('madrasahs')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle();
+      
+      if (data) {
+        setMadrasah(data);
+        offlineApi.setCache('profile', data);
+      } else {
+        // Fallback: If no record exists, create one (very important)
+        const { data: newData, error: insertError } = await supabase
+          .from('madrasahs')
+          .insert({ 
+            id: userId, 
+            name: (session?.user?.user_metadata?.name) || 'নতুন মাদরাসা',
+            is_active: true,
+            sms_balance: 0 
+          })
+          .select('*')
+          .single();
+          
+        if (newData) {
+          setMadrasah(newData);
+          offlineApi.setCache('profile', newData);
+        }
+      }
+    } catch (err) {
+      console.error("Profile Fetch Error", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const syncTeacherProfile = async (id: string) => {
     try {
       const { data, error } = await supabase
@@ -127,24 +164,6 @@ const App: React.FC = () => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchMadrasahProfile = async (userId: string) => {
-    try {
-      const { data, error: fetchError } = await supabase
-        .from('madrasahs')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-      
-      if (data) {
-        setMadrasah(data);
-        offlineApi.setCache('profile', data);
-      }
-      setLoading(false);
-    } catch (err) {
-      setLoading(false);
-    }
-  };
-
   const logout = () => {
     localStorage.removeItem('teacher_session');
     if (session) {
@@ -169,7 +188,7 @@ const App: React.FC = () => {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#9D50FF] text-white">
         <Loader2 className="animate-spin mb-4 text-white" size={40} />
-        <p className="font-black text-[10px] uppercase tracking-[0.2em] opacity-40">Loading Portal...</p>
+        <p className="font-black text-[10px] uppercase tracking-[0.2em] opacity-40">Portal Initializing...</p>
       </div>
     );
   }
