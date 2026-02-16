@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server, CreditCard, Shield, Sliders, Activity, Bell } from 'lucide-react';
+import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server, CreditCard, Shield, Sliders, Activity, Bell, AlertCircle } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
@@ -25,16 +25,16 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [stats, setStats] = useState({ students: 0, classes: 0, teachers: 0 });
   const [loadingStats, setLoadingStats] = useState(true);
 
-  // Profile Edit States
-  const [newName, setNewName] = useState(initialMadrasah?.name || '');
-  const [newPhone, setNewPhone] = useState(initialMadrasah?.phone || '');
-  const [newLoginCode, setNewLoginCode] = useState(initialMadrasah?.login_code || '');
-  const [logoUrl, setLogoUrl] = useState(initialMadrasah?.logo_url || '');
+  // Profile Edit States - Initialized with null-safety
+  const [newName, setNewName] = useState('');
+  const [newPhone, setNewPhone] = useState('');
+  const [newLoginCode, setNewLoginCode] = useState('');
+  const [logoUrl, setLogoUrl] = useState('');
   
   // Madrasah Specific Gateway Settings
-  const [reveApiKey, setReveApiKey] = useState(initialMadrasah?.reve_api_key || '');
-  const [reveSecretKey, setReveSecretKey] = useState(initialMadrasah?.reve_secret_key || '');
-  const [reveCallerId, setReveCallerId] = useState(initialMadrasah?.reve_caller_id || '');
+  const [reveApiKey, setReveApiKey] = useState('');
+  const [reveSecretKey, setReveSecretKey] = useState('');
+  const [reveCallerId, setReveCallerId] = useState('');
 
   // Global System Settings (For Super Admin)
   const [globalSettings, setGlobalSettings] = useState({
@@ -61,7 +61,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         setReveCallerId(initialMadrasah.reve_caller_id || '');
       }
     }
-  }, [initialMadrasah, isEditingProfile]);
+  }, [initialMadrasah]);
 
   useEffect(() => {
     if (initialMadrasah?.id) {
@@ -73,7 +73,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   }, [initialMadrasah?.id, isSuperAdmin]);
 
   const fetchStats = async () => {
-    if (!initialMadrasah) return;
+    if (!initialMadrasah?.id) return;
     setLoadingStats(true);
     try {
       const [stdRes, clsRes, teaRes] = await Promise.all([
@@ -95,16 +95,21 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   };
 
   const fetchGlobalSettings = async () => {
-    const settings = await smsApi.getGlobalSettings();
-    setGlobalSettings({
-      reve_api_key: settings.reve_api_key,
-      reve_secret_key: settings.reve_secret_key,
-      reve_caller_id: settings.reve_caller_id,
-      bkash_number: settings.bkash_number
-    });
+    try {
+      const settings = await smsApi.getGlobalSettings();
+      setGlobalSettings({
+        reve_api_key: settings.reve_api_key || '',
+        reve_secret_key: settings.reve_secret_key || '',
+        reve_caller_id: settings.reve_caller_id || '',
+        bkash_number: settings.bkash_number || ''
+      });
+    } catch (e) {
+      console.error("Global settings fetch error:", e);
+    }
   };
 
   const copyToClipboard = (text: string) => {
+    if (!text) return;
     navigator.clipboard.writeText(text);
     setCopiedId(true);
     setTimeout(() => setCopiedId(false), 2000);
@@ -128,16 +133,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       if (onProfileUpdate) onProfileUpdate();
       setIsEditingProfile(false);
       
-      setMadrasah(prev => prev ? { 
-        ...prev, 
-        name: newName.trim(), 
-        phone: newPhone.trim(), 
-        login_code: newLoginCode.trim(),
-        reve_api_key: reveApiKey.trim(),
-        reve_secret_key: reveSecretKey.trim(),
-        reve_caller_id: reveCallerId.trim()
-      } : null);
-
       alert(lang === 'bn' ? 'সব তথ্য আপডেট হয়েছে!' : 'Profile Updated!');
     } catch (err: any) { 
       alert(lang === 'bn' ? `এরর: ${err.message}` : `Error: ${err.message}`);
@@ -178,11 +173,25 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     } catch (e: any) { alert(e.message); } finally { setSaving(false); }
   };
 
+  // If madrasah data is not available yet, show a more informative screen
   if (!madrasah) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center text-white/50 space-y-4">
-        <Loader2 className="animate-spin" size={32} />
-        <p className="text-[10px] font-black uppercase tracking-[0.2em]">Loading Profile...</p>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-white space-y-8 px-6 text-center">
+        <div className="w-20 h-20 bg-white/10 rounded-full flex items-center justify-center animate-pulse">
+           <UserIcon size={40} className="text-white/50" />
+        </div>
+        <div className="space-y-2">
+           <h3 className="text-xl font-black font-noto">প্রোফাইল লোড হচ্ছে...</h3>
+           <p className="text-sm font-bold opacity-60">অনুগ্রহ করে কিছুক্ষণ অপেক্ষা করুন। যদি অনেক সময় নেয়, তবে পুনরায় লগইন করুন।</p>
+        </div>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+           <div className="flex justify-center py-4">
+              <Loader2 className="animate-spin" size={32} />
+           </div>
+           <button onClick={onLogout} className="w-full py-4 bg-red-500 text-white font-black rounded-2xl shadow-xl flex items-center justify-center gap-2">
+              <LogOut size={20} /> লগ আউট করুন
+           </button>
+        </div>
       </div>
     );
   }
