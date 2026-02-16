@@ -2,7 +2,7 @@
 -- ১. মাদরাসা টেবিল নিশ্চিত করা
 CREATE TABLE IF NOT EXISTS public.madrasahs (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-    name TEXT NOT NULL DEFAULT 'অ্যাডমিন মাদরাসা',
+    name TEXT NOT NULL DEFAULT 'নতুন মাদরাসা',
     phone TEXT,
     logo_url TEXT,
     is_active BOOLEAN DEFAULT true,
@@ -15,24 +15,24 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ২. আপনার নতুন ইউজারের জন্য ম্যানুয়ালি প্রোফাইল রেকর্ড তৈরি করা
--- এটি আপনার দেওয়া UUID কে সুপার অ্যাডমিন হিসেবে সেট করবে
+-- ২. নির্দিষ্ট অ্যাডমিন ইউজারের জন্য রেকর্ড নিশ্চিত করা
 INSERT INTO public.madrasahs (id, name, is_super_admin, is_active, sms_balance)
 VALUES ('2310a484-0df2-479d-bd43-54c964c27d65', 'Super Admin', true, true, 99999)
 ON CONFLICT (id) DO UPDATE SET is_super_admin = true, is_active = true;
 
--- ৩. RLS পলিসি সমুহ (সবার জন্য রিড এক্সেস নিশ্চিত করা যাতে ডাটা শো করে)
+-- ৩. RLS পলিসি (শুধুমাত্র অথেনটিকেটেড ইউজাররা তাদের তথ্য দেখতে ও আপডেট করতে পারবে)
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Public Read Access" ON public.madrasahs;
-CREATE POLICY "Public Read Access" ON public.madrasahs 
-FOR SELECT TO authenticated USING (true);
+DROP POLICY IF EXISTS "Users can view own madrasah" ON public.madrasahs;
+CREATE POLICY "Users can view own madrasah" ON public.madrasahs 
+FOR SELECT TO authenticated USING (auth.uid() = id OR (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true);
 
 DROP POLICY IF EXISTS "Users can update own profile" ON public.madrasahs;
 CREATE POLICY "Users can update own profile" ON public.madrasahs 
 FOR UPDATE TO authenticated USING (auth.uid() = id);
 
--- ৪. অটোমেটিক প্রোফাইল ক্রিয়েশন ট্রিগার (ভবিষ্যতের জন্য)
+-- ৪. অটোমেটিক প্রোফাইল ক্রিয়েশন ট্রিগার 
+-- আপনি যখন Supabase Auth থেকে ইউজার তৈরি করবেন, এই ট্রিগারটি অটোমেটিক মাদরাসা প্রোফাইল তৈরি করে দেবে।
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS trigger AS $$
 BEGIN

@@ -33,7 +33,7 @@ const App: React.FC = () => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.5.5-PREMIUM";
+  const APP_VERSION = "2.6.0-PREMIUM";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -52,6 +52,8 @@ const App: React.FC = () => {
   const fetchMadrasahProfile = async (userId: string) => {
     if (!userId) return;
     try {
+      // আমরা এখন আর অটোমেটিক প্রোফাইল তৈরি করবো না।
+      // শুধুমাত্র ডাটাবেস থেকে তথ্য নিয়ে আসার চেষ্টা করবো।
       const { data, error } = await supabase
         .from('madrasahs')
         .select('*')
@@ -62,22 +64,9 @@ const App: React.FC = () => {
         setMadrasah(data);
         offlineApi.setCache('profile', data);
       } else {
-        // প্রোফাইল না থাকলে নতুন একটি রো তৈরি করা
-        const { data: newData, error: insertError } = await supabase
-          .from('madrasahs')
-          .insert({ 
-            id: userId, 
-            name: 'নতুন মাদরাসা',
-            is_active: true,
-            sms_balance: 0 
-          })
-          .select('*')
-          .maybeSingle();
-          
-        if (newData) {
-          setMadrasah(newData);
-          offlineApi.setCache('profile', newData);
-        }
+        // প্রোফাইল না থাকলে সেট করা হবে না, অ্যাকাউন্ট পেজে এরর দেখাবে
+        setMadrasah(null);
+        offlineApi.removeCache('profile');
       }
     } catch (err) {
       console.error("Profile Fetch Error", err);
