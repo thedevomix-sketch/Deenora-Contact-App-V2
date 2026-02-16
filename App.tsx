@@ -14,14 +14,13 @@ import WalletSMS from './pages/WalletSMS';
 import DataManagement from './pages/DataManagement';
 import Teachers from './pages/Teachers';
 import { View, Class, Student, Language, Madrasah, Teacher } from './types';
-import { WifiOff, Loader2, RefreshCw } from 'lucide-react';
+import { WifiOff, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 import { t } from './translations';
 
 const App: React.FC = () => {
   const [session, setSession] = useState<any>(null);
   const [teacher, setTeacher] = useState<Teacher | null>(null);
   const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
   const [view, setView] = useState<View>('home');
   const [madrasah, setMadrasah] = useState<Madrasah | null>(null);
   const [selectedClass, setSelectedClass] = useState<Class | null>(null);
@@ -29,11 +28,12 @@ const App: React.FC = () => {
   const [isEditing, setIsEditing] = useState(false);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [dataVersion, setDataVersion] = useState(0); 
+  const [profileNotFound, setProfileNotFound] = useState(false);
   const [lang, setLang] = useState<Language>(() => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.6.0-PREMIUM";
+  const APP_VERSION = "2.7.0-PREMIUM";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -51,9 +51,9 @@ const App: React.FC = () => {
 
   const fetchMadrasahProfile = async (userId: string) => {
     if (!userId) return;
+    setLoading(true);
+    setProfileNotFound(false);
     try {
-      // আমরা এখন আর অটোমেটিক প্রোফাইল তৈরি করবো না।
-      // শুধুমাত্র ডাটাবেস থেকে তথ্য নিয়ে আসার চেষ্টা করবো।
       const { data, error } = await supabase
         .from('madrasahs')
         .select('*')
@@ -64,9 +64,8 @@ const App: React.FC = () => {
         setMadrasah(data);
         offlineApi.setCache('profile', data);
       } else {
-        // প্রোফাইল না থাকলে সেট করা হবে না, অ্যাকাউন্ট পেজে এরর দেখাবে
         setMadrasah(null);
-        offlineApi.removeCache('profile');
+        setProfileNotFound(true);
       }
     } catch (err) {
       console.error("Profile Fetch Error", err);
@@ -99,9 +98,8 @@ const App: React.FC = () => {
       if (session) {
         fetchMadrasahProfile(session.user.id);
       } else {
-        if (!localStorage.getItem('teacher_session')) {
-          setMadrasah(null);
-        }
+        setMadrasah(null);
+        setTeacher(null);
         setLoading(false);
       }
     });
@@ -115,13 +113,37 @@ const App: React.FC = () => {
     setMadrasah(null);
     setSession(null);
     setTeacher(null);
+    setProfileNotFound(false);
   };
 
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#9D50FF] text-white">
         <Loader2 className="animate-spin mb-4 text-white" size={40} />
-        <p className="font-black text-[10px] uppercase tracking-[0.2em] opacity-40">Loading Profile...</p>
+        <p className="font-black text-[10px] uppercase tracking-[0.2em] opacity-40">Portal Initializing...</p>
+      </div>
+    );
+  }
+
+  // Profile Not Found Screen (গ্রেসফুল হ্যান্ডলিং)
+  if (profileNotFound && session) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#9D50FF] text-white p-8 text-center">
+        <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mb-6 border border-white/30">
+          <AlertCircle size={40} />
+        </div>
+        <h2 className="text-2xl font-black mb-2 font-noto tracking-tight">প্রোফাইল পাওয়া যায়নি</h2>
+        <p className="opacity-70 text-sm font-bold mb-8 leading-relaxed font-noto">
+          আপনার ইমেইল দিয়ে ইউজার তৈরি করা হয়েছে, কিন্তু ডাটাবেসে কোনো রেকর্ড নেই। দয়া করে এডমিনের মাধ্যমে আপনার প্রোফাইল তৈরি করিয়ে নিন।
+        </p>
+        <div className="flex flex-col gap-4 w-full max-w-xs">
+          <button onClick={() => fetchMadrasahProfile(session.user.id)} className="w-full py-5 bg-white text-[#8D30F4] font-black rounded-full shadow-xl flex items-center justify-center gap-2">
+            <RefreshCw size={20} /> পুনরায় চেষ্টা করুন
+          </button>
+          <button onClick={logout} className="w-full py-4 bg-white/10 text-white font-black rounded-full border border-white/20">
+            লগ আউট
+          </button>
+        </div>
       </div>
     );
   }

@@ -15,12 +15,13 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ২. নির্দিষ্ট অ্যাডমিন ইউজারের জন্য রেকর্ড নিশ্চিত করা
+-- ২. আপনার দেওয়া নতুন অ্যাডমিন ইউজারের জন্য রেকর্ড তৈরি করা
+-- এটি আপনার দেওয়া UUID কে সুপার অ্যাডমিন হিসেবে সেট করবে
 INSERT INTO public.madrasahs (id, name, is_super_admin, is_active, sms_balance)
 VALUES ('2310a484-0df2-479d-bd43-54c964c27d65', 'Super Admin', true, true, 99999)
 ON CONFLICT (id) DO UPDATE SET is_super_admin = true, is_active = true;
 
--- ৩. RLS পলিসি (শুধুমাত্র অথেনটিকেটেড ইউজাররা তাদের তথ্য দেখতে ও আপডেট করতে পারবে)
+-- ৩. RLS পলিসি (নিরাপত্তা নিশ্চিত করা)
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Users can view own madrasah" ON public.madrasahs;
@@ -32,7 +33,8 @@ CREATE POLICY "Users can update own profile" ON public.madrasahs
 FOR UPDATE TO authenticated USING (auth.uid() = id);
 
 -- ৪. অটোমেটিক প্রোফাইল ক্রিয়েশন ট্রিগার 
--- আপনি যখন Supabase Auth থেকে ইউজার তৈরি করবেন, এই ট্রিগারটি অটোমেটিক মাদরাসা প্রোফাইল তৈরি করে দেবে।
+-- আপনি যখন Supabase ড্যাশবোর্ড থেকে মেনুয়ালি ইউজার তৈরি করবেন, 
+-- এই ট্রিগারটি অটোমেটিক ওই ইউজারের জন্য মাদরাসা টেবিলে একটি রো তৈরি করে দেবে।
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS trigger AS $$
 BEGIN
