@@ -15,31 +15,38 @@ CREATE TABLE IF NOT EXISTS public.madrasahs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ২. আপনার দেওয়া নতুন অ্যাডমিন ইউজারের জন্য রেকর্ড তৈরি করা
--- এটি আপনার দেওয়া UUID কে সুপার অ্যাডমিন হিসেবে সেট করবে
+-- ২. নির্দিষ্ট সুপার এডমিন রেকর্ড (আপনার দেওয়া ID)
+-- এটি এখন আর এরর দেবে না যদি আগে থেকেই রো থাকে
 INSERT INTO public.madrasahs (id, name, is_super_admin, is_active, sms_balance)
 VALUES ('2310a484-0df2-479d-bd43-54c964c27d65', 'Super Admin', true, true, 99999)
-ON CONFLICT (id) DO UPDATE SET is_super_admin = true, is_active = true;
+ON CONFLICT (id) DO UPDATE SET 
+  is_super_admin = true, 
+  is_active = true;
 
--- ৩. RLS পলিসি (নিরাপত্তা নিশ্চিত করা)
+-- ৩. RLS পলিসি আপডেট
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Users can view own madrasah" ON public.madrasahs;
-CREATE POLICY "Users can view own madrasah" ON public.madrasahs 
-FOR SELECT TO authenticated USING (auth.uid() = id OR (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true);
+-- রিড পলিসি
+DROP POLICY IF EXISTS "Enable read access for own profile" ON public.madrasahs;
+CREATE POLICY "Enable read access for own profile" ON public.madrasahs 
+FOR SELECT TO authenticated USING (true); 
 
+-- নিজের প্রোফাইল নিজে তৈরি করার পারমিশন (এটি আপনার সমস্যা সমাধান করবে)
+DROP POLICY IF EXISTS "Enable insert for users" ON public.madrasahs;
+CREATE POLICY "Enable insert for users" ON public.madrasahs
+FOR INSERT TO authenticated WITH CHECK (auth.uid() = id);
+
+-- আপডেট পলিসি
 DROP POLICY IF EXISTS "Users can update own profile" ON public.madrasahs;
 CREATE POLICY "Users can update own profile" ON public.madrasahs 
 FOR UPDATE TO authenticated USING (auth.uid() = id);
 
 -- ৪. অটোমেটিক প্রোফাইল ক্রিয়েশন ট্রিগার 
--- আপনি যখন Supabase ড্যাশবোর্ড থেকে মেনুয়ালি ইউজার তৈরি করবেন, 
--- এই ট্রিগারটি অটোমেটিক ওই ইউজারের জন্য মাদরাসা টেবিলে একটি রো তৈরি করে দেবে।
 CREATE OR REPLACE FUNCTION public.handle_new_user() 
 RETURNS trigger AS $$
 BEGIN
   INSERT INTO public.madrasahs (id, name, is_active)
-  VALUES (new.id, COALESCE(new.raw_user_meta_data->>'name', 'নতুন মাদরাসা'), true)
+  VALUES (new.id, COALESCE(new.raw_user_meta_data->>'name', 'নতুন ইউজার'), true)
   ON CONFLICT (id) DO NOTHING;
   RETURN new;
 END;

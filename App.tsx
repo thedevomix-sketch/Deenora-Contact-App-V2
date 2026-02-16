@@ -14,7 +14,7 @@ import WalletSMS from './pages/WalletSMS';
 import DataManagement from './pages/DataManagement';
 import Teachers from './pages/Teachers';
 import { View, Class, Student, Language, Madrasah, Teacher } from './types';
-import { WifiOff, Loader2, RefreshCw, AlertCircle } from 'lucide-react';
+import { WifiOff, Loader2, RefreshCw, AlertCircle, Copy, CheckCircle, UserPlus } from 'lucide-react';
 import { t } from './translations';
 
 const App: React.FC = () => {
@@ -29,11 +29,13 @@ const App: React.FC = () => {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [dataVersion, setDataVersion] = useState(0); 
   const [profileNotFound, setProfileNotFound] = useState(false);
+  const [copiedUid, setCopiedUid] = useState(false);
+  const [isRepairing, setIsRepairing] = useState(false);
   const [lang, setLang] = useState<Language>(() => {
     return (localStorage.getItem('app_lang') as Language) || 'bn';
   });
 
-  const APP_VERSION = "2.7.0-PREMIUM";
+  const APP_VERSION = "2.9.0-REPAIR";
 
   const triggerRefresh = () => {
     setDataVersion(prev => prev + 1);
@@ -63,14 +65,40 @@ const App: React.FC = () => {
       if (data) {
         setMadrasah(data);
         offlineApi.setCache('profile', data);
+        setProfileNotFound(false);
       } else {
         setMadrasah(null);
         setProfileNotFound(true);
       }
     } catch (err) {
       console.error("Profile Fetch Error", err);
+      setProfileNotFound(true);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const repairProfile = async () => {
+    if (!session?.user?.id) return;
+    setIsRepairing(true);
+    try {
+      // এটি আপনার বর্তমান লগইন করা ID দিয়ে একটি প্রোফাইল রেকর্ড তৈরি করার চেষ্টা করবে
+      const { error } = await supabase.from('madrasahs').insert({
+        id: session.user.id,
+        name: 'নতুন মাদরাসা অ্যাডমিন',
+        is_active: true,
+        is_super_admin: false // ডিফল্ট হিসেবে false, আপনি পরে SQL দিয়ে Super Admin করতে পারবেন
+      });
+
+      if (error) {
+        alert("Error creating profile: " + error.message);
+      } else {
+        await fetchMadrasahProfile(session.user.id);
+      }
+    } catch (err: any) {
+      alert("Failed to repair: " + err.message);
+    } finally {
+      setIsRepairing(false);
     }
   };
 
@@ -116,34 +144,63 @@ const App: React.FC = () => {
     setProfileNotFound(false);
   };
 
+  const copyUid = () => {
+    if (session?.user?.id) {
+      navigator.clipboard.writeText(session.user.id);
+      setCopiedUid(true);
+      setTimeout(() => setCopiedUid(false), 2000);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#9D50FF] text-white">
         <Loader2 className="animate-spin mb-4 text-white" size={40} />
-        <p className="font-black text-[10px] uppercase tracking-[0.2em] opacity-40">Portal Initializing...</p>
+        <p className="font-black text-[10px] uppercase tracking-[0.2em] opacity-40">System Checking...</p>
       </div>
     );
   }
 
-  // Profile Not Found Screen (গ্রেসফুল হ্যান্ডলিং)
+  // Profile Not Found Screen
   if (profileNotFound && session) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#9D50FF] text-white p-8 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#9D50FF] text-white p-8 text-center animate-in fade-in">
         <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mb-6 border border-white/30">
           <AlertCircle size={40} />
         </div>
-        <h2 className="text-2xl font-black mb-2 font-noto tracking-tight">প্রোফাইল পাওয়া যায়নি</h2>
-        <p className="opacity-70 text-sm font-bold mb-8 leading-relaxed font-noto">
-          আপনার ইমেইল দিয়ে ইউজার তৈরি করা হয়েছে, কিন্তু ডাটাবেসে কোনো রেকর্ড নেই। দয়া করে এডমিনের মাধ্যমে আপনার প্রোফাইল তৈরি করিয়ে নিন।
+        <h2 className="text-2xl font-black mb-2 font-noto tracking-tight">প্রোফাইল নেই!</h2>
+        <p className="opacity-70 text-sm font-bold mb-6 leading-relaxed font-noto max-w-xs mx-auto">
+          আপনার ইমেইল দিয়ে লগইন হয়েছে, কিন্তু ডাটাবেসে প্রোফাইলটি নেই। নিচের বাটনে ক্লিক করে প্রোফাইলটি তৈরি করে নিন।
         </p>
-        <div className="flex flex-col gap-4 w-full max-w-xs">
-          <button onClick={() => fetchMadrasahProfile(session.user.id)} className="w-full py-5 bg-white text-[#8D30F4] font-black rounded-full shadow-xl flex items-center justify-center gap-2">
-            <RefreshCw size={20} /> পুনরায় চেষ্টা করুন
+        
+        <div className="flex flex-col gap-3 w-full max-w-xs mb-8">
+          <button 
+            onClick={repairProfile} 
+            disabled={isRepairing}
+            className="w-full py-5 bg-white text-[#8D30F4] font-black rounded-full shadow-2xl flex items-center justify-center gap-3 transition-all active:scale-95"
+          >
+            {isRepairing ? <Loader2 className="animate-spin" size={24} /> : <><UserPlus size={24} /> প্রোফাইল তৈরি করুন</>}
           </button>
-          <button onClick={logout} className="w-full py-4 bg-white/10 text-white font-black rounded-full border border-white/20">
-            লগ আউট
+          <button onClick={() => fetchMadrasahProfile(session.user.id)} className="w-full py-4 bg-white/10 text-white font-black rounded-full border border-white/20 flex items-center justify-center gap-2">
+            <RefreshCw size={20} /> পুনরায় চেক করুন
           </button>
         </div>
+
+        <div className="w-full max-w-xs bg-black/20 rounded-2xl p-4 mb-4 border border-white/10 flex flex-col items-center gap-2">
+           <p className="text-[10px] font-black uppercase tracking-widest opacity-40">Your Session ID</p>
+           <div className="flex items-center gap-3 w-full">
+              <code className="bg-black/20 px-3 py-2 rounded-lg text-[11px] font-mono flex-1 overflow-hidden truncate">
+                {session.user.id}
+              </code>
+              <button onClick={copyUid} className="p-2 bg-white text-[#8D30F4] rounded-lg active:scale-90 transition-all">
+                {copiedUid ? <CheckCircle size={18} /> : <Copy size={18} />}
+              </button>
+           </div>
+        </div>
+
+        <button onClick={logout} className="text-white/40 text-xs font-black uppercase tracking-widest hover:text-white transition-colors">
+            লগ আউট
+        </button>
       </div>
     );
   }
