@@ -47,6 +47,22 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [copiedId, setCopiedId] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Sync state with props when data is loaded/updated in parent
+  useEffect(() => {
+    if (initialMadrasah) {
+      setMadrasah(initialMadrasah);
+      if (!isEditingProfile) {
+        setNewName(initialMadrasah.name || '');
+        setNewPhone(initialMadrasah.phone || '');
+        setNewLoginCode(initialMadrasah.login_code || '');
+        setLogoUrl(initialMadrasah.logo_url || '');
+        setReveApiKey(initialMadrasah.reve_api_key || '');
+        setReveSecretKey(initialMadrasah.reve_secret_key || '');
+        setReveCallerId(initialMadrasah.reve_caller_id || '');
+      }
+    }
+  }, [initialMadrasah, isEditingProfile]);
+
   useEffect(() => {
     if (initialMadrasah?.id) {
       fetchStats();
@@ -162,7 +178,14 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     } catch (e: any) { alert(e.message); } finally { setSaving(false); }
   };
 
-  if (!madrasah) return null;
+  if (!madrasah) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center text-white/50 space-y-4">
+        <Loader2 className="animate-spin" size={32} />
+        <p className="text-[10px] font-black uppercase tracking-[0.2em]">Loading Profile...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-28">
@@ -199,14 +222,14 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                        <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-indigo-600/30 transition-all shadow-inner">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Global API Key</label>
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Global API Key</label>
                           <div className="flex items-center gap-3">
                              <Key size={14} className="text-slate-300" />
                              <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-sm w-full" value={globalSettings.reve_api_key} onChange={(e) => setGlobalSettings({...globalSettings, reve_api_key: e.target.value})} placeholder="API Key" />
                           </div>
                        </div>
                        <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-indigo-600/30 transition-all shadow-inner">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Global Secret Key</label>
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Global Secret Key</label>
                           <div className="flex items-center gap-3">
                              <Shield size={14} className="text-slate-300" />
                              <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-sm w-full" value={globalSettings.reve_secret_key} onChange={(e) => setGlobalSettings({...globalSettings, reve_secret_key: e.target.value})} placeholder="Secret Key" />
@@ -214,7 +237,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                        </div>
                     </div>
                     <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-indigo-600/30 transition-all shadow-inner">
-                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Global Sender ID</label>
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Global Sender ID</label>
                        <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-sm w-full" value={globalSettings.reve_caller_id} onChange={(e) => setGlobalSettings({...globalSettings, reve_caller_id: e.target.value})} placeholder="e.g. Madrasah" />
                     </div>
                  </div>
@@ -225,7 +248,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                        <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Payment Configuration</h4>
                     </div>
                     <div className="bg-slate-50/80 p-5 rounded-3xl border-2 border-transparent focus-within:border-indigo-600/30 transition-all shadow-inner">
-                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Official bKash Number</label>
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Official bKash Number</label>
                        <div className="flex items-center gap-3">
                           <Smartphone size={18} className="text-pink-500" />
                           <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-lg w-full font-noto" value={globalSettings.bkash_number} onChange={(e) => setGlobalSettings({...globalSettings, bkash_number: e.target.value})} placeholder="০১৭XXXXXXXX" />
@@ -352,16 +375,16 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                       <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">API Key</label>
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 px-1">API Key</label>
                         <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveApiKey} onChange={(e) => setReveApiKey(e.target.value)} placeholder="Reve API Key" />
                       </div>
                       <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Secret Key</label>
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 px-1">Secret Key</label>
                         <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveSecretKey} onChange={(e) => setReveSecretKey(e.target.value)} placeholder="Secret Key" />
                       </div>
                   </div>
                   <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Masking ID</label>
+                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5 px-1">Masking ID</label>
                     <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveCallerId} onChange={(e) => setReveCallerId(e.target.value)} placeholder="Sender Name" />
                   </div>
                 </div>
