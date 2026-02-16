@@ -39,15 +39,20 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [copiedId, setCopiedId] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Sync with initialMadrasah prop
   useEffect(() => {
     if (initialMadrasah) {
       setMadrasah(initialMadrasah);
       setLocalLoading(false);
       populateForm(initialMadrasah);
-    } else {
+    } else if (!isTeacher) {
+      // Only Admin should attempt local fetch if prop is missing
       attemptLocalFetch();
+    } else {
+      // If teacher and no initialMadrasah, something is wrong
+      setLocalLoading(false);
     }
-  }, [initialMadrasah?.id, initialMadrasah?.updated_at]);
+  }, [initialMadrasah?.id]);
 
   const attemptLocalFetch = async () => {
     try {
@@ -57,7 +62,8 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         return;
       }
 
-      const { data } = await supabase
+      // Fetch from public.madrasahs
+      const { data, error } = await supabase
         .from('madrasahs')
         .select('*')
         .eq('id', session.user.id)
@@ -67,6 +73,8 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         setMadrasah(data);
         populateForm(data);
         offlineApi.setCache('profile', data);
+      } else if (error) {
+        console.error("Fetch profile error:", error);
       }
     } catch (e) {
       console.error("Local fetch fallback error:", e);
@@ -84,7 +92,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     setReveSecretKey(data.reve_secret_key || '');
     setReveCallerId(data.reve_caller_id || '');
     
-    fetchStats(data.id);
+    if (data.id) fetchStats(data.id);
   };
 
   const fetchStats = async (mId: string) => {
@@ -97,7 +105,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('madrasah_id', mId)
       ]);
       setStats({ students: stdRes.count || 0, classes: clsRes.count || 0, teachers: teaRes.count || 0 });
-    } catch (e) { console.error(e); } finally { setLoadingStats(false); }
+    } catch (e) { console.error("Stats fetch error:", e); } finally { setLoadingStats(false); }
   };
 
   const copyToClipboard = (text: string) => {
@@ -146,7 +154,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   if (localLoading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-6 text-center px-6">
-        <Loader2 className="animate-spin text-white" size={36} />
+        <Loader2 className="animate-spin text-white" size={40} />
         <h3 className="text-xl font-black text-white font-noto">প্রোফাইল লোড হচ্ছে...</h3>
       </div>
     );
@@ -154,10 +162,15 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
   if (!madrasah) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-8 text-center px-10">
-        <AlertCircle size={48} className="text-red-500" />
-        <h3 className="text-2xl font-black text-white font-noto">প্রোফাইল পাওয়া যায়নি!</h3>
-        <button onClick={onLogout} className="w-full py-5 bg-red-500 text-white font-black rounded-3xl">লগ আউট করুন</button>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-8 text-center px-10 animate-in fade-in">
+        <AlertCircle size={56} className="text-red-500" />
+        <div className="space-y-2">
+          <h3 className="text-2xl font-black text-white font-noto">প্রোফাইল পাওয়া যায়নি!</h3>
+          <p className="text-white/60 text-xs font-bold font-noto">ডাটাবেসে আপনার প্রোফাইলটি নেই। এডমিনকে যোগাযোগ করুন।</p>
+        </div>
+        <button onClick={onLogout} className="w-full py-5 bg-red-500 text-white font-black rounded-[2rem] shadow-xl active:scale-95 transition-all">
+          লগ আউট করুন
+        </button>
       </div>
     );
   }
@@ -171,8 +184,8 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
             <div className="w-32 h-32 bg-white rounded-[2.8rem] border-[6px] border-slate-50 shadow-xl flex items-center justify-center overflow-hidden">
                {logoUrl ? <img src={logoUrl} className="w-full h-full object-cover" /> : <UserIcon size={45} className="text-[#8D30F4]" />}
             </div>
-            {isEditingProfile && (
-              <button onClick={() => fileInputRef.current?.click()} className="absolute -bottom-2 -right-2 w-11 h-11 bg-[#8D30F4] text-white rounded-2xl flex items-center justify-center shadow-lg border-4 border-white">
+            {isEditingProfile && !isTeacher && (
+              <button onClick={() => fileInputRef.current?.click()} className="absolute -bottom-2 -right-2 w-11 h-11 bg-[#8D30F4] text-white rounded-2xl flex items-center justify-center shadow-lg border-4 border-white active:scale-90 transition-all">
                 <Camera size={20} />
               </button>
             )}
@@ -189,8 +202,8 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
           </div>
         </div>
 
-        {isEditingProfile ? (
-          <div className="space-y-5">
+        {isEditingProfile && !isTeacher ? (
+          <div className="space-y-5 animate-in slide-in-from-top-4">
              <div className="space-y-1.5">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Madrasah Name</label>
                 <input type="text" className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-6 font-black text-slate-800 font-noto" value={newName} onChange={(e) => setNewName(e.target.value)} />
@@ -200,7 +213,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                 <input type="tel" className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-6 font-black text-slate-800" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
              </div>
              
-             {/* Admin Gateway Section in Editing mode */}
              {!isSuperAdmin && (
                 <div className="pt-4 border-t border-slate-100 space-y-4">
                   <h4 className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest">Gateway Settings</h4>
@@ -214,8 +226,8 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
              <div className="flex gap-3 pt-4">
                 <button onClick={() => setIsEditingProfile(false)} className="flex-1 py-5 bg-slate-100 text-slate-500 font-black rounded-3xl">Cancel</button>
-                <button onClick={handleUpdate} disabled={saving} className="flex-[2] py-5 bg-[#8D30F4] text-white font-black rounded-3xl flex items-center justify-center gap-2 shadow-lg">
-                   {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={20} />} Update
+                <button onClick={handleUpdate} disabled={saving} className="flex-[2] py-5 bg-[#8D30F4] text-white font-black rounded-3xl flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-all">
+                   {saving ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> Update</>}
                 </button>
              </div>
           </div>
