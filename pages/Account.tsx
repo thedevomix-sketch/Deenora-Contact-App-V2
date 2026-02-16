@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server, CreditCard, Shield } from 'lucide-react';
+import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server, CreditCard, Shield, Sliders, Activity, Bell } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
@@ -165,269 +165,287 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   if (!madrasah) return null;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-24">
-      {/* Stats Summary Area - Cleaner 2x2 Grid */}
-      {!isSuperAdmin && (
-        <div className="grid grid-cols-2 gap-3 px-1">
-          <div className="bg-white/95 backdrop-blur-md p-4 rounded-[2rem] border border-white shadow-xl flex flex-col items-center text-center">
-            <div className="w-11 h-11 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
-               <Users size={22} />
-            </div>
-            <p className="text-xl font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.students}</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{t('students', lang)}</p>
-          </div>
-          
-          <div className="bg-white/95 backdrop-blur-md p-4 rounded-[2rem] border border-white shadow-xl flex flex-col items-center text-center">
-            <div className="w-11 h-11 bg-purple-50 text-purple-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
-               <Layers size={22} />
-            </div>
-            <p className="text-xl font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.classes}</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{t('classes', lang)}</p>
-          </div>
-
-          <div className="bg-white/95 backdrop-blur-md p-4 rounded-[2rem] border border-white shadow-xl flex flex-col items-center text-center">
-            <div className="w-11 h-11 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
-               <UserPlus size={22} />
-            </div>
-            <p className="text-xl font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : stats.teachers}</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{t('teachers', lang)}</p>
-          </div>
-
-          <div className="bg-white/95 backdrop-blur-md p-4 rounded-[2rem] border border-white shadow-xl flex flex-col items-center text-center">
-            <div className="w-11 h-11 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mb-2 shadow-inner">
-               <Zap size={22} />
-            </div>
-            <p className="text-xl font-black text-[#2E0B5E] leading-none">{loadingStats ? '...' : (madrasah.sms_balance || 0)}</p>
-            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-1.5">{lang === 'bn' ? 'ব্যালেন্স' : 'Balance'}</p>
-          </div>
-        </div>
-      )}
-
-      {/* GLOBAL SYSTEM SETTINGS - FOR SUPER ADMIN ONLY (PLACED ON TOP) */}
+    <div className="space-y-8 animate-in fade-in duration-700 pb-28">
+      {/* GLOBAL SYSTEM SETTINGS - FOR SUPER ADMIN (TOP) */}
       {isSuperAdmin && (
-        <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] border border-white/50 shadow-2xl space-y-8 relative overflow-hidden">
-           <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                 <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center shadow-inner">
-                    <Settings size={24} />
+        <div className="bg-white/95 backdrop-blur-3xl p-8 rounded-[3.5rem] border border-white/50 shadow-[0_25px_60px_-15px_rgba(46,11,94,0.1)] space-y-8 relative overflow-hidden group">
+           <div className="absolute top-0 right-0 p-8 opacity-5 group-hover:rotate-12 transition-transform duration-700">
+              <Sliders size={120} />
+           </div>
+
+           <div className="flex items-center justify-between relative z-10">
+              <div className="flex items-center gap-4">
+                 <div className="w-14 h-14 bg-indigo-600 text-white rounded-[1.5rem] flex items-center justify-center shadow-[0_10px_25px_-5px_rgba(79,70,229,0.4)]">
+                    <Settings size={26} />
                  </div>
                  <div>
-                    <h3 className="text-lg font-black text-[#2E0B5E] font-noto leading-tight">System Configuration</h3>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Global SMS & Payment Gateway</p>
+                    <h3 className="text-xl font-black text-[#2E0B5E] font-noto tracking-tight">Super Control Center</h3>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-1">System-wide Gateway Config</p>
                  </div>
               </div>
               {!isEditingGlobal && (
-                <button onClick={() => setIsEditingGlobal(true)} className="p-2 bg-[#F2EBFF] text-[#8D30F4] rounded-xl active:scale-90 transition-all">
+                <button onClick={() => setIsEditingGlobal(true)} className="w-11 h-11 bg-slate-50 text-indigo-600 rounded-2xl flex items-center justify-center hover:bg-indigo-600 hover:text-white transition-all duration-300 border border-slate-100 shadow-sm active:scale-90">
                   <Edit3 size={18} />
                 </button>
               )}
            </div>
 
            {isEditingGlobal ? (
-              <div className="space-y-6 animate-in slide-in-from-top-4">
-                 <div className="pt-2 space-y-4">
-                    <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2">
-                        <Server size={14}/> Global SMS Gateway (REVE)
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3">
-                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global API Key</label>
-                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_api_key} onChange={(e) => setGlobalSettings({...globalSettings, reve_api_key: e.target.value})} placeholder="Global API Key" />
+              <div className="space-y-8 animate-in slide-in-from-top-4 duration-500 relative z-10">
+                 <div className="space-y-5">
+                    <div className="flex items-center gap-2.5 px-1 mb-2">
+                       <Server size={14} className="text-indigo-600" />
+                       <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Global SMS (REVE)</h4>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-indigo-600/30 transition-all shadow-inner">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Global API Key</label>
+                          <div className="flex items-center gap-3">
+                             <Key size={14} className="text-slate-300" />
+                             <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-sm w-full" value={globalSettings.reve_api_key} onChange={(e) => setGlobalSettings({...globalSettings, reve_api_key: e.target.value})} placeholder="API Key" />
+                          </div>
                        </div>
-                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global Secret</label>
-                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_secret_key} onChange={(e) => setGlobalSettings({...globalSettings, reve_secret_key: e.target.value})} placeholder="Global Secret" />
+                       <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-indigo-600/30 transition-all shadow-inner">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Global Secret Key</label>
+                          <div className="flex items-center gap-3">
+                             <Shield size={14} className="text-slate-300" />
+                             <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-sm w-full" value={globalSettings.reve_secret_key} onChange={(e) => setGlobalSettings({...globalSettings, reve_secret_key: e.target.value})} placeholder="Secret Key" />
+                          </div>
                        </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3">
-                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global Sender ID</label>
-                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_caller_id} onChange={(e) => setGlobalSettings({...globalSettings, reve_caller_id: e.target.value})} placeholder="Sender ID" />
+                    <div className="grid grid-cols-2 gap-4">
+                       <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-indigo-600/30 transition-all shadow-inner">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Global Sender ID</label>
+                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-sm w-full" value={globalSettings.reve_caller_id} onChange={(e) => setGlobalSettings({...globalSettings, reve_caller_id: e.target.value})} placeholder="e.g. Madrasah" />
                        </div>
-                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global Client ID</label>
-                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_client_id} onChange={(e) => setGlobalSettings({...globalSettings, reve_client_id: e.target.value})} placeholder="Client ID" />
+                       <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-indigo-600/30 transition-all shadow-inner">
+                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Global Client ID</label>
+                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-sm w-full" value={globalSettings.reve_client_id} onChange={(e) => setGlobalSettings({...globalSettings, reve_client_id: e.target.value})} placeholder="Client ID" />
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="space-y-5">
+                    <div className="flex items-center gap-2.5 px-1 mb-2">
+                       <CreditCard size={14} className="text-pink-500" />
+                       <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Payment Configuration</h4>
+                    </div>
+                    <div className="bg-slate-50/80 p-5 rounded-3xl border-2 border-transparent focus-within:border-indigo-600/30 transition-all shadow-inner">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Official bKash Number</label>
+                       <div className="flex items-center gap-3">
+                          <Smartphone size={18} className="text-pink-500" />
+                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-lg w-full font-noto" value={globalSettings.bkash_number} onChange={(e) => setGlobalSettings({...globalSettings, bkash_number: e.target.value})} placeholder="০১৭XXXXXXXX" />
                        </div>
                     </div>
                  </div>
 
-                 <div className="pt-2 space-y-4">
-                    <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2">
-                        <CreditCard size={14}/> Payment Settings
-                    </h4>
-                    <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Official bKash Number</label>
-                       <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full" value={globalSettings.bkash_number} onChange={(e) => setGlobalSettings({...globalSettings, bkash_number: e.target.value})} placeholder="০১৭XXXXXXXX" />
-                    </div>
-                 </div>
-
-                 <div className="flex gap-3 pt-4">
-                    <button onClick={() => setIsEditingGlobal(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-2xl text-sm">Cancel</button>
-                    <button onClick={handleSaveGlobalSettings} disabled={saving} className="flex-[2] py-4 bg-indigo-600 text-white font-black rounded-2xl text-sm shadow-xl flex items-center justify-center gap-2">
-                       {saving ? <Loader2 className="animate-spin" size={18} /> : <><Save size={18} /> Save Config</>}
+                 <div className="flex gap-4 pt-4">
+                    <button onClick={() => setIsEditingGlobal(false)} className="flex-1 py-5 bg-slate-100 text-slate-500 font-black rounded-[1.8rem] text-sm transition-all hover:bg-slate-200 active:scale-95">Cancel</button>
+                    <button onClick={handleSaveGlobalSettings} disabled={saving} className="flex-[2] py-5 bg-indigo-600 text-white font-black rounded-[1.8rem] text-sm shadow-xl shadow-indigo-100 flex items-center justify-center gap-3 active:scale-95 transition-all">
+                       {saving ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> Deploy Global Config</>}
                     </button>
                  </div>
               </div>
            ) : (
-              <div className="space-y-4">
-                 <div className="bg-slate-50 p-5 rounded-[1.8rem] border border-slate-100 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                       <Server size={18} className="text-[#8D30F4]" />
-                       <span className="text-sm font-black text-slate-700 font-noto">Global Gateway Status</span>
+              <div className="space-y-6 animate-in fade-in duration-500 relative z-10">
+                 <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-slate-50/80 p-6 rounded-3xl border border-slate-100">
+                       <div className="flex items-center gap-2 mb-3">
+                          <Activity size={12} className="text-green-500" />
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Gateway Status</p>
+                       </div>
+                       <div className="flex items-center gap-2">
+                          <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div>
+                          <span className="text-sm font-black text-slate-800">Operational</span>
+                       </div>
                     </div>
-                    <span className="text-[10px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">Connected</span>
+                    <div className="bg-slate-50/80 p-6 rounded-3xl border border-slate-100">
+                       <div className="flex items-center gap-2 mb-3">
+                          <Bell size={12} className="text-indigo-600" />
+                          <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Active Sender</p>
+                       </div>
+                       <p className="text-sm font-black text-slate-800">{globalSettings.reve_caller_id || 'Not Set'}</p>
+                    </div>
                  </div>
-                 
-                 <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Default Sender</p>
-                       <p className="text-xs font-black text-slate-800">{globalSettings.reve_caller_id || 'None'}</p>
+
+                 <div className="bg-indigo-50/50 p-6 rounded-[2rem] border border-indigo-100/50 flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                       <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-indigo-600 shadow-sm border border-indigo-100">
+                          <Smartphone size={20} />
+                       </div>
+                       <div>
+                          <p className="text-[8px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-0.5">Payment Support</p>
+                          <p className="text-base font-black text-indigo-900 font-noto">{globalSettings.bkash_number || 'None'}</p>
+                       </div>
                     </div>
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Official bKash</p>
-                       <p className="text-xs font-black text-slate-800 font-noto">{globalSettings.bkash_number || 'None'}</p>
-                    </div>
+                    <div className="px-3 py-1 bg-white rounded-lg text-[9px] font-black text-indigo-600 uppercase border border-indigo-100">Primary</div>
                  </div>
               </div>
            )}
         </div>
       )}
 
-      {/* Main Profile Card */}
-      <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] border border-white/50 shadow-2xl space-y-8 relative overflow-hidden">
-        <div className="flex flex-col items-center gap-6 relative z-10">
-          <div className="relative group">
-            <div className="w-28 h-28 bg-white rounded-[2.5rem] border-4 border-slate-50 shadow-2xl flex items-center justify-center overflow-hidden">
-               {logoUrl ? <img src={logoUrl} className="w-full h-full object-cover" alt="Logo" /> : isSuperAdmin ? <ShieldCheck size={45} className="text-[#8D30F4]" /> : <UserIcon size={40} className="text-[#A179FF]" />}
+      {/* Profile Card */}
+      <div className="bg-white/95 backdrop-blur-3xl p-10 rounded-[3.5rem] border border-white/50 shadow-[0_25px_60px_-15px_rgba(46,11,94,0.1)] space-y-10 relative overflow-hidden group">
+        <div className="flex flex-col items-center gap-8 relative z-10">
+          <div className="relative group/photo">
+            <div className="w-32 h-32 bg-white rounded-[2.8rem] border-[6px] border-slate-50 shadow-2xl flex items-center justify-center overflow-hidden transition-transform duration-500 group-hover/photo:scale-105">
+               {logoUrl ? <img src={logoUrl} className="w-full h-full object-cover" alt="Logo" /> : isSuperAdmin ? <ShieldCheck size={50} className="text-indigo-600" /> : <UserIcon size={45} className="text-[#8D30F4]" />}
             </div>
             {isEditingProfile && !isTeacher && (
-              <button onClick={() => fileInputRef.current?.click()} className="absolute -bottom-2 -right-2 w-10 h-10 bg-[#8D30F4] text-white rounded-xl flex items-center justify-center shadow-lg border-2 border-white">
-                <Camera size={18} />
+              <button onClick={() => fileInputRef.current?.click()} className="absolute -bottom-2 -right-2 w-11 h-11 bg-[#8D30F4] text-white rounded-2xl flex items-center justify-center shadow-lg border-4 border-white active:scale-90 transition-all">
+                <Camera size={20} />
               </button>
             )}
             <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handlePhotoUpload} />
           </div>
 
-          <div className="text-center w-full px-2">
-            <h2 className="text-2xl font-black text-[#2E0B5E] font-noto leading-tight">{madrasah.name}</h2>
-            <div className="mt-4 flex flex-col items-center gap-1.5">
+          <div className="text-center w-full space-y-4">
+            <div>
+               <h2 className="text-3xl font-black text-[#2E0B5E] font-noto tracking-tight leading-tight">{madrasah.name}</h2>
+               {isTeacher && <div className="mt-2 inline-flex px-4 py-1 bg-[#8D30F4] rounded-full text-[9px] font-black text-white uppercase tracking-[0.3em]">Teacher Mode</div>}
+            </div>
+            
+            <div className="flex justify-center">
               <div 
                 onClick={() => copyToClipboard(madrasah.id)}
-                className="bg-[#F2EBFF] px-5 py-2.5 rounded-2xl border border-[#8D30F4]/10 inline-flex items-center gap-2.5 active:scale-95 transition-all cursor-pointer group"
+                className="bg-slate-50/80 px-6 py-3 rounded-2xl border border-slate-100 flex items-center gap-4 active:scale-95 transition-all cursor-pointer hover:bg-white hover:border-[#8D30F4]/20 group/uuid"
               >
-                <Fingerprint size={16} className="text-[#8D30F4]" />
-                <div className="flex flex-col items-start">
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">{t('madrasah_uuid', lang)}</p>
-                  <p className="text-[11px] font-black text-[#8D30F4] tracking-tight truncate max-w-[150px]">
+                <Fingerprint size={18} className="text-[#8D30F4]" />
+                <div className="flex flex-col items-start min-w-0">
+                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest leading-none mb-1">Identity UUID</p>
+                  <p className="text-[12px] font-black text-[#8D30F4] tracking-tight truncate max-w-[140px]">
                     {madrasah.id}
                   </p>
                 </div>
-                {copiedId ? <Check size={14} className="text-green-500" /> : <Copy size={14} className="text-[#8D30F4]/40 group-hover:text-[#8D30F4]" />}
+                {copiedId ? <Check size={16} className="text-green-500" /> : <Copy size={16} className="text-slate-300 group-hover/uuid:text-[#8D30F4]" />}
               </div>
             </div>
-            {isTeacher && <p className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest mt-4">{t('teacher_portal', lang)}</p>}
           </div>
         </div>
 
-        {/* Action List / Form */}
-        <div className="space-y-4 pt-2">
+        {/* Info & Edit Area */}
+        <div className="space-y-6 relative z-10 pt-4">
           {isEditingProfile && !isTeacher ? (
-            <div className="space-y-4 animate-in slide-in-from-top-4">
-              <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">{t('madrasah_name', lang)}</label>
-                <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full font-noto" value={newName} onChange={(e) => setNewName(e.target.value)} />
+            <div className="space-y-5 animate-in slide-in-from-top-4 duration-500">
+              <div className="bg-slate-50/80 p-6 rounded-3xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner group/input">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Organization Name</label>
+                <div className="flex items-center gap-3">
+                   <Globe size={18} className="text-slate-300 group-focus-within/input:text-[#8D30F4] transition-colors" />
+                   <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full font-noto" value={newName} onChange={(e) => setNewName(e.target.value)} />
+                </div>
               </div>
-              <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">{t('madrasah_phone', lang)}</label>
-                <input type="tel" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+              <div className="bg-slate-50/80 p-6 rounded-3xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner group/input">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Contact Phone</label>
+                <div className="flex items-center gap-3">
+                   <Smartphone size={18} className="text-slate-300 group-focus-within/input:text-[#8D30F4] transition-colors" />
+                   <input type="tel" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+                </div>
               </div>
-              <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">{t('madrasah_code_label', lang)}</label>
-                <input type="text" className="bg-transparent border-none outline-none font-black text-[#8D30F4] text-base w-full" value={newLoginCode} onChange={(e) => setNewLoginCode(e.target.value)} />
+              <div className="bg-slate-50/80 p-6 rounded-3xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner group/input">
+                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2 px-1">Secure Login Code</label>
+                <div className="flex items-center gap-3">
+                   <Key size={18} className="text-[#8D30F4]" />
+                   <input type="text" className="bg-transparent border-none outline-none font-black text-[#8D30F4] text-lg w-full tracking-widest" value={newLoginCode} onChange={(e) => setNewLoginCode(e.target.value)} />
+                </div>
               </div>
 
               {!isSuperAdmin && (
-                <div className="pt-4 border-t border-slate-100 space-y-4">
-                  <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2">
-                      <Server size={14}/> SMS Gateway (Individual)
-                  </h4>
-                  <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">API Key</label>
+                <div className="pt-6 border-t border-slate-100 space-y-6">
+                  <div className="flex items-center gap-2.5 px-1 mb-2">
+                     <Server size={14} className="text-[#8D30F4]" />
+                     <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Individual SMS Masking</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">API Key</label>
                         <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveApiKey} onChange={(e) => setReveApiKey(e.target.value)} placeholder="Reve API Key" />
                       </div>
-                      <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Secret Key</label>
+                      <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Secret Key</label>
                         <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveSecretKey} onChange={(e) => setReveSecretKey(e.target.value)} placeholder="Secret Key" />
                       </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-3">
-                      <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Sender ID</label>
-                        <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveCallerId} onChange={(e) => setReveCallerId(e.target.value)} placeholder="Masking Name" />
+                  <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Masking ID</label>
+                        <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveCallerId} onChange={(e) => setReveCallerId(e.target.value)} placeholder="Sender Name" />
                       </div>
-                      <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Client ID</label>
+                      <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Client ID</label>
                         <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveClientId} onChange={(e) => setReveClientId(e.target.value)} placeholder="Client ID" />
                       </div>
                   </div>
                 </div>
               )}
 
-              <div className="flex gap-3 pt-4">
-                <button onClick={() => setIsEditingProfile(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-2xl text-sm">{t('cancel', lang)}</button>
-                <button onClick={handleUpdate} disabled={saving} className="flex-[2] py-4 bg-[#8D30F4] text-white font-black rounded-2xl text-sm shadow-xl">
-                  {saving ? <Loader2 className="animate-spin mx-auto" size={18} /> : t('save_changes', lang)}
+              <div className="flex gap-4 pt-6">
+                <button onClick={() => setIsEditingProfile(false)} className="flex-1 py-5 bg-slate-100 text-slate-500 font-black rounded-3xl text-sm transition-all active:scale-95">Cancel</button>
+                <button onClick={handleUpdate} disabled={saving} className="flex-[2] py-5 bg-[#8D30F4] text-white font-black rounded-3xl text-sm shadow-[0_15px_30px_-5px_rgba(141,48,244,0.3)] flex items-center justify-center gap-3 active:scale-95 transition-all">
+                  {saving ? <Loader2 className="animate-spin" size={20} /> : <><Save size={20} /> Save Changes</>}
                 </button>
               </div>
             </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4 animate-in fade-in duration-500">
               {!isTeacher && (
                 <>
                   {!isSuperAdmin && (
-                    <>
-                      <button onClick={() => setView('teachers')} className="w-full bg-slate-50 p-5 rounded-2xl border border-slate-100 flex items-center justify-between group active:scale-[0.98] transition-all">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-500 shadow-inner"><UserPlus size={20} /></div>
-                          <span className="text-md font-black text-[#2E0B5E] font-noto">{t('manage_teachers', lang)}</span>
+                    <div className="grid grid-cols-1 gap-4 mb-6">
+                      <button onClick={() => setView('teachers')} className="group flex items-center justify-between p-6 bg-slate-50/80 rounded-3xl border border-slate-100 active:scale-[0.98] transition-all hover:bg-white hover:border-[#8D30F4]/10">
+                        <div className="flex items-center gap-5">
+                          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-500 shadow-sm border border-slate-100 group-hover:bg-blue-500 group-hover:text-white transition-all duration-300">
+                             <UserPlus size={24} />
+                          </div>
+                          <div className="text-left">
+                             <span className="text-base font-black text-[#2E0B5E] font-noto block leading-none">Manage Teachers</span>
+                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Portal Access Controls</span>
+                          </div>
                         </div>
-                        <ChevronRight size={20} className="text-slate-300" />
+                        <ChevronRight size={20} className="text-slate-300 group-hover:text-[#8D30F4] transition-all" />
                       </button>
-                      <button onClick={() => setView('data-management')} className="w-full bg-slate-50 p-5 rounded-2xl border border-slate-100 flex items-center justify-between group active:scale-[0.98] transition-all">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-[#8D30F4] shadow-inner"><Database size={20} /></div>
-                          <span className="text-md font-black text-[#2E0B5E] font-noto">{t('backup_restore', lang)}</span>
+
+                      <button onClick={() => setView('data-management')} className="group flex items-center justify-between p-6 bg-slate-50/80 rounded-3xl border border-slate-100 active:scale-[0.98] transition-all hover:bg-white hover:border-[#8D30F4]/10">
+                        <div className="flex items-center gap-5">
+                          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-purple-600 shadow-sm border border-slate-100 group-hover:bg-purple-600 group-hover:text-white transition-all duration-300">
+                             <Database size={24} />
+                          </div>
+                          <div className="text-left">
+                             <span className="text-base font-black text-[#2E0B5E] font-noto block leading-none">Data Operations</span>
+                             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Backup & Excel Sync</span>
+                          </div>
                         </div>
-                        <ChevronRight size={20} className="text-slate-300" />
+                        <ChevronRight size={20} className="text-slate-300 group-hover:text-[#8D30F4] transition-all" />
                       </button>
-                    </>
+                    </div>
                   )}
-                  <button onClick={() => setIsEditingProfile(true)} className="w-full h-16 bg-[#F2EBFF] text-[#8D30F4] font-black rounded-3xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all border border-[#8D30F4]/10 mb-6 font-noto">
-                    <Edit3 size={20} /> {t('edit_account_info', lang)}
+                  <button onClick={() => setIsEditingProfile(true)} className="w-full h-16 bg-[#F2EBFF] text-[#8D30F4] font-black rounded-3xl flex items-center justify-center gap-4 active:scale-[0.98] transition-all border-2 border-[#8D30F4]/10 mb-2 font-noto shadow-sm hover:shadow-md">
+                    <Edit3 size={22} /> {t('edit_account_info', lang)}
                   </button>
                 </>
               )}
 
-              {/* Language Selection Row */}
-              <div className="pt-6 border-t border-slate-100 space-y-4">
-                <div className="flex items-center justify-between px-1">
-                  <div className="flex items-center gap-2 text-slate-400">
-                    <Languages size={14} />
-                    <span className="text-[10px] font-black uppercase tracking-widest">{t('language', lang)}</span>
+              {/* Language Toggle */}
+              <div className="pt-8 border-t border-slate-100 space-y-5">
+                <div className="flex items-center justify-between px-2">
+                  <div className="flex items-center gap-3 text-slate-400">
+                    <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center text-slate-500">
+                       <Languages size={16} />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em]">{t('language', lang)}</span>
                   </div>
-                  <div className="flex p-1 bg-slate-100 rounded-xl">
+                  <div className="flex p-1.5 bg-slate-100 rounded-2xl border border-slate-200">
                     <button 
                       onClick={() => setLang('bn')} 
-                      className={`px-4 py-1.5 rounded-lg text-[11px] font-black transition-all ${lang === 'bn' ? 'bg-white text-[#8D30F4] shadow-sm' : 'text-slate-400'}`}
+                      className={`px-6 py-2 rounded-[1rem] text-[11px] font-black transition-all duration-300 ${lang === 'bn' ? 'bg-white text-[#8D30F4] shadow-[0_5px_15px_-5px_rgba(141,48,244,0.3)]' : 'text-slate-400'}`}
                     >
                       বাংলা
                     </button>
                     <button 
                       onClick={() => setLang('en')} 
-                      className={`px-4 py-1.5 rounded-lg text-[11px] font-black transition-all ${lang === 'en' ? 'bg-white text-[#8D30F4] shadow-sm' : 'text-slate-400'}`}
+                      className={`px-6 py-2 rounded-[1rem] text-[11px] font-black transition-all duration-300 ${lang === 'en' ? 'bg-white text-[#8D30F4] shadow-[0_5px_15px_-5px_rgba(141,48,244,0.3)]' : 'text-slate-400'}`}
                     >
-                      EN
+                      ENG
                     </button>
                   </div>
                 </div>
@@ -437,9 +455,49 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         </div>
       </div>
 
-      <button onClick={onLogout} className="w-full py-6 bg-red-500 text-white font-black rounded-[2.5rem] shadow-xl active:scale-[0.95] transition-all flex items-center justify-center gap-4 text-lg border-2 border-red-400 font-noto">
-        <LogOut size={26} /> {t('logout', lang)}
-      </button>
+      {/* Stats - For standard admins only */}
+      {!isSuperAdmin && !isEditingProfile && (
+        <div className="grid grid-cols-2 gap-4 px-1">
+          <div className="bg-white/95 backdrop-blur-3xl p-6 rounded-[2.5rem] border border-white/50 shadow-xl flex flex-col items-center text-center group">
+            <div className="w-14 h-14 bg-blue-50 text-blue-500 rounded-[1.4rem] flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform duration-500">
+               <Users size={24} />
+            </div>
+            <p className="text-3xl font-black text-[#2E0B5E] tracking-tight">{loadingStats ? '...' : stats.students}</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">{t('students', lang)}</p>
+          </div>
+          
+          <div className="bg-white/95 backdrop-blur-3xl p-6 rounded-[2.5rem] border border-white/50 shadow-xl flex flex-col items-center text-center group">
+            <div className="w-14 h-14 bg-purple-50 text-purple-500 rounded-[1.4rem] flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform duration-500">
+               <Layers size={24} />
+            </div>
+            <p className="text-3xl font-black text-[#2E0B5E] tracking-tight">{loadingStats ? '...' : stats.classes}</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">{t('classes', lang)}</p>
+          </div>
+
+          <div className="bg-white/95 backdrop-blur-3xl p-6 rounded-[2.5rem] border border-white/50 shadow-xl flex flex-col items-center text-center group">
+            <div className="w-14 h-14 bg-indigo-50 text-indigo-500 rounded-[1.4rem] flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform duration-500">
+               <UserPlus size={24} />
+            </div>
+            <p className="text-3xl font-black text-[#2E0B5E] tracking-tight">{loadingStats ? '...' : stats.teachers}</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">{t('teachers', lang)}</p>
+          </div>
+
+          <div className="bg-white/95 backdrop-blur-3xl p-6 rounded-[2.5rem] border border-white/50 shadow-xl flex flex-col items-center text-center group">
+            <div className="w-14 h-14 bg-emerald-50 text-emerald-500 rounded-[1.4rem] flex items-center justify-center mb-4 shadow-inner group-hover:scale-110 transition-transform duration-500">
+               <Zap size={24} />
+            </div>
+            <p className="text-3xl font-black text-emerald-600 tracking-tight">{loadingStats ? '...' : (madrasah.sms_balance || 0)}</p>
+            <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-2">{lang === 'bn' ? 'ব্যালেন্স' : 'Balance'}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Logout - Always visible at bottom */}
+      <div className="px-1 pt-4">
+        <button onClick={onLogout} className="w-full py-6 bg-red-500 text-white font-black rounded-[2.8rem] shadow-[0_20px_40px_-10px_rgba(239,68,68,0.4)] active:scale-[0.97] transition-all flex items-center justify-center gap-4 text-lg border-2 border-red-400 font-noto hover:bg-red-600">
+          <LogOut size={26} /> {t('logout', lang)}
+        </button>
+      </div>
     </div>
   );
 };
