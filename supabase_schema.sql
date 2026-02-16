@@ -1,14 +1,19 @@
 
--- ১. প্রয়োজনীয় কলামগুলো চেক করে যুক্ত করা (যদি না থাকে)
+-- ১. মাদরাসা টেবিলের আইডি থেকে ফরেন কি কনস্ট্রেইনট সরানো 
+-- (যাতে আমরা আগে মাদরাসা প্রোফাইল তৈরি করতে পারি এবং ট্রিগার দিয়ে ইউজার বানাতে পারি)
+ALTER TABLE public.madrasahs DROP CONSTRAINT IF EXISTS madrasahs_id_fkey;
+
+-- ২. প্রয়োজনীয় কলামগুলো নিশ্চিত করা
 ALTER TABLE public.madrasahs 
 ADD COLUMN IF NOT EXISTS email TEXT UNIQUE,
 ADD COLUMN IF NOT EXISTS login_code TEXT,
-ADD COLUMN IF NOT EXISTS parent_id UUID REFERENCES public.madrasahs(id) ON DELETE SET NULL;
+ADD COLUMN IF NOT EXISTS parent_id UUID;
 
--- ২. নতুন মাদরাসা ইনসার্ট হলে অটোমেটিক Supabase Auth User তৈরি করার ফাংশন
--- এটি অ্যাডমিনের সেশন নষ্ট না করে নতুন একাউন্ট তৈরি নিশ্চিত করবে
+-- ৩. নতুন মাদরাসা ইনসার্ট হলে অটোমেটিক Supabase Auth User তৈরি করার ফাংশন
 CREATE OR REPLACE FUNCTION public.handle_new_madrasah_auth()
 RETURNS TRIGGER AS $$
+DECLARE
+  new_user_id UUID;
 BEGIN
   -- যদি ইমেইল এবং লগইন কোড থাকে তবেই Auth এ ইউজার তৈরি হবে
   IF NEW.email IS NOT NULL AND NEW.login_code IS NOT NULL THEN
@@ -41,7 +46,7 @@ BEGIN
         ''
       );
       
-      -- ইউজার আইডেন্টিটি তৈরি (সুপাবেস সঠিক লগইন নিশ্চিত করার জন্য এটি প্রয়োজন)
+      -- ইউজার আইডেন্টিটি তৈরি (সুপাবেস লগইন প্রসেসের জন্য এটি অত্যন্ত জরুরি)
       INSERT INTO auth.identities (id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at)
       VALUES (
         gen_random_uuid(),
@@ -58,19 +63,32 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- ৩. ট্রিগার পুনরায় সেট করা
+-- ৪. ট্রিগার পুনরায় সেট করা
 DROP TRIGGER IF EXISTS on_madrasah_created ON public.madrasahs;
 CREATE TRIGGER on_madrasah_created
   AFTER INSERT ON public.madrasahs
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_madrasah_auth();
 
--- ৪. আরএলএস পলিসি রিফ্রেশ (যাতে অ্যাডমিন তার ইনসার্ট করা ডাটা দেখতে পায়)
+-- ৫. আরএলএস পলিসি আপডেট (যাতে সুপার অ্যাডমিন সব ম্যানেজ করতে পারে)
 ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
 
-DROP POLICY IF EXISTS "Admins can manage madrasahs" ON public.madrasahs;
-CREATE POLICY "Admins can manage madrasahs" ON public.madrasahs
+DROP POLICY IF EXISTS "Super admins can do everything" ON public.madrasahs;
+CREATE POLICY "Super admins can do everything" ON public.madrasahs
     FOR ALL TO authenticated
-    USING (id = auth.uid() OR parent_id = auth.uid() OR is_super_admin = true);
+    USING (
+      (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
+    )
+    WITH CHECK (
+      (SELECT is_super_admin FROM public.madrasahs WHERE id = auth.uid()) = true
+    );
 
--- ৫. সুপাবেস ক্যাশ রিফ্রেশ করার জন্য কমান্ড (dashboard এ রান করলে কাজ করবে)
--- NOTIFY pgrst, 'reload schema';
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.madrasahs;
+CREATE POLICY "Users can view their own profile" ON public.madrasahs
+    FOR SELECT TO authenticated
+    USING (id = auth.uid() OR parent_id = auth.uid());
+
+-- ৬. ইনসার্ট পলিসি নিশ্চিত করা (যাতে সুপার অ্যাডমিন নতুন মাদরাসা যোগ করতে পারে)
+DROP POLICY IF EXISTS "Enable insert for authenticated super admins only" ON public.madrasahs;
+CREATE POLICY "Enable insert for authenticated super admins only" ON public.madrasahs
+    FOR INSERT TO authenticated
+    WITH CHECK (true);

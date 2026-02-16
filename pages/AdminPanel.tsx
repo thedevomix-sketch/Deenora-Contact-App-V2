@@ -104,7 +104,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     setIsCreating(true);
     try {
       const { data: { user } } = await (supabase.auth as any).getUser();
-      if (!user) throw new Error("Authentication required");
+      if (!user) throw new Error("Authentication session not found");
 
       const newId = crypto.randomUUID(); 
       
@@ -128,6 +128,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       setCreateData({ name: '', email: '', phone: '', loginCode: '' });
       initData();
     } catch (err: any) {
+      console.error("Creation Error:", err);
       showStatus('error', 'ব্যর্থ হয়েছে!', err.message || 'অ্যাকাউন্ট তৈরি করা সম্ভব হয়নি।');
     } finally {
       setIsCreating(false);
