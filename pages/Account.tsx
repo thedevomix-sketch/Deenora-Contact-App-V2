@@ -203,6 +203,96 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         </div>
       )}
 
+      {/* GLOBAL SYSTEM SETTINGS - FOR SUPER ADMIN ONLY (PLACED ON TOP) */}
+      {isSuperAdmin && (
+        <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] border border-white/50 shadow-2xl space-y-8 relative overflow-hidden">
+           <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                 <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center shadow-inner">
+                    <Settings size={24} />
+                 </div>
+                 <div>
+                    <h3 className="text-lg font-black text-[#2E0B5E] font-noto leading-tight">System Configuration</h3>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Global SMS & Payment Gateway</p>
+                 </div>
+              </div>
+              {!isEditingGlobal && (
+                <button onClick={() => setIsEditingGlobal(true)} className="p-2 bg-[#F2EBFF] text-[#8D30F4] rounded-xl active:scale-90 transition-all">
+                  <Edit3 size={18} />
+                </button>
+              )}
+           </div>
+
+           {isEditingGlobal ? (
+              <div className="space-y-6 animate-in slide-in-from-top-4">
+                 <div className="pt-2 space-y-4">
+                    <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2">
+                        <Server size={14}/> Global SMS Gateway (REVE)
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global API Key</label>
+                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_api_key} onChange={(e) => setGlobalSettings({...globalSettings, reve_api_key: e.target.value})} placeholder="Global API Key" />
+                       </div>
+                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global Secret</label>
+                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_secret_key} onChange={(e) => setGlobalSettings({...globalSettings, reve_secret_key: e.target.value})} placeholder="Global Secret" />
+                       </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global Sender ID</label>
+                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_caller_id} onChange={(e) => setGlobalSettings({...globalSettings, reve_caller_id: e.target.value})} placeholder="Sender ID" />
+                       </div>
+                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global Client ID</label>
+                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_client_id} onChange={(e) => setGlobalSettings({...globalSettings, reve_client_id: e.target.value})} placeholder="Client ID" />
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="pt-2 space-y-4">
+                    <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2">
+                        <CreditCard size={14}/> Payment Settings
+                    </h4>
+                    <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Official bKash Number</label>
+                       <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full" value={globalSettings.bkash_number} onChange={(e) => setGlobalSettings({...globalSettings, bkash_number: e.target.value})} placeholder="০১৭XXXXXXXX" />
+                    </div>
+                 </div>
+
+                 <div className="flex gap-3 pt-4">
+                    <button onClick={() => setIsEditingGlobal(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-2xl text-sm">Cancel</button>
+                    <button onClick={handleSaveGlobalSettings} disabled={saving} className="flex-[2] py-4 bg-indigo-600 text-white font-black rounded-2xl text-sm shadow-xl flex items-center justify-center gap-2">
+                       {saving ? <Loader2 className="animate-spin" size={18} /> : <><Save size={18} /> Save Config</>}
+                    </button>
+                 </div>
+              </div>
+           ) : (
+              <div className="space-y-4">
+                 <div className="bg-slate-50 p-5 rounded-[1.8rem] border border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                       <Server size={18} className="text-[#8D30F4]" />
+                       <span className="text-sm font-black text-slate-700 font-noto">Global Gateway Status</span>
+                    </div>
+                    <span className="text-[10px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">Connected</span>
+                 </div>
+                 
+                 <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Default Sender</p>
+                       <p className="text-xs font-black text-slate-800">{globalSettings.reve_caller_id || 'None'}</p>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Official bKash</p>
+                       <p className="text-xs font-black text-slate-800 font-noto">{globalSettings.bkash_number || 'None'}</p>
+                    </div>
+                 </div>
+              </div>
+           )}
+        </div>
+      )}
+
       {/* Main Profile Card */}
       <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] border border-white/50 shadow-2xl space-y-8 relative overflow-hidden">
         <div className="flex flex-col items-center gap-6 relative z-10">
@@ -346,96 +436,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
           )}
         </div>
       </div>
-
-      {/* GLOBAL SYSTEM SETTINGS - FOR SUPER ADMIN ONLY */}
-      {isSuperAdmin && (
-        <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] border border-white/50 shadow-2xl space-y-8 relative overflow-hidden">
-           <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-3">
-                 <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center shadow-inner">
-                    <Settings size={24} />
-                 </div>
-                 <div>
-                    <h3 className="text-lg font-black text-[#2E0B5E] font-noto leading-tight">System Configuration</h3>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Global SMS & Payment Gateway</p>
-                 </div>
-              </div>
-              {!isEditingGlobal && (
-                <button onClick={() => setIsEditingGlobal(true)} className="p-2 bg-[#F2EBFF] text-[#8D30F4] rounded-xl active:scale-90 transition-all">
-                  <Edit3 size={18} />
-                </button>
-              )}
-           </div>
-
-           {isEditingGlobal ? (
-              <div className="space-y-6 animate-in slide-in-from-top-4">
-                 <div className="pt-2 space-y-4">
-                    <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2">
-                        <Server size={14}/> Global SMS Gateway (REVE)
-                    </h4>
-                    <div className="grid grid-cols-2 gap-3">
-                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global API Key</label>
-                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_api_key} onChange={(e) => setGlobalSettings({...globalSettings, reve_api_key: e.target.value})} placeholder="Global API Key" />
-                       </div>
-                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global Secret</label>
-                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_secret_key} onChange={(e) => setGlobalSettings({...globalSettings, reve_secret_key: e.target.value})} placeholder="Global Secret" />
-                       </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global Sender ID</label>
-                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_caller_id} onChange={(e) => setGlobalSettings({...globalSettings, reve_caller_id: e.target.value})} placeholder="Sender ID" />
-                       </div>
-                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global Client ID</label>
-                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_client_id} onChange={(e) => setGlobalSettings({...globalSettings, reve_client_id: e.target.value})} placeholder="Client ID" />
-                       </div>
-                    </div>
-                 </div>
-
-                 <div className="pt-2 space-y-4">
-                    <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2">
-                        <CreditCard size={14}/> Payment Settings
-                    </h4>
-                    <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Official bKash Number</label>
-                       <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full" value={globalSettings.bkash_number} onChange={(e) => setGlobalSettings({...globalSettings, bkash_number: e.target.value})} placeholder="০১৭XXXXXXXX" />
-                    </div>
-                 </div>
-
-                 <div className="flex gap-3 pt-4">
-                    <button onClick={() => setIsEditingGlobal(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-2xl text-sm">Cancel</button>
-                    <button onClick={handleSaveGlobalSettings} disabled={saving} className="flex-[2] py-4 bg-indigo-600 text-white font-black rounded-2xl text-sm shadow-xl flex items-center justify-center gap-2">
-                       {saving ? <Loader2 className="animate-spin" size={18} /> : <><Save size={18} /> Save Config</>}
-                    </button>
-                 </div>
-              </div>
-           ) : (
-              <div className="space-y-4">
-                 <div className="bg-slate-50 p-5 rounded-[1.8rem] border border-slate-100 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                       <Server size={18} className="text-[#8D30F4]" />
-                       <span className="text-sm font-black text-slate-700 font-noto">Global Gateway Status</span>
-                    </div>
-                    <span className="text-[10px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">Connected</span>
-                 </div>
-                 
-                 <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Default Sender</p>
-                       <p className="text-xs font-black text-slate-800">{globalSettings.reve_caller_id || 'None'}</p>
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Official bKash</p>
-                       <p className="text-xs font-black text-slate-800 font-noto">{globalSettings.bkash_number || 'None'}</p>
-                    </div>
-                 </div>
-              </div>
-           )}
-        </div>
-      )}
 
       <button onClick={onLogout} className="w-full py-6 bg-red-500 text-white font-black rounded-[2.5rem] shadow-xl active:scale-[0.95] transition-all flex items-center justify-center gap-4 text-lg border-2 border-red-400 font-noto">
         <LogOut size={26} /> {t('logout', lang)}
