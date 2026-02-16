@@ -36,6 +36,16 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [reveSecretKey, setReveSecretKey] = useState(initialMadrasah?.reve_secret_key || '');
   const [reveCallerId, setReveCallerId] = useState(initialMadrasah?.reve_caller_id || '');
 
+  const syncFormStates = (data: Madrasah) => {
+    setNewName(data.name || '');
+    setNewPhone(data.phone || '');
+    setNewLoginCode(data.login_code || '');
+    setLogoUrl(data.logo_url || '');
+    setReveApiKey(data.reve_api_key || '');
+    setReveSecretKey(data.reve_secret_key || '');
+    setReveCallerId(data.reve_caller_id || '');
+  };
+
   const fetchProfileDirectly = async () => {
     setIsInternalLoading(true);
     setLoadError(false);
@@ -58,28 +68,25 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       } else if (localStorage.getItem('teacher_session')) {
         const teacherData = JSON.parse(localStorage.getItem('teacher_session') || '{}');
         if (teacherData.madrasah_id) {
-            const profile = { id: teacherData.madrasah_id, name: teacherData.madrasahs?.name || 'Portal User', is_active: true } as Madrasah;
+            const profile = { 
+                id: teacherData.madrasah_id, 
+                name: teacherData.madrasahs?.name || 'Teacher Portal', 
+                is_active: true 
+            } as Madrasah;
             setMadrasah(profile);
             syncFormStates(profile);
+        } else {
+          setLoadError(true);
         }
       } else {
         setLoadError(true);
       }
     } catch (e) {
+      console.error("Profile Fetch Error", e);
       setLoadError(true);
     } finally {
       setIsInternalLoading(false);
     }
-  };
-
-  const syncFormStates = (data: Madrasah) => {
-    setNewName(data.name || '');
-    setNewPhone(data.phone || '');
-    setNewLoginCode(data.login_code || '');
-    setLogoUrl(data.logo_url || '');
-    setReveApiKey(data.reve_api_key || '');
-    setReveSecretKey(data.reve_secret_key || '');
-    setReveCallerId(data.reve_caller_id || '');
   };
 
   useEffect(() => {
@@ -88,8 +95,18 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       syncFormStates(initialMadrasah);
       fetchStats(initialMadrasah.id);
       setIsInternalLoading(false);
+      setLoadError(false);
     } else {
       fetchProfileDirectly();
+      
+      // Fallback: If still loading after 8 seconds, show error
+      const timer = setTimeout(() => {
+        if (!madrasah && !loadError) {
+          setLoadError(true);
+          setIsInternalLoading(false);
+        }
+      }, 8000);
+      return () => clearTimeout(timer);
     }
   }, [initialMadrasah]);
 
@@ -103,6 +120,8 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('madrasah_id', id)
       ]);
       setStats({ students: stdRes.count || 0, classes: clsRes.count || 0, teachers: teaRes.count || 0 });
+    } catch (e) {
+      console.error("Stats Error", e);
     } finally { setLoadingStats(false); }
   };
 
@@ -129,7 +148,8 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     } finally { setSaving(false); }
   };
 
-  if (isInternalLoading || (!madrasah && !loadError)) {
+  // 1. Loading State
+  if (isInternalLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in duration-500">
         <div className="w-24 h-24 bg-white/10 rounded-[2.5rem] flex items-center justify-center mb-8 relative overflow-hidden">
@@ -142,17 +162,31 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     );
   }
 
+  // 2. Error State
   if (loadError && !madrasah) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in">
-        <AlertCircle size={48} className="text-red-400 mb-4" />
-        <h2 className="text-white font-black text-lg mb-6">প্রোফাইল পাওয়া যায়নি</h2>
-        <button onClick={onLogout} className="w-full max-w-xs py-5 bg-red-500 text-white font-black rounded-full shadow-xl">
-           লগ আউট করুন
-        </button>
+        <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 text-red-400 border border-red-500/20">
+          <AlertCircle size={40} />
+        </div>
+        <h2 className="text-white font-black text-xl mb-2 font-noto">প্রোফাইল পাওয়া যায়নি</h2>
+        <p className="text-white/40 text-[11px] font-bold uppercase tracking-widest mb-10 leading-relaxed px-4">
+          আপনার একাউন্ট তথ্য লোড করা সম্ভব হয়নি। পুনরায় লগইন করার চেষ্টা করুন।
+        </p>
+        <div className="flex flex-col gap-4 w-full max-w-xs">
+          <button onClick={() => fetchProfileDirectly()} className="w-full py-5 bg-white/10 text-white font-black rounded-full border border-white/20 flex items-center justify-center gap-2">
+            <RefreshCw size={20} /> পুনরায় চেষ্টা করুন
+          </button>
+          <button onClick={onLogout} className="w-full py-5 bg-red-500 text-white font-black rounded-full shadow-xl">
+             লগ আউট করুন
+          </button>
+        </div>
       </div>
     );
   }
+
+  // 3. Normal UI (only if madrasah exists)
+  if (!madrasah) return null;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-28">
@@ -163,7 +197,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
              {logoUrl ? <img src={logoUrl} className="w-full h-full object-cover" /> : <UserIcon size={45} className="text-[#8D30F4]" />}
           </div>
           <div className="text-center w-full">
-             <h2 className="text-3xl font-black text-[#2E0B5E] font-noto tracking-tight">{madrasah?.name}</h2>
+             <h2 className="text-3xl font-black text-[#2E0B5E] font-noto tracking-tight">{madrasah.name}</h2>
              {isTeacher && <div className="mt-2 inline-flex px-4 py-1 bg-[#8D30F4] rounded-full text-[9px] font-black text-white uppercase tracking-[0.3em]">Teacher Mode</div>}
           </div>
         </div>
@@ -217,7 +251,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
           </div>
           <div className="bg-white/95 p-6 rounded-[2.5rem] flex flex-col items-center">
              <Zap size={24} className="text-emerald-500 mb-2" />
-             <p className="text-2xl font-black text-emerald-600">{madrasah?.sms_balance || 0}</p>
+             <p className="text-2xl font-black text-emerald-600">{madrasah.sms_balance || 0}</p>
              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Balance</p>
           </div>
         </div>

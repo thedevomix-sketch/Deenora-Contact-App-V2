@@ -12,6 +12,9 @@ CREATE TABLE IF NOT EXISTS public.recent_calls (
 );
 
 -- ৩. বাল্ক এসএমএস এবং ব্যালেন্স কমানোর RPC ফাংশন
+-- এরর এড়াতে আগের ফাংশনটি থাকলে ডিলিট করে নেওয়া হচ্ছে
+DROP FUNCTION IF EXISTS public.send_bulk_sms_rpc(UUID, UUID[], TEXT);
+
 CREATE OR REPLACE FUNCTION public.send_bulk_sms_rpc(
     p_madrasah_id UUID,
     p_student_ids UUID[],
@@ -25,7 +28,7 @@ BEGIN
     SELECT sms_balance INTO v_balance FROM public.madrasahs WHERE id = p_madrasah_id;
     v_count := array_length(p_student_ids, 1);
 
-    IF v_balance < v_count THEN
+    IF v_balance IS NULL OR v_balance < v_count THEN
         RETURN jsonb_build_object('success', false, 'error', 'Insufficient balance');
     END IF;
 
@@ -33,9 +36,6 @@ BEGIN
     UPDATE public.madrasahs 
     SET sms_balance = sms_balance - v_count 
     WHERE id = p_madrasah_id;
-
-    -- ট্রানজ্যাকশন রেকর্ড (ঐচ্ছিক কিন্তু ভালো প্র্যাকটিস)
-    -- এখানে ডেবিট ট্রানজ্যাকশন ইনসার্ট করা যেতে পারে
 
     RETURN jsonb_build_object('success', true);
 END;
