@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server, CreditCard, Shield, Sliders, Activity, Bell, Smartphone } from 'lucide-react';
+import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server, CreditCard, Shield, Sliders, Activity, Bell, Smartphone, AlertCircle } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
@@ -17,6 +17,7 @@ interface AccountProps {
 }
 
 const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setView, isSuperAdmin, initialMadrasah, onLogout, isTeacher }) => {
+  // Use a local state that defaults to the prop value
   const [madrasah, setMadrasah] = useState<Madrasah | null>(initialMadrasah);
   const [saving, setSaving] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -25,18 +26,16 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [stats, setStats] = useState({ students: 0, classes: 0, teachers: 0 });
   const [loadingStats, setLoadingStats] = useState(true);
 
-  // Profile Edit States
+  // Form States
   const [newName, setNewName] = useState(initialMadrasah?.name || '');
   const [newPhone, setNewPhone] = useState(initialMadrasah?.phone || '');
   const [newLoginCode, setNewLoginCode] = useState(initialMadrasah?.login_code || '');
   const [logoUrl, setLogoUrl] = useState(initialMadrasah?.logo_url || '');
   
-  // Madrasah Specific Gateway Settings
   const [reveApiKey, setReveApiKey] = useState(initialMadrasah?.reve_api_key || '');
   const [reveSecretKey, setReveSecretKey] = useState(initialMadrasah?.reve_secret_key || '');
   const [reveCallerId, setReveCallerId] = useState(initialMadrasah?.reve_caller_id || '');
 
-  // Global System Settings (For Super Admin)
   const [globalSettings, setGlobalSettings] = useState({
     reve_api_key: '',
     reve_secret_key: '',
@@ -47,7 +46,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [copiedId, setCopiedId] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync state with props when they change
+  // Effect to sync the state when initialMadrasah changes (e.g., after parent finishes loading)
   useEffect(() => {
     if (initialMadrasah) {
       setMadrasah(initialMadrasah);
@@ -58,21 +57,21 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       setReveApiKey(initialMadrasah.reve_api_key || '');
       setReveSecretKey(initialMadrasah.reve_secret_key || '');
       setReveCallerId(initialMadrasah.reve_caller_id || '');
-      fetchStats();
+      fetchStats(initialMadrasah.id);
       if (isSuperAdmin) {
         fetchGlobalSettings();
       }
     }
   }, [initialMadrasah, isSuperAdmin]);
 
-  const fetchStats = async () => {
-    if (!initialMadrasah?.id) return;
+  const fetchStats = async (id: string) => {
+    if (!id) return;
     setLoadingStats(true);
     try {
       const [stdRes, clsRes, teaRes] = await Promise.all([
-        supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id),
-        supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id),
-        supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id)
+        supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', id),
+        supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', id),
+        supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('madrasah_id', id)
       ]);
 
       setStats({ 
@@ -81,7 +80,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         teachers: teaRes.count || 0
       });
     } catch (e) { 
-      console.error("Account stats fetch error:", e); 
+      console.error("Stats Fetch Error:", e); 
     } finally { 
       setLoadingStats(false); 
     }
@@ -161,11 +160,26 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     } catch (e: any) { alert(e.message); } finally { setSaving(false); }
   };
 
+  // If madrasah is null, show a better waiting state with logout option
   if (!madrasah) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 text-white">
-        <Loader2 className="animate-spin mb-4" size={40} />
-        <p className="font-black text-[10px] uppercase tracking-[0.2em] opacity-40">অ্যাকাউন্ট লোড হচ্ছে...</p>
+      <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in duration-500">
+        <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mb-8 relative">
+           <Loader2 className="animate-spin text-white absolute inset-0 m-auto" size={48} />
+           <UserIcon size={32} className="text-white/20" />
+        </div>
+        <h2 className="text-xl font-black text-white font-noto tracking-tight mb-2">প্রোফাইল লোড হচ্ছে...</h2>
+        <p className="text-white/40 text-[11px] font-black uppercase tracking-[0.2em] mb-12">Fetching Account Profile</p>
+        
+        <div className="w-full max-w-xs space-y-4">
+          <div className="p-5 bg-white/5 border border-white/10 rounded-3xl flex items-center gap-4 text-left">
+             <AlertCircle size={20} className="text-white/30 shrink-0" />
+             <p className="text-[10px] font-bold text-white/50 leading-relaxed uppercase tracking-wider">যদি প্রোফাইল লোড না হয়, তবে লগ আউট করে পুনরায় লগইন করুন।</p>
+          </div>
+          <button onClick={onLogout} className="w-full py-5 bg-red-500 text-white font-black rounded-full shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
+             <LogOut size={20} /> লগ আউট করুন
+          </button>
+        </div>
       </div>
     );
   }
