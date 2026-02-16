@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server } from 'lucide-react';
+import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server, CreditCard, Shield } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
@@ -20,20 +20,31 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [madrasah, setMadrasah] = useState<Madrasah | null>(initialMadrasah);
   const [saving, setSaving] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isEditingGlobal, setIsEditingGlobal] = useState(false);
   
   const [stats, setStats] = useState({ students: 0, classes: 0, teachers: 0 });
   const [loadingStats, setLoadingStats] = useState(true);
 
+  // Profile Edit States
   const [newName, setNewName] = useState(initialMadrasah?.name || '');
   const [newPhone, setNewPhone] = useState(initialMadrasah?.phone || '');
   const [newLoginCode, setNewLoginCode] = useState(initialMadrasah?.login_code || '');
   const [logoUrl, setLogoUrl] = useState(initialMadrasah?.logo_url || '');
   
-  // Gateway Settings
+  // Madrasah Specific Gateway Settings
   const [reveApiKey, setReveApiKey] = useState(initialMadrasah?.reve_api_key || '');
   const [reveSecretKey, setReveSecretKey] = useState(initialMadrasah?.reve_secret_key || '');
   const [reveCallerId, setReveCallerId] = useState(initialMadrasah?.reve_caller_id || '');
   const [reveClientId, setReveClientId] = useState(initialMadrasah?.reve_client_id || '');
+
+  // Global System Settings (For Super Admin)
+  const [globalSettings, setGlobalSettings] = useState({
+    reve_api_key: '',
+    reve_secret_key: '',
+    reve_caller_id: '',
+    reve_client_id: '',
+    bkash_number: ''
+  });
   
   const [copiedId, setCopiedId] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -41,8 +52,11 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   useEffect(() => {
     if (initialMadrasah?.id) {
       fetchStats();
+      if (isSuperAdmin) {
+        fetchGlobalSettings();
+      }
     }
-  }, [initialMadrasah?.id]);
+  }, [initialMadrasah?.id, isSuperAdmin]);
 
   const fetchStats = async () => {
     if (!initialMadrasah) return;
@@ -64,6 +78,11 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     } finally { 
       setLoadingStats(false); 
     }
+  };
+
+  const fetchGlobalSettings = async () => {
+    const settings = await smsApi.getGlobalSettings();
+    setGlobalSettings(settings);
   };
 
   const copyToClipboard = (text: string) => {
@@ -106,6 +125,28 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     } catch (err: any) { 
       alert(lang === 'bn' ? `এরর: ${err.message}` : `Error: ${err.message}`);
     } finally { setSaving(false); }
+  };
+
+  const handleSaveGlobalSettings = async () => {
+    if (!isSuperAdmin) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase.from('system_settings').update({
+        reve_api_key: globalSettings.reve_api_key.trim(),
+        reve_secret_key: globalSettings.reve_secret_key.trim(),
+        reve_caller_id: globalSettings.reve_caller_id.trim(),
+        reve_client_id: globalSettings.reve_client_id.trim(),
+        bkash_number: globalSettings.bkash_number.trim()
+      }).eq('id', '00000000-0000-0000-0000-000000000001');
+
+      if (error) throw error;
+      alert('Global System Settings Updated!');
+      setIsEditingGlobal(false);
+    } catch (err: any) {
+      alert('Error updating global settings: ' + err.message);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -215,32 +256,33 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                 <input type="text" className="bg-transparent border-none outline-none font-black text-[#8D30F4] text-base w-full" value={newLoginCode} onChange={(e) => setNewLoginCode(e.target.value)} />
               </div>
 
-              {/* SMS Gateway Section */}
-              <div className="pt-4 border-t border-slate-100 space-y-4">
-                 <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2">
-                    <Server size={14}/> SMS Gateway (REVE)
-                 </h4>
-                 <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                       <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">API Key</label>
-                       <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveApiKey} onChange={(e) => setReveApiKey(e.target.value)} placeholder="Reve API Key" />
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                       <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Secret Key</label>
-                       <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveSecretKey} onChange={(e) => setReveSecretKey(e.target.value)} placeholder="Secret Key" />
-                    </div>
-                 </div>
-                 <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                       <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Sender ID</label>
-                       <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveCallerId} onChange={(e) => setReveCallerId(e.target.value)} placeholder="Masking Name" />
-                    </div>
-                    <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                       <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Client ID</label>
-                       <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveClientId} onChange={(e) => setReveClientId(e.target.value)} placeholder="Client ID" />
-                    </div>
-                 </div>
-              </div>
+              {!isSuperAdmin && (
+                <div className="pt-4 border-t border-slate-100 space-y-4">
+                  <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2">
+                      <Server size={14}/> SMS Gateway (Individual)
+                  </h4>
+                  <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">API Key</label>
+                        <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveApiKey} onChange={(e) => setReveApiKey(e.target.value)} placeholder="Reve API Key" />
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Secret Key</label>
+                        <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveSecretKey} onChange={(e) => setReveSecretKey(e.target.value)} placeholder="Secret Key" />
+                      </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                      <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Sender ID</label>
+                        <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveCallerId} onChange={(e) => setReveCallerId(e.target.value)} placeholder="Masking Name" />
+                      </div>
+                      <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Client ID</label>
+                        <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveClientId} onChange={(e) => setReveClientId(e.target.value)} placeholder="Client ID" />
+                      </div>
+                  </div>
+                </div>
+              )}
 
               <div className="flex gap-3 pt-4">
                 <button onClick={() => setIsEditingProfile(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-2xl text-sm">{t('cancel', lang)}</button>
@@ -251,29 +293,33 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
             </div>
           ) : (
             <div className="space-y-3">
-              {!isSuperAdmin && !isTeacher && (
+              {!isTeacher && (
                 <>
-                  <button onClick={() => setView('teachers')} className="w-full bg-slate-50 p-5 rounded-2xl border border-slate-100 flex items-center justify-between group active:scale-[0.98] transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-500 shadow-inner"><UserPlus size={20} /></div>
-                      <span className="text-md font-black text-[#2E0B5E] font-noto">{t('manage_teachers', lang)}</span>
-                    </div>
-                    <ChevronRight size={20} className="text-slate-300" />
-                  </button>
-                  <button onClick={() => setView('data-management')} className="w-full bg-slate-50 p-5 rounded-2xl border border-slate-100 flex items-center justify-between group active:scale-[0.98] transition-all">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-[#8D30F4] shadow-inner"><Database size={20} /></div>
-                      <span className="text-md font-black text-[#2E0B5E] font-noto">{t('backup_restore', lang)}</span>
-                    </div>
-                    <ChevronRight size={20} className="text-slate-300" />
-                  </button>
+                  {!isSuperAdmin && (
+                    <>
+                      <button onClick={() => setView('teachers')} className="w-full bg-slate-50 p-5 rounded-2xl border border-slate-100 flex items-center justify-between group active:scale-[0.98] transition-all">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-blue-500 shadow-inner"><UserPlus size={20} /></div>
+                          <span className="text-md font-black text-[#2E0B5E] font-noto">{t('manage_teachers', lang)}</span>
+                        </div>
+                        <ChevronRight size={20} className="text-slate-300" />
+                      </button>
+                      <button onClick={() => setView('data-management')} className="w-full bg-slate-50 p-5 rounded-2xl border border-slate-100 flex items-center justify-between group active:scale-[0.98] transition-all">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center text-[#8D30F4] shadow-inner"><Database size={20} /></div>
+                          <span className="text-md font-black text-[#2E0B5E] font-noto">{t('backup_restore', lang)}</span>
+                        </div>
+                        <ChevronRight size={20} className="text-slate-300" />
+                      </button>
+                    </>
+                  )}
                   <button onClick={() => setIsEditingProfile(true)} className="w-full h-16 bg-[#F2EBFF] text-[#8D30F4] font-black rounded-3xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all border border-[#8D30F4]/10 mb-6 font-noto">
                     <Edit3 size={20} /> {t('edit_account_info', lang)}
                   </button>
                 </>
               )}
 
-              {/* Language Selection Row (Bottom of Card) */}
+              {/* Language Selection Row */}
               <div className="pt-6 border-t border-slate-100 space-y-4">
                 <div className="flex items-center justify-between px-1">
                   <div className="flex items-center gap-2 text-slate-400">
@@ -300,6 +346,96 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
           )}
         </div>
       </div>
+
+      {/* GLOBAL SYSTEM SETTINGS - FOR SUPER ADMIN ONLY */}
+      {isSuperAdmin && (
+        <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] border border-white/50 shadow-2xl space-y-8 relative overflow-hidden">
+           <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-3">
+                 <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center shadow-inner">
+                    <Settings size={24} />
+                 </div>
+                 <div>
+                    <h3 className="text-lg font-black text-[#2E0B5E] font-noto leading-tight">System Configuration</h3>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Global SMS & Payment Gateway</p>
+                 </div>
+              </div>
+              {!isEditingGlobal && (
+                <button onClick={() => setIsEditingGlobal(true)} className="p-2 bg-[#F2EBFF] text-[#8D30F4] rounded-xl active:scale-90 transition-all">
+                  <Edit3 size={18} />
+                </button>
+              )}
+           </div>
+
+           {isEditingGlobal ? (
+              <div className="space-y-6 animate-in slide-in-from-top-4">
+                 <div className="pt-2 space-y-4">
+                    <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2">
+                        <Server size={14}/> Global SMS Gateway (REVE)
+                    </h4>
+                    <div className="grid grid-cols-2 gap-3">
+                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global API Key</label>
+                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_api_key} onChange={(e) => setGlobalSettings({...globalSettings, reve_api_key: e.target.value})} placeholder="Global API Key" />
+                       </div>
+                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global Secret</label>
+                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_secret_key} onChange={(e) => setGlobalSettings({...globalSettings, reve_secret_key: e.target.value})} placeholder="Global Secret" />
+                       </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global Sender ID</label>
+                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_caller_id} onChange={(e) => setGlobalSettings({...globalSettings, reve_caller_id: e.target.value})} placeholder="Sender ID" />
+                       </div>
+                       <div className="bg-slate-50 p-4 rounded-xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                          <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1">Global Client ID</label>
+                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={globalSettings.reve_client_id} onChange={(e) => setGlobalSettings({...globalSettings, reve_client_id: e.target.value})} placeholder="Client ID" />
+                       </div>
+                    </div>
+                 </div>
+
+                 <div className="pt-2 space-y-4">
+                    <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2">
+                        <CreditCard size={14}/> Payment Settings
+                    </h4>
+                    <div className="bg-slate-50 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Official bKash Number</label>
+                       <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-base w-full" value={globalSettings.bkash_number} onChange={(e) => setGlobalSettings({...globalSettings, bkash_number: e.target.value})} placeholder="০১৭XXXXXXXX" />
+                    </div>
+                 </div>
+
+                 <div className="flex gap-3 pt-4">
+                    <button onClick={() => setIsEditingGlobal(false)} className="flex-1 py-4 bg-slate-100 text-slate-500 font-black rounded-2xl text-sm">Cancel</button>
+                    <button onClick={handleSaveGlobalSettings} disabled={saving} className="flex-[2] py-4 bg-indigo-600 text-white font-black rounded-2xl text-sm shadow-xl flex items-center justify-center gap-2">
+                       {saving ? <Loader2 className="animate-spin" size={18} /> : <><Save size={18} /> Save Config</>}
+                    </button>
+                 </div>
+              </div>
+           ) : (
+              <div className="space-y-4">
+                 <div className="bg-slate-50 p-5 rounded-[1.8rem] border border-slate-100 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                       <Server size={18} className="text-[#8D30F4]" />
+                       <span className="text-sm font-black text-slate-700 font-noto">Global Gateway Status</span>
+                    </div>
+                    <span className="text-[10px] font-black text-green-500 uppercase tracking-widest bg-green-50 px-3 py-1 rounded-full">Connected</span>
+                 </div>
+                 
+                 <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Default Sender</p>
+                       <p className="text-xs font-black text-slate-800">{globalSettings.reve_caller_id || 'None'}</p>
+                    </div>
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                       <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">Official bKash</p>
+                       <p className="text-xs font-black text-slate-800 font-noto">{globalSettings.bkash_number || 'None'}</p>
+                    </div>
+                 </div>
+              </div>
+           )}
+        </div>
+      )}
 
       <button onClick={onLogout} className="w-full py-6 bg-red-500 text-white font-black rounded-[2.5rem] shadow-xl active:scale-[0.95] transition-all flex items-center justify-center gap-4 text-lg border-2 border-red-400 font-noto">
         <LogOut size={26} /> {t('logout', lang)}
