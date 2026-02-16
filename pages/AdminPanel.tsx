@@ -501,36 +501,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                     <input type="tel" className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-5 font-black text-slate-800" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
                  </div>
                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Madrasah Login Code</label>
+                    <label className="text-[10px) font-black text-slate-400 uppercase tracking-widest px-1">Madrasah Login Code</label>
                     <div className="relative">
                        <input type="text" className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-5 font-black text-[#8D30F4]" value={editLoginCode} onChange={(e) => setEditLoginCode(e.target.value)} />
                        <Key size={16} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300" />
                     </div>
-                 </div>
-              </div>
-
-              {/* User Specific Recharge History in Details */}
-              <div className="space-y-4 pt-4 border-t border-slate-100">
-                 <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2"><HistoryIcon size={14}/> Recharge History</h4>
-                 <div className="space-y-2">
-                    {selectedUserHistory.length > 0 ? selectedUserHistory.map(tr => (
-                      <div key={tr.id} className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex items-center justify-between">
-                         <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2">
-                               <p className="text-xs font-black text-slate-800">{tr.amount} ৳</p>
-                               <span className={`text-[7px] font-black uppercase px-1.5 py-0.5 rounded-full ${tr.status === 'approved' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
-                                  {tr.status}
-                               </span>
-                            </div>
-                            <p className="text-[9px] font-bold text-slate-400 mt-0.5">{new Date(tr.created_at).toLocaleDateString('bn-BD')}</p>
-                         </div>
-                         <div className="text-right">
-                            <p className="text-[8px] font-black text-[#8D30F4] uppercase truncate max-w-[80px]">{tr.transaction_id}</p>
-                         </div>
-                      </div>
-                    )) : (
-                      <p className="text-center text-slate-400 text-[9px] font-black py-4 uppercase">No transactions found</p>
-                    )}
                  </div>
               </div>
 
