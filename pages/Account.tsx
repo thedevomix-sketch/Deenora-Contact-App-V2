@@ -1,6 +1,6 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server, CreditCard, Shield, Sliders, Activity, Bell } from 'lucide-react';
+import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server, CreditCard, Shield, Sliders, Activity, Bell, Smartphone } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
@@ -47,17 +47,26 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [copiedId, setCopiedId] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Sync state with props when they change
   useEffect(() => {
-    if (initialMadrasah?.id) {
+    if (initialMadrasah) {
+      setMadrasah(initialMadrasah);
+      setNewName(initialMadrasah.name || '');
+      setNewPhone(initialMadrasah.phone || '');
+      setNewLoginCode(initialMadrasah.login_code || '');
+      setLogoUrl(initialMadrasah.logo_url || '');
+      setReveApiKey(initialMadrasah.reve_api_key || '');
+      setReveSecretKey(initialMadrasah.reve_secret_key || '');
+      setReveCallerId(initialMadrasah.reve_caller_id || '');
       fetchStats();
       if (isSuperAdmin) {
         fetchGlobalSettings();
       }
     }
-  }, [initialMadrasah?.id, isSuperAdmin]);
+  }, [initialMadrasah, isSuperAdmin]);
 
   const fetchStats = async () => {
-    if (!initialMadrasah) return;
+    if (!initialMadrasah?.id) return;
     setLoadingStats(true);
     try {
       const [stdRes, clsRes, teaRes] = await Promise.all([
@@ -112,16 +121,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       if (onProfileUpdate) onProfileUpdate();
       setIsEditingProfile(false);
       
-      setMadrasah(prev => prev ? { 
-        ...prev, 
-        name: newName.trim(), 
-        phone: newPhone.trim(), 
-        login_code: newLoginCode.trim(),
-        reve_api_key: reveApiKey.trim(),
-        reve_secret_key: reveSecretKey.trim(),
-        reve_caller_id: reveCallerId.trim()
-      } : null);
-
       alert(lang === 'bn' ? 'সব তথ্য আপডেট হয়েছে!' : 'Profile Updated!');
     } catch (err: any) { 
       alert(lang === 'bn' ? `এরর: ${err.message}` : `Error: ${err.message}`);
@@ -162,7 +161,14 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     } catch (e: any) { alert(e.message); } finally { setSaving(false); }
   };
 
-  if (!madrasah) return null;
+  if (!madrasah) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-white">
+        <Loader2 className="animate-spin mb-4" size={40} />
+        <p className="font-black text-[10px] uppercase tracking-[0.2em] opacity-40">অ্যাকাউন্ট লোড হচ্ছে...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-28">
@@ -197,7 +203,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                        <Server size={14} className="text-indigo-600" />
                        <h4 className="text-[11px] font-black text-slate-800 uppercase tracking-widest">Global SMS (REVE)</h4>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                        <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-indigo-600/30 transition-all shadow-inner">
                           <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Global API Key</label>
                           <div className="flex items-center gap-3">
