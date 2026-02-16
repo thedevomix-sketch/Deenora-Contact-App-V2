@@ -1,12 +1,14 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp, RefreshCcw, Clock, Hash, History as HistoryIcon, Zap, Activity, PieChart, Users2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp, RefreshCcw, Clock, Hash, History as HistoryIcon, Zap, Activity, PieChart, Users2, CheckCircle2, AlertCircle, BarChart, Plus, Mail, UserPlus } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, Transaction, AdminSMSStock } from '../types';
 
 interface MadrasahWithStats extends Madrasah {
   student_count?: number;
   class_count?: number;
+  total_sms_sent?: number;
+  parent_id?: string;
 }
 
 interface AdminPanelProps {
@@ -22,11 +24,24 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   const [selectedUserHistory, setSelectedUserHistory] = useState<Transaction[]>([]);
   const [adminStock, setAdminStock] = useState<AdminSMSStock | null>(null);
   const [loading, setLoading] = useState(true);
+  const [listLoading, setListLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [view, setView] = useState<'list' | 'approvals' | 'details' | 'dashboard'>(
     currentView === 'approvals' ? 'approvals' : currentView === 'dashboard' ? 'dashboard' : 'list'
   );
+  
+  // Create New Madrasah State
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createData, setCreateData] = useState({
+    name: '',
+    email: '',
+    phone: '',
+    loginCode: '',
+  });
+
   const [smsToCredit, setSmsToCredit] = useState<{ [key: string]: string }>({});
+  const [totalGlobalUsage, setTotalGlobalUsage] = useState(0);
 
   // Status Modal State
   const [statusModal, setStatusModal] = useState<{show: boolean, type: 'success' | 'error', title: string, message: string}>({
@@ -41,7 +56,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
 
   // Selected User Detail Management
   const [selectedUser, setSelectedUser] = useState<MadrasahWithStats | null>(null);
-  const [userStats, setUserStats] = useState({ students: 0, classes: 0 });
+  const [userStats, setUserStats] = useState({ students: 0, classes: 0, used_sms: 0 });
   const [editName, setEditName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editLoginCode, setEditLoginCode] = useState('');
@@ -58,7 +73,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
 
   useEffect(() => { initData(); }, [dataVersion]);
 
-  // Update internal view when prop changes (from bottom nav)
   useEffect(() => {
     if (currentView === 'approvals') setView('approvals');
     else if (currentView === 'dashboard') setView('dashboard');
@@ -73,7 +87,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
         fetchPendingTransactions(), 
         fetchTransactionHistory(),
         fetchAdminStock(),
-        fetchGlobalCounts()
+        fetchGlobalCounts(),
+        fetchTotalSmsUsage()
       ]);
     } catch (err) { 
       console.error("AdminPanel Init Error:", err); 
@@ -82,10 +97,62 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     }
   };
 
+  const handleCreateMadrasah = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!createData.name || !createData.email || !createData.loginCode) return;
+    
+    setIsCreating(true);
+    try {
+      const { data: { user } } = await (supabase.auth as any).getUser();
+      if (!user) throw new Error("Authentication required");
+
+      const newId = crypto.randomUUID(); 
+      
+      const { error } = await supabase.from('madrasahs').insert({
+        id: newId,
+        name: createData.name.trim(),
+        email: createData.email.trim().toLowerCase(),
+        phone: createData.phone.trim(),
+        login_code: createData.loginCode.trim(),
+        parent_id: user.id,
+        is_active: true,
+        is_super_admin: false,
+        sms_balance: 0,
+        balance: 0
+      });
+
+      if (error) throw error;
+
+      showStatus('success', 'সফল হয়েছে!', 'নতুন মাদরাসা অ্যাকাউন্ট সফলভাবে তৈরি করা হয়েছে। ইউজার ইমেইল ও কোড দিয়ে লগইন করতে পারবেন।');
+      setShowCreateModal(false);
+      setCreateData({ name: '', email: '', phone: '', loginCode: '' });
+      initData();
+    } catch (err: any) {
+      showStatus('error', 'ব্যর্থ হয়েছে!', err.message || 'অ্যাকাউন্ট তৈরি করা সম্ভব হয়নি।');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const fetchTotalSmsUsage = async () => {
+    try {
+      const { count, error } = await supabase.from('sms_logs').select('*', { count: 'exact', head: true });
+      if (!error && count !== null) setTotalGlobalUsage(count);
+      else {
+        // Fallback calculation from madrasahs table
+        const { data } = await supabase.from('madrasahs').select('total_sms_sent');
+        if (data) {
+          const total = data.reduce((acc, curr) => acc + (Number((curr as any).total_sms_sent) || 0), 0);
+          setTotalGlobalUsage(total);
+        }
+      }
+    } catch (e) { console.warn("Usage fetch error:", e); }
+  };
+
   const showStatus = (type: 'success' | 'error', title: string, message: string) => {
     setStatusModal({ show: true, type, title, message });
     if (type === 'success') {
-      setTimeout(() => setStatusModal(prev => ({ ...prev, show: false })), 3000);
+      setTimeout(() => setStatusModal(prev => ({ ...prev, show: false })), 4000);
     }
   };
 
@@ -95,13 +162,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
         supabase.from('students').select('*', { count: 'exact', head: true }),
         supabase.from('classes').select('*', { count: 'exact', head: true })
       ]);
-      setGlobalStats({
-        totalStudents: studentsRes.count || 0,
-        totalClasses: classesRes.count || 0
-      });
-    } catch (e) {
-      console.error("Global stats error:", e);
-    }
+      setGlobalStats({ totalStudents: studentsRes.count || 0, totalClasses: classesRes.count || 0 });
+    } catch (e) { console.error("Global stats error:", e); }
   };
 
   const fetchAdminStock = async () => {
@@ -110,37 +172,46 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   };
 
   const fetchAllMadrasahs = async () => {
+    setListLoading(true);
     const { data, error } = await supabase.from('madrasahs').select('*').neq('is_super_admin', true).order('created_at', { ascending: false });
-    if (error) {
-      console.error("Fetch Madrasahs Error:", error);
-      return;
-    }
+    if (error) { setListLoading(false); return; }
     
     if (data) {
       const withStats = await Promise.all(data.map(async (m) => {
         try {
-          const [stdCount, clsCount] = await Promise.all([
+          const [stdCount, clsCount, usageCount] = await Promise.all([
             supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', m.id),
-            supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', m.id)
+            supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', m.id),
+            supabase.from('sms_logs').select('*', { count: 'exact', head: true }).eq('madrasah_id', m.id).maybeSingle()
           ]);
-          return { ...m, student_count: stdCount.count || 0, class_count: clsCount.count || 0 };
+          return { 
+            ...m, 
+            student_count: stdCount.count || 0, 
+            class_count: clsCount.count || 0, 
+            total_sms_sent: (usageCount as any)?.count || (m as any).total_sms_sent || 0 
+          };
         } catch (e) {
-          console.error(`Error fetching stats for madrasah ${m.id}:`, e);
-          return { ...m, student_count: 0, class_count: 0 };
+          return { ...m, student_count: 0, class_count: 0, total_sms_sent: (m as any).total_sms_sent || 0 };
         }
       }));
       setMadrasahs(withStats);
     }
+    setListLoading(false);
   };
 
   const fetchPendingTransactions = async () => {
-    const { data } = await supabase.from('transactions').select('*, madrasahs(*)').eq('status', 'pending').order('created_at', { ascending: false });
+    const { data } = await supabase
+      .from('transactions')
+      .select('*, madrasahs(name, phone)')
+      .eq('status', 'pending')
+      .order('created_at', { ascending: false });
     if (data) setPendingTrans(data);
   };
 
   const fetchTransactionHistory = async () => {
-    const { data } = await supabase.from('transactions')
-      .select('*, madrasahs(*)')
+    const { data } = await supabase
+      .from('transactions')
+      .select('*, madrasahs(name, phone)')
       .neq('status', 'pending')
       .order('created_at', { ascending: false })
       .limit(30);
@@ -148,7 +219,8 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   };
 
   const fetchSelectedUserHistory = async (madrasahId: string) => {
-    const { data } = await supabase.from('transactions')
+    const { data } = await supabase
+      .from('transactions')
       .select('*')
       .eq('madrasah_id', madrasahId)
       .order('created_at', { ascending: false })
@@ -156,31 +228,20 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     if (data) setSelectedUserHistory(data);
   };
 
-  const totalDistributedSms = useMemo(() => {
-    return madrasahs.reduce((acc, curr) => acc + (curr.sms_balance || 0), 0);
-  }, [madrasahs]);
-
-  const activeUserCount = useMemo(() => {
-    return madrasahs.filter(m => m.is_active !== false).length;
-  }, [madrasahs]);
+  const totalDistributedSms = useMemo(() => madrasahs.reduce((acc, curr) => acc + (curr.sms_balance || 0), 0), [madrasahs]);
+  const activeUserCount = useMemo(() => madrasahs.filter(m => m.is_active !== false).length, [madrasahs]);
 
   const fetchDynamicStats = async (madrasahId: string) => {
     setIsRefreshingStats(true);
     try {
-      const [studentsRes, classesRes] = await Promise.all([
+      const [studentsRes, classesRes, usageRes] = await Promise.all([
         supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', madrasahId),
         supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', madrasahId),
-        fetchSelectedUserHistory(madrasahId)
+        supabase.from('sms_logs').select('*', { count: 'exact', head: true }).eq('madrasah_id', madrasahId)
       ]);
-      setUserStats({
-        students: studentsRes.count || 0,
-        classes: classesRes.count || 0
-      });
-    } catch (err) {
-      console.error("Stats Fetch Error:", err);
-    } finally {
-      setIsRefreshingStats(false);
-    }
+      await fetchSelectedUserHistory(madrasahId);
+      setUserStats({ students: studentsRes.count || 0, classes: classesRes.count || 0, used_sms: (usageRes as any).count || 0 });
+    } catch (err) { console.error("Stats Fetch Error:", err); } finally { setIsRefreshingStats(false); }
   };
 
   const handleUserClick = async (m: MadrasahWithStats) => {
@@ -189,11 +250,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     setEditPhone(m.phone || '');
     setEditLoginCode(m.login_code || '');
     setEditActive(m.is_active !== false);
-    
     setEditReveApiKey(m.reve_api_key || '');
     setEditReveSecretKey(m.reve_secret_key || '');
     setEditReveCallerId(m.reve_caller_id || '');
-    
     setView('details');
     await fetchDynamicStats(m.id);
   };
@@ -203,27 +262,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     setIsUpdatingUser(true);
     try {
       const { error: updateError } = await supabase.from('madrasahs').update({
-        name: editName.trim(),
-        phone: editPhone.trim(),
-        login_code: editLoginCode.trim(),
-        is_active: editActive,
-        reve_api_key: editReveApiKey.trim() || null,
-        reve_secret_key: editReveSecretKey.trim() || null,
-        reve_caller_id: editReveCallerId.trim() || null
+        name: editName.trim(), phone: editPhone.trim(), login_code: editLoginCode.trim(), is_active: editActive,
+        reve_api_key: editReveApiKey.trim() || null, reve_secret_key: editReveSecretKey.trim() || null, reve_caller_id: editReveCallerId.trim() || null
       }).eq('id', selectedUser.id);
-      
       if (updateError) throw updateError;
-      
       showStatus('success', 'সফল হয়েছে!', 'ব্যবহারকারীর তথ্য সফলভাবে আপডেট করা হয়েছে।');
-      await initData(); 
-      setView('list');
-      setSelectedUser(null);
-    } catch (err: any) { 
-      showStatus('error', 'ব্যর্থ হয়েছে!', err.message);
-      console.error(err);
-    } finally { 
-      setIsUpdatingUser(false); 
-    }
+      await initData(); setView('list'); setSelectedUser(null);
+    } catch (err: any) { showStatus('error', 'ব্যর্থ হয়েছে!', err.message); } finally { setIsUpdatingUser(false); }
   };
 
   const approveTransaction = async (tr: Transaction) => {
@@ -247,32 +292,27 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const getSubscriptionDates = (createdAt: string) => {
-    const start = new Date(createdAt);
-    const end = new Date(createdAt);
-    end.setFullYear(start.getFullYear() + 1);
-    return {
-      start: start.toLocaleDateString('bn-BD'),
-      end: end.toLocaleDateString('bn-BD')
-    };
-  };
-
   return (
     <div className="space-y-6 pb-20 animate-in fade-in">
       {view === 'dashboard' && (
         <div className="space-y-6 animate-in slide-in-from-bottom-5">
-           {/* Summary Stats Row 1 */}
+           <div className="flex items-center justify-between px-2">
+              <h1 className="text-xl font-black text-white font-noto drop-shadow-md">System Analytics</h1>
+              <button onClick={initData} className="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-white active:scale-90 transition-all border border-white/20">
+                 <RefreshCcw size={18} className={loading ? 'animate-spin' : ''} />
+              </button>
+           </div>
+           
            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white/95 backdrop-blur-md p-6 rounded-[2.5rem] border border-white shadow-xl flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-3 shadow-inner">
+              <div className="bg-white/95 backdrop-blur-md p-6 rounded-[2.5rem] border border-white shadow-xl flex flex-col items-center text-center group transition-all">
+                <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center mb-3 shadow-inner group-hover:scale-110 transition-transform">
                    <Users2 size={24} />
                 </div>
                 <h4 className="text-3xl font-black text-[#2E0B5E] leading-none">{loading ? '...' : madrasahs.length}</h4>
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Total Madrasahs</p>
               </div>
-              
-              <div className="bg-white/95 backdrop-blur-md p-6 rounded-[2.5rem] border border-white shadow-xl flex flex-col items-center text-center">
-                <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mb-3 shadow-inner">
+              <div className="bg-white/95 backdrop-blur-md p-6 rounded-[2.5rem] border border-white shadow-xl flex flex-col items-center text-center group transition-all">
+                <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mb-3 shadow-inner group-hover:scale-110 transition-transform">
                    <Activity size={24} />
                 </div>
                 <h4 className="text-3xl font-black text-[#2E0B5E] leading-none">{loading ? '...' : activeUserCount}</h4>
@@ -280,83 +320,35 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
               </div>
            </div>
 
-           {/* Global SMS Analytics */}
            <div className="bg-white/95 backdrop-blur-xl p-8 rounded-[3rem] border border-white shadow-2xl space-y-8 relative overflow-hidden">
               <div className="flex items-center justify-between px-1">
                  <div>
-                   <h3 className="text-lg font-black text-[#2E0B5E] font-noto leading-tight">SMS Analytics</h3>
-                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Global Distribution Overview</p>
+                   <h3 className="text-lg font-black text-[#2E0B5E] font-noto leading-tight">SMS Global Tracker</h3>
+                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Total System Usage</p>
                  </div>
                  <div className="w-12 h-12 bg-[#F2EBFF] text-[#8D30F4] rounded-2xl flex items-center justify-center shadow-inner">
-                    <Zap size={24} fill="currentColor" />
+                    <BarChart3 size={24} />
                  </div>
               </div>
-
-              <div className="space-y-6">
-                 <div className="space-y-2">
-                    <div className="flex justify-between items-center px-2">
-                       <span className="text-[11px] font-black text-slate-500 uppercase tracking-wider">Distributed to Users</span>
-                       <span className="text-sm font-black text-[#8D30F4]">{totalDistributedSms.toLocaleString()}</span>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="bg-slate-50/80 p-6 rounded-[2.2rem] border border-slate-100 flex items-center gap-5">
+                    <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center shrink-0">
+                       <BarChart size={24} />
                     </div>
-                    <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden p-1 shadow-inner">
-                       <div 
-                         className="h-full bg-gradient-to-r from-[#8D30F4] to-[#A179FF] rounded-full transition-all duration-1000"
-                         style={{ width: `${Math.min(100, (totalDistributedSms / 10000) * 100)}%` }}
-                       />
+                    <div>
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Sent</p>
+                       <h5 className="text-2xl font-black text-[#2E0B5E]">{loading ? '...' : totalGlobalUsage.toLocaleString()}</h5>
                     </div>
                  </div>
-
-                 <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
-                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Stock Remaining</p>
-                       <h5 className="text-xl font-black text-[#2E0B5E]">{adminStock?.remaining_sms || 0}</h5>
+                 <div className="bg-slate-50/80 p-6 rounded-[2.2rem] border border-slate-100 flex items-center gap-5">
+                    <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-2xl flex items-center justify-center shrink-0">
+                       <Zap size={24} fill="currentColor" />
                     </div>
-                    <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100">
-                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Growth Index</p>
-                       <h5 className="text-xl font-black text-emerald-500 flex items-center gap-1">
-                          <TrendingUp size={16} /> +12%
-                       </h5>
+                    <div>
+                       <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">User Balances</p>
+                       <h5 className="text-2xl font-black text-[#8D30F4]">{loading ? '...' : totalDistributedSms.toLocaleString()}</h5>
                     </div>
                  </div>
-              </div>
-           </div>
-
-           {/* Entity Counts Grid */}
-           <div className="grid grid-cols-2 gap-3">
-              <div className="bg-[#F2EBFF]/50 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/50 shadow-lg">
-                 <div className="flex items-center gap-3 mb-2">
-                    <Users size={16} className="text-[#8D30F4]" />
-                    <span className="text-[9px] font-black text-[#8D30F4] uppercase tracking-widest">Total Students</span>
-                 </div>
-                 <h4 className="text-2xl font-black text-[#2E0B5E] leading-none">{loading ? '...' : globalStats.totalStudents}</h4>
-              </div>
-
-              <div className="bg-[#F2EBFF]/50 backdrop-blur-md p-6 rounded-[2.5rem] border border-white/50 shadow-lg">
-                 <div className="flex items-center gap-3 mb-2">
-                    <Layers size={16} className="text-[#8D30F4]" />
-                    <span className="text-[9px] font-black text-[#8D30F4] uppercase tracking-widest">Total Classes</span>
-                 </div>
-                 <h4 className="text-2xl font-black text-[#2E0B5E] leading-none">{loading ? '...' : globalStats.totalClasses}</h4>
-              </div>
-           </div>
-
-           {/* Recent Entities / Health */}
-           <div className="bg-white/95 p-6 rounded-[2.8rem] border border-white shadow-xl space-y-5">
-              <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] px-2 flex items-center gap-2">
-                 <Activity size={14} className="text-[#8D30F4]" /> Recent Registrations
-              </h3>
-              <div className="space-y-3">
-                 {madrasahs.slice(0, 4).map(m => (
-                    <div key={m.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100">
-                       <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-[#8D30F4] shadow-sm border border-slate-100">
-                             <Globe size={14} />
-                          </div>
-                          <span className="text-[13px] font-black text-slate-700 font-noto truncate max-w-[150px]">{m.name}</span>
-                       </div>
-                       <span className="text-[10px] font-bold text-slate-400">{new Date(m.created_at).toLocaleDateString('bn-BD')}</span>
-                    </div>
-                 ))}
               </div>
            </div>
         </div>
@@ -364,29 +356,31 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
 
       {view === 'list' && (
         <div className="space-y-6">
-          {/* Distributed SMS Summary Card */}
-          <div className="bg-white/95 backdrop-blur-md p-6 rounded-[2.5rem] border border-white shadow-2xl flex items-center justify-between text-[#2E0B5E] relative overflow-hidden">
-             <div className="absolute -right-4 -bottom-4 opacity-5 text-[#8D30F4]">
-                <Zap size={120} />
-             </div>
-             <div className="relative z-10">
-                <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1.5">Distributed SMS</p>
-                <div className="flex items-baseline gap-2">
-                   <h3 className="text-4xl font-black">{loading ? '...' : totalDistributedSms}</h3>
-                   <span className="text-[10px] font-black uppercase tracking-widest text-[#8D30F4]/60">Credits</span>
-                </div>
-             </div>
-             <div className="w-14 h-14 bg-[#F2EBFF] text-[#8D30F4] rounded-[1.5rem] flex items-center justify-center shadow-inner shrink-0">
-                <Zap size={30} fill="currentColor" />
-             </div>
+          <div className="flex flex-col gap-4">
+            <div className="bg-white/95 backdrop-blur-md p-6 rounded-[2.5rem] border border-white shadow-2xl flex items-center justify-between text-[#2E0B5E] relative overflow-hidden">
+               <div className="absolute -right-4 -bottom-4 opacity-5 text-[#8D30F4]"><Zap size={120} /></div>
+               <div className="relative z-10">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60 mb-1.5">User Inventory</p>
+                  <div className="flex items-baseline gap-2">
+                     <h3 className="text-4xl font-black">{loading ? '...' : totalDistributedSms}</h3>
+                     <span className="text-[10px] font-black uppercase tracking-widest text-[#8D30F4]/60">Total</span>
+                  </div>
+               </div>
+               <div className="w-14 h-14 bg-[#F2EBFF] text-[#8D30F4] rounded-[1.5rem] flex items-center justify-center shadow-inner shrink-0">
+                  <Zap size={30} fill="currentColor" />
+               </div>
+            </div>
+            
+            <button onClick={() => setShowCreateModal(true)} className="w-full h-16 premium-btn text-white font-black rounded-3xl flex items-center justify-center gap-3 shadow-xl active:scale-[0.98] transition-all border border-white/20">
+               <Plus size={22} strokeWidth={3} /> নতুন মাদরাসা অ্যাকাউন্ট তৈরি করুন
+            </button>
           </div>
 
-          {/* Search Header */}
           <div className="relative group px-1">
             <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#8D30F4] transition-colors" size={18} />
             <input type="text" placeholder="Search Madrasah..." className="w-full pl-14 pr-14 py-5 bg-white border border-[#8D30F4]/5 rounded-[2rem] outline-none text-slate-800 font-bold shadow-xl focus:border-[#8D30F4]/20 transition-all" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
             <button onClick={initData} className="absolute right-4 top-1/2 -translate-y-1/2 text-[#8D30F4] p-2 hover:bg-slate-50 rounded-xl transition-all">
-               <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
+               <RefreshCcw size={20} className={loading || listLoading ? 'animate-spin' : ''} />
             </button>
           </div>
 
@@ -414,15 +408,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                      <p className="text-[7px] font-black text-slate-400 uppercase tracking-tighter mt-1">SMS</p>
                   </div>
                 </div>
-                
-                <div className="grid grid-cols-2 gap-2 pt-3 border-t border-slate-50">
+                <div className="grid grid-cols-3 gap-2 pt-3 border-t border-slate-50">
                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
                       <Users size={12} className="text-slate-400" />
-                      <span className="text-[10px] font-black text-slate-600">{m.student_count} Students</span>
+                      <span className="text-[10px] font-black text-slate-600 truncate">{m.student_count} Students</span>
                    </div>
                    <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 rounded-xl">
                       <Layers size={12} className="text-slate-400" />
-                      <span className="text-[10px] font-black text-slate-600">{m.class_count} Classes</span>
+                      <span className="text-[10px] font-black text-slate-600 truncate">{m.class_count} Classes</span>
+                   </div>
+                   <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 rounded-xl">
+                      <BarChart size={12} className="text-orange-400" />
+                      <span className="text-[10px] font-black text-orange-600 truncate">{m.total_sms_sent || 0} Sent</span>
                    </div>
                 </div>
               </div>
@@ -475,30 +472,11 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                     <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Classes</p>
                  </div>
                  <div className="bg-slate-50 p-4 rounded-3xl text-center border border-slate-100">
-                    <MonitorSmartphone size={18} className="mx-auto text-[#8D30F4] mb-2" />
-                    <p className="text-lg font-black text-slate-800 leading-none">1</p>
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Devices</p>
-                 </div>
-              </div>
-
-              <div className="bg-gradient-to-br from-[#8D30F4] to-[#A179FF] p-6 rounded-[2.2rem] text-white shadow-xl relative overflow-hidden">
-                 <Calendar className="absolute -right-4 -bottom-4 opacity-10" size={100} />
-                 <div className="relative z-10 flex items-center justify-between">
-                    <div>
-                       <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Subscription Status</p>
-                       <h4 className="text-xl font-black mt-1">1 Year Premium</h4>
-                    </div>
-                    <div className="bg-white/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest">Active</div>
-                 </div>
-                 <div className="mt-5 pt-5 border-t border-white/20 flex justify-between">
-                    <div>
-                       <p className="text-[8px] font-black uppercase opacity-60">Start Date</p>
-                       <p className="text-xs font-black">{getSubscriptionDates(selectedUser.created_at).start}</p>
-                    </div>
-                    <div className="text-right">
-                       <p className="text-[8px] font-black uppercase opacity-60">End Date</p>
-                       <p className="text-xs font-black">{getSubscriptionDates(selectedUser.created_at).end}</p>
-                    </div>
+                    <BarChart size={18} className="mx-auto text-orange-500 mb-2" />
+                    <p className="text-lg font-black text-slate-800 leading-none">
+                       {isRefreshingStats ? '...' : userStats.used_sms}
+                    </p>
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-1">Sent</p>
                  </div>
               </div>
 
@@ -513,7 +491,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                     <input type="tel" className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-5 font-black text-slate-800" value={editPhone} onChange={(e) => setEditPhone(e.target.value)} />
                  </div>
                  <div className="space-y-1.5">
-                    <label className="text-[10px) font-black text-slate-400 uppercase tracking-widest px-1">Madrasah Login Code</label>
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Madrasah Login Code</label>
                     <div className="relative">
                        <input type="text" className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-5 font-black text-[#8D30F4]" value={editLoginCode} onChange={(e) => setEditLoginCode(e.target.value)} />
                        <Key size={16} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-300" />
@@ -523,7 +501,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
 
               <div className="space-y-4 pt-4 border-t border-slate-100">
                  <h4 className="text-[11px] font-black text-[#8D30F4] uppercase tracking-[0.2em] px-1 flex items-center gap-2"><Server size={14}/> SMS Gateway (Masking)</h4>
-                 <p className="text-[9px] text-slate-400 font-bold px-1 -mt-2 italic">খালি রাখলে গ্লোবাল গেটওয়ে (Non-Masking) ব্যবহৃত হবে।</p>
                  
                  <div className="grid grid-cols-2 gap-3">
                     <div className="space-y-1.5">
@@ -560,11 +537,16 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
 
       {view === 'approvals' && (
         <div className="space-y-8 px-1">
-          {/* Pending Section */}
-          <div className="space-y-4">
-            <h2 className="text-[10px] font-black text-white uppercase tracking-[0.2em] px-2 opacity-80 flex items-center gap-2">
+          <div className="flex items-center justify-between px-2">
+            <h2 className="text-[10px] font-black text-white uppercase tracking-[0.2em] opacity-80 flex items-center gap-2">
               <Clock size={12} /> Pending Requests
             </h2>
+            <button onClick={() => { fetchPendingTransactions(); fetchTransactionHistory(); }} className="p-2 bg-white/20 rounded-xl text-white backdrop-blur-md active:scale-95 transition-all">
+               <RefreshCcw size={14} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+
+          <div className="space-y-4">
             {pendingTrans.length > 0 ? pendingTrans.map(tr => (
               <div key={tr.id} className="bg-white p-5 rounded-[2rem] border border-white shadow-xl space-y-4 animate-in slide-in-from-bottom-3">
                 <div className="flex items-center justify-between">
@@ -582,10 +564,10 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                 </div>
 
                 <div className="px-1">
-                  <p className="text-[14px] font-black text-slate-800 font-noto leading-tight">{tr.madrasahs?.name}</p>
+                  <p className="text-[14px] font-black text-slate-800 font-noto leading-tight">{(tr as any).madrasahs?.name || 'Loading...'}</p>
                   <div className="flex items-center gap-2 mt-1 opacity-60">
                     <Smartphone size={10} className="text-[#8D30F4]" />
-                    <span className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest">{tr.madrasahs?.phone || 'No Phone'}</span>
+                    <span className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest">{(tr as any).madrasahs?.phone || '...'}</span>
                   </div>
                 </div>
 
@@ -626,14 +608,18 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                   </button>
                 </div>
               </div>
-            )) : (
+            )) : loading ? (
+              <div className="flex flex-col items-center py-10 gap-3">
+                <Loader2 className="animate-spin text-white opacity-50" size={30} />
+                <p className="text-white/50 text-[10px] font-black uppercase">Loading requests...</p>
+              </div>
+            ) : (
               <div className="text-center py-10 bg-white/10 rounded-[2.5rem] border-2 border-dashed border-white/30 backdrop-blur-sm">
                 <p className="text-white font-black uppercase text-[10px] tracking-[0.2em] drop-shadow-sm">No pending requests</p>
               </div>
             )}
           </div>
 
-          {/* History Section */}
           <div className="space-y-4">
             <h2 className="text-[10px] font-black text-white uppercase tracking-[0.2em] px-2 opacity-80 flex items-center gap-2">
               <HistoryIcon size={12} /> Transaction History
@@ -643,7 +629,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                 <div key={tr.id} className="bg-white/95 backdrop-blur-md p-4 rounded-[1.8rem] border border-white/40 flex items-center justify-between shadow-lg">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2">
-                      <h4 className="font-black text-slate-800 text-sm truncate font-noto">{tr.madrasahs?.name}</h4>
+                      <h4 className="font-black text-slate-800 text-sm truncate font-noto">{(tr as any).madrasahs?.name || 'Unknown'}</h4>
                       <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded-full ${tr.status === 'approved' ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'}`}>
                         {tr.status}
                       </span>
@@ -658,7 +644,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                     <p className="text-[8px] font-black text-[#8D30F4] uppercase tracking-tighter truncate max-w-[80px]">{tr.transaction_id}</p>
                   </div>
                 </div>
-              )) : (
+              )) : loading ? (
+                 <p className="text-center text-white/40 text-[9px] font-black uppercase tracking-widest py-4">Fetching history...</p>
+              ) : (
                 <p className="text-center text-white/40 text-[9px] font-black uppercase tracking-widest py-4">No history records yet</p>
               )}
             </div>
@@ -666,21 +654,75 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
         </div>
       )}
 
-      {/* CUSTOM STATUS MODAL */}
+      {/* CREATE NEW MADRASAH MODAL */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-[#080A12]/40 backdrop-blur-2xl z-[600] flex items-center justify-center p-6 animate-in fade-in duration-300">
+           <div className="bg-white w-full max-w-md rounded-[3.5rem] p-10 shadow-2xl border border-[#8D30F4]/10 animate-in zoom-in-95 duration-300 max-h-[90vh] overflow-y-auto">
+              <button onClick={() => setShowCreateModal(false)} className="absolute top-8 right-8 text-slate-300 hover:text-slate-800 transition-all p-1">
+                 <X size={26} strokeWidth={3} />
+              </button>
+              
+              <div className="flex items-center gap-5 mb-8">
+                 <div className="w-16 h-16 bg-[#8D30F4]/10 rounded-[1.8rem] flex items-center justify-center text-[#8D30F4] border border-[#8D30F4]/10 shadow-inner">
+                    <UserPlus size={32} />
+                 </div>
+                 <div>
+                    <h2 className="text-xl font-black text-[#2E0B5E] font-noto tracking-tight">নতুন মাদরাসা তৈরি</h2>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Admin Creation Portal</p>
+                 </div>
+              </div>
+
+              <form onSubmit={handleCreateMadrasah} className="space-y-5">
+                 <div className="space-y-1.5 px-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">মাদরাসার নাম</label>
+                    <div className="relative group">
+                       <Globe size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#8D30F4] transition-colors" />
+                       <input type="text" required className="w-full h-14 pl-14 pr-6 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-800 font-noto outline-none focus:border-[#8D30F4]/30 transition-all" placeholder="মাদরাসার নাম লিখুন" value={createData.name} onChange={(e) => setCreateData({...createData, name: e.target.value})} />
+                    </div>
+                 </div>
+
+                 <div className="space-y-1.5 px-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">লগইন ইমেইল (অবশ্যই ইউনিক হতে হবে)</label>
+                    <div className="relative group">
+                       <Mail size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#8D30F4] transition-colors" />
+                       <input type="email" required className="w-full h-14 pl-14 pr-6 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-800 outline-none focus:border-[#8D30F4]/30 transition-all" placeholder="example@gmail.com" value={createData.email} onChange={(e) => setCreateData({...createData, email: e.target.value})} />
+                    </div>
+                 </div>
+
+                 <div className="space-y-1.5 px-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">মোবাইল নম্বর</label>
+                    <div className="relative group">
+                       <Smartphone size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#8D30F4] transition-colors" />
+                       <input type="tel" required className="w-full h-14 pl-14 pr-6 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-slate-800 outline-none focus:border-[#8D30F4]/30 transition-all" placeholder="017XXXXXXXX" value={createData.phone} onChange={(e) => setCreateData({...createData, phone: e.target.value})} />
+                    </div>
+                 </div>
+
+                 <div className="space-y-1.5 px-1">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block">লগইন কোড (পাসওয়ার্ড হিসেবে ব্যবহৃত হবে)</label>
+                    <div className="relative group">
+                       <Key size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300 group-focus-within:text-[#8D30F4] transition-colors" />
+                       <input type="password" required className="w-full h-14 pl-14 pr-6 bg-slate-50 border-2 border-slate-100 rounded-2xl font-black text-[#8D30F4] outline-none focus:border-[#8D30F4]/30 transition-all tracking-widest" placeholder="পাসওয়ার্ড লিখুন" value={createData.loginCode} onChange={(e) => setCreateData({...createData, loginCode: e.target.value})} />
+                    </div>
+                 </div>
+
+                 <button type="submit" disabled={isCreating} className="w-full h-16 premium-btn text-white font-black rounded-3xl shadow-xl flex items-center justify-center gap-3 active:scale-[0.98] transition-all text-sm uppercase tracking-widest mt-4">
+                    {isCreating ? <Loader2 className="animate-spin" size={24} /> : <><Save size={20} /> তৈরি করুন</>}
+                 </button>
+              </form>
+           </div>
+        </div>
+      )}
+
+      {/* STATUS MODAL */}
       {statusModal.show && (
         <div className="fixed inset-0 bg-[#080A12]/40 backdrop-blur-2xl z-[1000] flex items-center justify-center p-8 animate-in fade-in duration-300">
-          <div className={`bg-white w-full max-w-sm rounded-[3.5rem] p-12 text-center shadow-2xl border ${statusModal.type === 'success' ? 'border-green-100 shadow-green-200/20' : 'border-red-100 shadow-red-200/20'} animate-in zoom-in-95 duration-300`}>
+          <div className={`bg-white w-full max-w-sm rounded-[3.5rem] p-12 text-center shadow-2xl border ${statusModal.type === 'success' ? 'border-green-100' : 'border-red-100'} animate-in zoom-in-95 duration-300`}>
              <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner border ${statusModal.type === 'success' ? 'bg-green-50 text-green-500 border-green-100' : 'bg-red-50 text-red-500 border-red-100'}`}>
                 {statusModal.type === 'success' ? <CheckCircle2 size={56} strokeWidth={2.5} /> : <AlertCircle size={56} strokeWidth={2.5} />}
              </div>
              <h3 className="text-2xl font-black text-slate-800 font-noto tracking-tight">{statusModal.title}</h3>
              <p className="text-[13px] font-bold text-slate-400 mt-4 leading-relaxed font-noto">{statusModal.message}</p>
-             <button 
-                onClick={() => setStatusModal(prev => ({ ...prev, show: false }))} 
-                className={`w-full mt-10 py-5 font-black rounded-full shadow-xl active:scale-95 transition-all text-sm uppercase tracking-widest ${statusModal.type === 'success' ? 'bg-green-500 text-white shadow-green-200' : 'bg-red-500 text-white shadow-red-200'}`}
-              >
-                ঠিক আছে
-              </button>
+             <button onClick={() => setStatusModal(prev => ({ ...prev, show: false }))} className={`w-full mt-10 py-5 font-black rounded-full shadow-xl active:scale-95 transition-all text-sm uppercase tracking-widest ${statusModal.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}`}>ঠিক আছে</button>
           </div>
         </div>
       )}
