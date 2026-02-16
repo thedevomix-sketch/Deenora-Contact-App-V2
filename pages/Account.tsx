@@ -35,14 +35,12 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [reveApiKey, setReveApiKey] = useState(initialMadrasah?.reve_api_key || '');
   const [reveSecretKey, setReveSecretKey] = useState(initialMadrasah?.reve_secret_key || '');
   const [reveCallerId, setReveCallerId] = useState(initialMadrasah?.reve_caller_id || '');
-  const [reveClientId, setReveClientId] = useState(initialMadrasah?.reve_client_id || '');
 
   // Global System Settings (For Super Admin)
   const [globalSettings, setGlobalSettings] = useState({
     reve_api_key: '',
     reve_secret_key: '',
     reve_caller_id: '',
-    reve_client_id: '',
     bkash_number: ''
   });
   
@@ -82,7 +80,12 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
   const fetchGlobalSettings = async () => {
     const settings = await smsApi.getGlobalSettings();
-    setGlobalSettings(settings);
+    setGlobalSettings({
+      reve_api_key: settings.reve_api_key,
+      reve_secret_key: settings.reve_secret_key,
+      reve_caller_id: settings.reve_caller_id,
+      bkash_number: settings.bkash_number
+    });
   };
 
   const copyToClipboard = (text: string) => {
@@ -102,8 +105,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         logo_url: logoUrl,
         reve_api_key: reveApiKey.trim() || null,
         reve_secret_key: reveSecretKey.trim() || null,
-        reve_caller_id: reveCallerId.trim() || null,
-        reve_client_id: reveClientId.trim() || null
+        reve_caller_id: reveCallerId.trim() || null
       }).eq('id', madrasah.id);
       
       if (error) throw error;
@@ -117,8 +119,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         login_code: newLoginCode.trim(),
         reve_api_key: reveApiKey.trim(),
         reve_secret_key: reveSecretKey.trim(),
-        reve_caller_id: reveCallerId.trim(),
-        reve_client_id: reveClientId.trim()
+        reve_caller_id: reveCallerId.trim()
       } : null);
 
       alert(lang === 'bn' ? 'সব তথ্য আপডেট হয়েছে!' : 'Profile Updated!');
@@ -135,7 +136,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         reve_api_key: globalSettings.reve_api_key.trim(),
         reve_secret_key: globalSettings.reve_secret_key.trim(),
         reve_caller_id: globalSettings.reve_caller_id.trim(),
-        reve_client_id: globalSettings.reve_client_id.trim(),
         bkash_number: globalSettings.bkash_number.trim()
       }).eq('id', '00000000-0000-0000-0000-000000000001');
 
@@ -213,15 +213,9 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                           </div>
                        </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                       <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-indigo-600/30 transition-all shadow-inner">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Global Sender ID</label>
-                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-sm w-full" value={globalSettings.reve_caller_id} onChange={(e) => setGlobalSettings({...globalSettings, reve_caller_id: e.target.value})} placeholder="e.g. Madrasah" />
-                       </div>
-                       <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-indigo-600/30 transition-all shadow-inner">
-                          <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Global Client ID</label>
-                          <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-sm w-full" value={globalSettings.reve_client_id} onChange={(e) => setGlobalSettings({...globalSettings, reve_client_id: e.target.value})} placeholder="Client ID" />
-                       </div>
+                    <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-indigo-600/30 transition-all shadow-inner">
+                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest block mb-2">Global Sender ID</label>
+                       <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-sm w-full" value={globalSettings.reve_caller_id} onChange={(e) => setGlobalSettings({...globalSettings, reve_caller_id: e.target.value})} placeholder="e.g. Madrasah" />
                     </div>
                  </div>
 
@@ -366,15 +360,9 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                         <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveSecretKey} onChange={(e) => setReveSecretKey(e.target.value)} placeholder="Secret Key" />
                       </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                      <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Masking ID</label>
-                        <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveCallerId} onChange={(e) => setReveCallerId(e.target.value)} placeholder="Sender Name" />
-                      </div>
-                      <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
-                        <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Client ID</label>
-                        <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveClientId} onChange={(e) => setReveClientId(e.target.value)} placeholder="Client ID" />
-                      </div>
+                  <div className="bg-slate-50/80 p-5 rounded-2xl border-2 border-transparent focus-within:border-[#8D30F4]/30 transition-all shadow-inner">
+                    <label className="text-[8px] font-black text-slate-400 uppercase tracking-widest block mb-1.5">Masking ID</label>
+                    <input type="text" className="bg-transparent border-none outline-none font-black text-[#2E0B5E] text-xs w-full" value={reveCallerId} onChange={(e) => setReveCallerId(e.target.value)} placeholder="Sender Name" />
                   </div>
                 </div>
               )}

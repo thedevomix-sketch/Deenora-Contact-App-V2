@@ -43,7 +43,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
   const [editReveApiKey, setEditReveApiKey] = useState('');
   const [editReveSecretKey, setEditReveSecretKey] = useState('');
   const [editReveCallerId, setEditReveCallerId] = useState('');
-  const [editReveClientId, setEditReveClientId] = useState('');
 
   const [isUpdatingUser, setIsUpdatingUser] = useState(false);
   const [isRefreshingStats, setIsRefreshingStats] = useState(false);
@@ -179,7 +178,6 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     setEditReveApiKey(m.reve_api_key || '');
     setEditReveSecretKey(m.reve_secret_key || '');
     setEditReveCallerId(m.reve_caller_id || '');
-    setEditReveClientId(m.reve_client_id || '');
     
     setView('details');
     await fetchDynamicStats(m.id);
@@ -196,8 +194,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
         is_active: editActive,
         reve_api_key: editReveApiKey.trim() || null,
         reve_secret_key: editReveSecretKey.trim() || null,
-        reve_caller_id: editReveCallerId.trim() || null,
-        reve_client_id: editReveClientId.trim() || null
+        reve_caller_id: editReveCallerId.trim() || null
       }).eq('id', selectedUser.id);
       
       if (updateError) throw updateError;
@@ -523,15 +520,9 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                        <input type="text" className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 font-black text-slate-700 text-xs" value={editReveSecretKey} onChange={(e) => setEditReveSecretKey(e.target.value)} placeholder="Secret Key" />
                     </div>
                  </div>
-                 <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Sender ID</label>
-                       <input type="text" className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 font-black text-slate-700 text-xs" value={editReveCallerId} onChange={(e) => setEditReveCallerId(e.target.value)} placeholder="Masking Name" />
-                    </div>
-                    <div className="space-y-1.5">
-                       <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Client ID</label>
-                       <input type="text" className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 font-black text-slate-700 text-xs" value={editReveClientId} onChange={(e) => setEditReveClientId(e.target.value)} placeholder="Client ID" />
-                    </div>
+                 <div className="space-y-1.5">
+                    <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Sender ID</label>
+                    <input type="text" className="w-full h-12 bg-slate-50 border border-slate-100 rounded-xl px-4 font-black text-slate-700 text-xs" value={editReveCallerId} onChange={(e) => setEditReveCallerId(e.target.value)} placeholder="Masking Name" />
                  </div>
               </div>
                  
