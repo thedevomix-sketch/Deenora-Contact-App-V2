@@ -1,35 +1,46 @@
 
--- ১. প্রোফাইল তৈরির ফাংশন
-CREATE OR REPLACE FUNCTION public.handle_new_user()
-RETURNS trigger AS $$
-BEGIN
-  INSERT INTO public.madrasahs (id, name, is_active, is_super_admin, sms_balance)
-  VALUES (
-    new.id,
-    COALESCE(new.raw_user_meta_data->>'name', 'নতুন মাদরাসা'),
-    true,
-    false,
-    0
-  );
-  RETURN new;
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- ১. রিসেন্ট কল টেবিল তৈরি (যদি না থাকে)
+CREATE TABLE IF NOT EXISTS public.recent_calls (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE,
+    student_id UUID REFERENCES public.students(id) ON DELETE CASCADE,
+    called_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
+);
 
--- ২. ট্রিগার তৈরি (Auth ইউজার তৈরি হলে প্রোফাইল তৈরি হবে)
-DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
-CREATE TRIGGER on_auth_user_created
-  AFTER INSERT ON auth.users
-  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+-- ২. রিসেন্ট কল (Recent Calls) টেবিলের জন্য পলিসি
+ALTER TABLE public.recent_calls ENABLE ROW LEVEL SECURITY;
 
--- ৩. আরএলএস পলিসি (যাতে ইউজার নিজের ডাটা দেখতে পারে)
-ALTER TABLE public.madrasahs ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow anyone to read recent calls" ON public.recent_calls;
+CREATE POLICY "Allow anyone to read recent calls" ON public.recent_calls
+    FOR SELECT TO anon, authenticated
+    USING (true);
 
-DROP POLICY IF EXISTS "Users can view their own profile" ON public.madrasahs;
-CREATE POLICY "Users can view their own profile" ON public.madrasahs
-    FOR SELECT TO authenticated
-    USING (id = auth.uid());
+DROP POLICY IF EXISTS "Allow anyone to insert recent calls" ON public.recent_calls;
+CREATE POLICY "Allow anyone to insert recent calls" ON public.recent_calls
+    FOR INSERT TO anon, authenticated
+    WITH CHECK (true);
 
-DROP POLICY IF EXISTS "Users can update their own profile" ON public.madrasahs;
-CREATE POLICY "Users can update their own profile" ON public.madrasahs
-    FOR UPDATE TO authenticated
-    USING (id = auth.uid());
+-- ৩. স্টুডেন্ট (Students) টেবিলের জন্য রিড পলিসি (হিস্ট্রি দেখানোর জন্য জরুরি)
+ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow anyone to read students" ON public.students;
+CREATE POLICY "Allow anyone to read students" ON public.students
+    FOR SELECT TO anon, authenticated
+    USING (true);
+
+-- ৪. ক্লাস (Classes) টেবিলের জন্য রিড পলিসি
+ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow anyone to read classes" ON public.classes;
+CREATE POLICY "Allow anyone to read classes" ON public.classes
+    FOR SELECT TO anon, authenticated
+    USING (true);
+
+-- ৫. ট্রানজ্যাকশন ও অন্যান্য
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "Allow users to insert transaction requests" ON public.transactions;
+CREATE POLICY "Allow users to insert transaction requests" ON public.transactions FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow users to read own transactions" ON public.transactions;
+CREATE POLICY "Allow users to read own transactions" ON public.transactions FOR SELECT TO anon, authenticated USING (true);
