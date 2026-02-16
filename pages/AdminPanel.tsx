@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp, RefreshCcw, Clock, Hash, History as HistoryIcon, Zap, Activity, PieChart, Users2 } from 'lucide-react';
+import { Loader2, Search, ChevronRight, User as UserIcon, ShieldCheck, Database, Globe, CheckCircle, XCircle, CreditCard, Save, X, Settings, Smartphone, MessageSquare, Key, Shield, ArrowLeft, Copy, Check, Calendar, Users, Layers, MonitorSmartphone, Server, BarChart3, TrendingUp, RefreshCcw, Clock, Hash, History as HistoryIcon, Zap, Activity, PieChart, Users2, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase, smsApi } from '../supabase';
 import { Madrasah, Language, Transaction, AdminSMSStock } from '../types';
 
@@ -27,6 +27,14 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
     currentView === 'approvals' ? 'approvals' : currentView === 'dashboard' ? 'dashboard' : 'list'
   );
   const [smsToCredit, setSmsToCredit] = useState<{ [key: string]: string }>({});
+
+  // Status Modal State
+  const [statusModal, setStatusModal] = useState<{show: boolean, type: 'success' | 'error', title: string, message: string}>({
+    show: false,
+    type: 'success',
+    title: '',
+    message: ''
+  });
 
   // Global Counts
   const [globalStats, setGlobalStats] = useState({ totalStudents: 0, totalClasses: 0 });
@@ -71,6 +79,13 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       console.error("AdminPanel Init Error:", err); 
     } finally { 
       setLoading(false); 
+    }
+  };
+
+  const showStatus = (type: 'success' | 'error', title: string, message: string) => {
+    setStatusModal({ show: true, type, title, message });
+    if (type === 'success') {
+      setTimeout(() => setStatusModal(prev => ({ ...prev, show: false })), 3000);
     }
   };
 
@@ -199,12 +214,12 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
       
       if (updateError) throw updateError;
       
-      alert('User Settings Updated Successfully');
+      showStatus('success', 'সফল হয়েছে!', 'ব্যবহারকারীর তথ্য সফলভাবে আপডেট করা হয়েছে।');
       await initData(); 
       setView('list');
       setSelectedUser(null);
     } catch (err: any) { 
-      alert('Update Error: ' + err.message); 
+      showStatus('error', 'ব্যর্থ হয়েছে!', err.message);
       console.error(err);
     } finally { 
       setIsUpdatingUser(false); 
@@ -213,15 +228,15 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
 
   const approveTransaction = async (tr: Transaction) => {
     const sms = Number(smsToCredit[tr.id]);
-    if (!sms || sms <= 0) return alert('SMS সংখ্যা লিখুন');
+    if (!sms || sms <= 0) return showStatus('error', 'সতর্কতা!', 'অনুগ্রহ করে সঠিক SMS সংখ্যা লিখুন');
     try {
       const { error } = await supabase.rpc('approve_payment_with_sms', { t_id: tr.id, m_id: tr.madrasah_id, sms_to_give: sms });
       if (error) throw error;
       
       setPendingTrans(p => p.filter(t => t.id !== tr.id));
-      alert('Approved Successfully!');
+      showStatus('success', 'অনুমোদিত!', 'লেনদেনটি সফলভাবে অনুমোদন করা হয়েছে।');
       initData();
-    } catch (err: any) { alert(err.message); }
+    } catch (err: any) { showStatus('error', 'ভুল হয়েছে!', err.message); }
   };
 
   const filtered = useMemo(() => madrasahs.filter(m => m.name.toLowerCase().includes(searchQuery.toLowerCase())), [madrasahs, searchQuery]);
@@ -647,6 +662,25 @@ const AdminPanel: React.FC<AdminPanelProps> = ({ lang, currentView = 'list', dat
                 <p className="text-center text-white/40 text-[9px] font-black uppercase tracking-widest py-4">No history records yet</p>
               )}
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* CUSTOM STATUS MODAL */}
+      {statusModal.show && (
+        <div className="fixed inset-0 bg-[#080A12]/40 backdrop-blur-2xl z-[1000] flex items-center justify-center p-8 animate-in fade-in duration-300">
+          <div className={`bg-white w-full max-w-sm rounded-[3.5rem] p-12 text-center shadow-2xl border ${statusModal.type === 'success' ? 'border-green-100 shadow-green-200/20' : 'border-red-100 shadow-red-200/20'} animate-in zoom-in-95 duration-300`}>
+             <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 shadow-inner border ${statusModal.type === 'success' ? 'bg-green-50 text-green-500 border-green-100' : 'bg-red-50 text-red-500 border-red-100'}`}>
+                {statusModal.type === 'success' ? <CheckCircle2 size={56} strokeWidth={2.5} /> : <AlertCircle size={56} strokeWidth={2.5} />}
+             </div>
+             <h3 className="text-2xl font-black text-slate-800 font-noto tracking-tight">{statusModal.title}</h3>
+             <p className="text-[13px] font-bold text-slate-400 mt-4 leading-relaxed font-noto">{statusModal.message}</p>
+             <button 
+                onClick={() => setStatusModal(prev => ({ ...prev, show: false }))} 
+                className={`w-full mt-10 py-5 font-black rounded-full shadow-xl active:scale-95 transition-all text-sm uppercase tracking-widest ${statusModal.type === 'success' ? 'bg-green-500 text-white shadow-green-200' : 'bg-red-500 text-white shadow-red-200'}`}
+              >
+                ঠিক আছে
+              </button>
           </div>
         </div>
       )}
