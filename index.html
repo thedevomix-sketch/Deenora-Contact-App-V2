@@ -37,7 +37,7 @@
         width: 100%;
         margin: 0;
         padding: 0;
-        overflow: hidden; /* Prevent body from scrolling */
+        overflow: hidden;
         background-color: #9D50FF;
         position: fixed; 
         left: 0;
@@ -82,21 +82,8 @@
         background-size: cover;
       }
 
-      /* Custom scrollbar for better look */
       .custom-scrollbar::-webkit-scrollbar { width: 4px; }
       .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.3); border-radius: 10px; }
-      
-      input::placeholder, textarea::placeholder {
-        color: #94A3B8;
-        font-weight: 500;
-      }
-
-      /* Smooth content scrolling */
-      .scroll-container {
-        overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
-        height: 100%;
-      }
     </style>
   <script type="importmap">
 {
@@ -115,11 +102,9 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
 </head>
   <body class="mesh-bg-vibrant">
     <div id="root"></div>
     <script type="module" src="./index.tsx"></script>
-  <script type="module" src="/index.tsx"></script>
 </body>
 </html>

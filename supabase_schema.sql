@@ -1,5 +1,9 @@
 
--- ১. রিসেন্ট কল টেবিল তৈরি (যদি না থাকে)
+-- ১. মাদরাসা টেবিলে এসএমএস ব্যালেন্স কলাম নিশ্চিত করা
+ALTER TABLE IF EXISTS public.madrasahs 
+ADD COLUMN IF NOT EXISTS sms_balance INTEGER DEFAULT 0;
+
+-- ২. রিসেন্ট কল টেবিল তৈরি
 CREATE TABLE IF NOT EXISTS public.recent_calls (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE,
@@ -7,40 +11,50 @@ CREATE TABLE IF NOT EXISTS public.recent_calls (
     called_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
 
--- ২. রিসেন্ট কল (Recent Calls) টেবিলের জন্য পলিসি
+-- ৩. বাল্ক এসএমএস এবং ব্যালেন্স কমানোর RPC ফাংশন
+CREATE OR REPLACE FUNCTION public.send_bulk_sms_rpc(
+    p_madrasah_id UUID,
+    p_student_ids UUID[],
+    p_message TEXT
+) RETURNS JSONB AS $$
+DECLARE
+    v_balance INTEGER;
+    v_count INTEGER;
+BEGIN
+    -- বর্তমান ব্যালেন্স চেক
+    SELECT sms_balance INTO v_balance FROM public.madrasahs WHERE id = p_madrasah_id;
+    v_count := array_length(p_student_ids, 1);
+
+    IF v_balance < v_count THEN
+        RETURN jsonb_build_object('success', false, 'error', 'Insufficient balance');
+    END IF;
+
+    -- ব্যালেন্স আপডেট
+    UPDATE public.madrasahs 
+    SET sms_balance = sms_balance - v_count 
+    WHERE id = p_madrasah_id;
+
+    -- ট্রানজ্যাকশন রেকর্ড (ঐচ্ছিক কিন্তু ভালো প্র্যাকটিস)
+    -- এখানে ডেবিট ট্রানজ্যাকশন ইনসার্ট করা যেতে পারে
+
+    RETURN jsonb_build_object('success', true);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ৪. RLS পলিসি সমুহ
 ALTER TABLE public.recent_calls ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Allow anyone to read recent calls" ON public.recent_calls;
-CREATE POLICY "Allow anyone to read recent calls" ON public.recent_calls
-    FOR SELECT TO anon, authenticated
-    USING (true);
-
-DROP POLICY IF EXISTS "Allow anyone to insert recent calls" ON public.recent_calls;
-CREATE POLICY "Allow anyone to insert recent calls" ON public.recent_calls
-    FOR INSERT TO anon, authenticated
-    WITH CHECK (true);
-
--- ৩. স্টুডেন্ট (Students) টেবিলের জন্য রিড পলিসি (হিস্ট্রি দেখানোর জন্য জরুরি)
 ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Allow anyone to read students" ON public.students;
-CREATE POLICY "Allow anyone to read students" ON public.students
-    FOR SELECT TO anon, authenticated
-    USING (true);
-
--- ৪. ক্লাস (Classes) টেবিলের জন্য রিড পলিসি
 ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
 
+-- পলিসি রিফ্রেশ
+DROP POLICY IF EXISTS "Allow anyone to read recent calls" ON public.recent_calls;
+CREATE POLICY "Allow anyone to read recent calls" ON public.recent_calls FOR SELECT TO anon, authenticated USING (true);
+
+DROP POLICY IF EXISTS "Allow anyone to insert recent calls" ON public.recent_calls;
+CREATE POLICY "Allow anyone to insert recent calls" ON public.recent_calls FOR INSERT TO anon, authenticated WITH CHECK (true);
+
+DROP POLICY IF EXISTS "Allow anyone to read students" ON public.students;
+CREATE POLICY "Allow anyone to read students" ON public.students FOR SELECT TO anon, authenticated USING (true);
+
 DROP POLICY IF EXISTS "Allow anyone to read classes" ON public.classes;
-CREATE POLICY "Allow anyone to read classes" ON public.classes
-    FOR SELECT TO anon, authenticated
-    USING (true);
-
--- ৫. ট্রানজ্যাকশন ও অন্যান্য
-ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
-
-DROP POLICY IF EXISTS "Allow users to insert transaction requests" ON public.transactions;
-CREATE POLICY "Allow users to insert transaction requests" ON public.transactions FOR INSERT TO anon, authenticated WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Allow users to read own transactions" ON public.transactions;
-CREATE POLICY "Allow users to read own transactions" ON public.transactions FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Allow anyone to read classes" ON public.classes FOR SELECT TO anon, authenticated USING (true);
