@@ -17,12 +17,10 @@ interface AccountProps {
 }
 
 const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setView, isSuperAdmin, initialMadrasah, onLogout, isTeacher }) => {
-  // Local state to manage the profile data, initialized with the prop
   const [madrasah, setMadrasah] = useState<Madrasah | null>(initialMadrasah);
   const [localLoading, setLocalLoading] = useState(!initialMadrasah);
   const [saving, setSaving] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
-  const [isEditingGlobal, setIsEditingGlobal] = useState(false);
   
   const [stats, setStats] = useState({ students: 0, classes: 0, teachers: 0 });
   const [loadingStats, setLoadingStats] = useState(true);
@@ -38,25 +36,15 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [reveSecretKey, setReveSecretKey] = useState('');
   const [reveCallerId, setReveCallerId] = useState('');
 
-  // Global settings for Super Admin
-  const [globalSettings, setGlobalSettings] = useState({
-    reve_api_key: '',
-    reve_secret_key: '',
-    reve_caller_id: '',
-    bkash_number: ''
-  });
-  
   const [copiedId, setCopiedId] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Effect to sync prop changes to local state
   useEffect(() => {
     if (initialMadrasah) {
       setMadrasah(initialMadrasah);
       setLocalLoading(false);
       populateForm(initialMadrasah);
     } else {
-      // If prop is null, try to fetch it locally as a fallback
       attemptLocalFetch();
     }
   }, [initialMadrasah?.id, initialMadrasah?.updated_at]);
@@ -69,7 +57,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         return;
       }
 
-      const { data, error } = await supabase
+      const { data } = await supabase
         .from('madrasahs')
         .select('*')
         .eq('id', session.user.id)
@@ -97,7 +85,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     setReveCallerId(data.reve_caller_id || '');
     
     fetchStats(data.id);
-    if (isSuperAdmin) fetchGlobalSettings();
   };
 
   const fetchStats = async (mId: string) => {
@@ -111,18 +98,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       ]);
       setStats({ students: stdRes.count || 0, classes: clsRes.count || 0, teachers: teaRes.count || 0 });
     } catch (e) { console.error(e); } finally { setLoadingStats(false); }
-  };
-
-  const fetchGlobalSettings = async () => {
-    try {
-      const settings = await smsApi.getGlobalSettings();
-      setGlobalSettings({
-        reve_api_key: settings.reve_api_key || '',
-        reve_secret_key: settings.reve_secret_key || '',
-        reve_caller_id: settings.reve_caller_id || '',
-        bkash_number: settings.bkash_number || ''
-      });
-    } catch (e) { console.error(e); }
   };
 
   const copyToClipboard = (text: string) => {
@@ -155,22 +130,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     } finally { setSaving(false); }
   };
 
-  const handleSaveGlobalSettings = async () => {
-    if (!isSuperAdmin) return;
-    setSaving(true);
-    try {
-      const { error } = await supabase.from('system_settings').update({
-        reve_api_key: globalSettings.reve_api_key.trim(),
-        reve_secret_key: globalSettings.reve_secret_key.trim(),
-        reve_caller_id: globalSettings.reve_caller_id.trim(),
-        bkash_number: globalSettings.bkash_number.trim()
-      }).eq('id', '00000000-0000-0000-0000-000000000001');
-      if (error) throw error;
-      alert('Global Settings Updated!');
-      setIsEditingGlobal(false);
-    } catch (err: any) { alert(err.message); } finally { setSaving(false); }
-  };
-
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !madrasah || isTeacher) return;
@@ -184,101 +143,27 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     } catch (e: any) { alert(e.message); } finally { setSaving(false); }
   };
 
-  // If we are still trying to fetch the profile
   if (localLoading) {
     return (
       <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-6 text-center px-6">
-        <div className="w-20 h-20 bg-white/10 rounded-[2.5rem] flex items-center justify-center animate-pulse border border-white/20 shadow-xl">
-          <Loader2 className="animate-spin text-white" size={36} />
-        </div>
-        <div className="space-y-2">
-           <h3 className="text-xl font-black text-white font-noto">প্রোফাইল লোড হচ্ছে...</h3>
-           <p className="text-white/50 text-[10px] font-black uppercase tracking-[0.3em]">Checking Account Authentication</p>
-        </div>
+        <Loader2 className="animate-spin text-white" size={36} />
+        <h3 className="text-xl font-black text-white font-noto">প্রোফাইল লোড হচ্ছে...</h3>
       </div>
     );
   }
 
-  // If fetch completed and still no profile (e.g., account exists in auth but not in public.madrasahs)
   if (!madrasah) {
     return (
-      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-8 text-center px-10 animate-in fade-in zoom-in-95">
-        <div className="w-24 h-24 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center shadow-inner border border-red-500/20">
-          <AlertCircle size={48} />
-        </div>
-        <div className="space-y-4">
-           <h3 className="text-2xl font-black text-white font-noto">প্রোফাইল পাওয়া যায়নি!</h3>
-           <p className="text-white/60 text-sm font-bold font-noto leading-relaxed">
-             দুঃখিত, আপনার মাদরাসা প্রোফাইলটি খুঁজে পাওয়া যাচ্ছে না। অনুগ্রহ করে পুনরায় লগইন করুন অথবা অ্যাডমিনের সাথে যোগাযোগ করুন।
-           </p>
-        </div>
-        <div className="flex flex-col gap-3 w-full max-w-xs">
-           <button onClick={() => window.location.reload()} className="w-full py-5 bg-white/20 text-white font-black rounded-3xl flex items-center justify-center gap-3 border border-white/20 active:scale-95 transition-all">
-              <RefreshCw size={20} /> রিলোড করুন
-           </button>
-           <button onClick={onLogout} className="w-full py-5 bg-red-500 text-white font-black rounded-3xl flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all">
-              <LogOut size={20} /> লগ আউট করুন
-           </button>
-        </div>
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-8 text-center px-10">
+        <AlertCircle size={48} className="text-red-500" />
+        <h3 className="text-2xl font-black text-white font-noto">প্রোফাইল পাওয়া যায়নি!</h3>
+        <button onClick={onLogout} className="w-full py-5 bg-red-500 text-white font-black rounded-3xl">লগ আউট করুন</button>
       </div>
     );
   }
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-28">
-      {/* Super Admin Global Config */}
-      {isSuperAdmin && (
-        <div className="bg-white/95 backdrop-blur-3xl p-8 rounded-[3.5rem] border border-white shadow-xl space-y-8 overflow-hidden group">
-           <div className="flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                 <div className="w-12 h-12 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-lg">
-                    <Settings size={22} />
-                 </div>
-                 <div>
-                    <h3 className="text-lg font-black text-[#2E0B5E] font-noto">System Gateway</h3>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Global SMS & Payment</p>
-                 </div>
-              </div>
-              <button onClick={() => setIsEditingGlobal(!isEditingGlobal)} className="w-10 h-10 bg-slate-50 text-indigo-600 rounded-xl flex items-center justify-center border border-slate-100 active:scale-90 transition-all">
-                {isEditingGlobal ? <X size={20} /> : <Edit3 size={18} />}
-              </button>
-           </div>
-
-           {isEditingGlobal ? (
-             <div className="space-y-5 animate-in slide-in-from-top-2">
-                <div className="grid grid-cols-2 gap-3">
-                   <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-slate-400 uppercase px-1">Global API Key</label>
-                      <input type="text" className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-4 text-xs font-black" value={globalSettings.reve_api_key} onChange={(e) => setGlobalSettings({...globalSettings, reve_api_key: e.target.value})} />
-                   </div>
-                   <div className="space-y-1.5">
-                      <label className="text-[9px] font-black text-slate-400 uppercase px-1">Global Secret Key</label>
-                      <input type="text" className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-4 text-xs font-black" value={globalSettings.reve_secret_key} onChange={(e) => setGlobalSettings({...globalSettings, reve_secret_key: e.target.value})} />
-                   </div>
-                </div>
-                <div className="space-y-1.5">
-                   <label className="text-[9px] font-black text-slate-400 uppercase px-1">bKash Number</label>
-                   <input type="text" className="w-full h-11 bg-slate-50 border border-slate-100 rounded-xl px-4 font-black text-sm" value={globalSettings.bkash_number} onChange={(e) => setGlobalSettings({...globalSettings, bkash_number: e.target.value})} />
-                </div>
-                <button onClick={handleSaveGlobalSettings} disabled={saving} className="w-full py-4 bg-indigo-600 text-white font-black rounded-2xl shadow-lg flex items-center justify-center gap-2">
-                   {saving ? <Loader2 className="animate-spin" size={20} /> : <Save size={18} />} Save Global Config
-                </button>
-             </div>
-           ) : (
-             <div className="bg-indigo-50/50 p-5 rounded-[2rem] border border-indigo-100 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                   <Smartphone className="text-indigo-600" size={20} />
-                   <div>
-                      <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-0.5">Payment Support</p>
-                      <p className="text-sm font-black text-indigo-900">{globalSettings.bkash_number || 'Not Set'}</p>
-                   </div>
-                </div>
-                <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse shadow-sm shadow-green-200"></div>
-             </div>
-           )}
-        </div>
-      )}
-
       {/* Main Profile Card */}
       <div className="bg-white/95 backdrop-blur-3xl p-10 rounded-[3.5rem] border border-white shadow-2xl space-y-10 relative overflow-hidden">
         <div className="flex flex-col items-center gap-6">
@@ -287,7 +172,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                {logoUrl ? <img src={logoUrl} className="w-full h-full object-cover" /> : <UserIcon size={45} className="text-[#8D30F4]" />}
             </div>
             {isEditingProfile && (
-              <button onClick={() => fileInputRef.current?.click()} className="absolute -bottom-2 -right-2 w-11 h-11 bg-[#8D30F4] text-white rounded-2xl flex items-center justify-center shadow-lg border-4 border-white active:scale-90 transition-all">
+              <button onClick={() => fileInputRef.current?.click()} className="absolute -bottom-2 -right-2 w-11 h-11 bg-[#8D30F4] text-white rounded-2xl flex items-center justify-center shadow-lg border-4 border-white">
                 <Camera size={20} />
               </button>
             )}
@@ -298,14 +183,14 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
              <h2 className="text-2xl font-black text-[#2E0B5E] font-noto tracking-tight">{madrasah.name}</h2>
              <div onClick={() => copyToClipboard(madrasah.id)} className="bg-slate-50 px-4 py-1.5 rounded-xl border border-slate-100 flex items-center gap-2 cursor-pointer active:scale-95 transition-all">
                 <Fingerprint size={14} className="text-[#8D30F4]" />
-                <p className="text-[9px] font-black text-[#8D30F4] uppercase tracking-widest">ID: {madrasah.id.slice(0, 13)}...</p>
+                <p className="text-[9px] font-black text-[#8D30F4] uppercase">ID: {madrasah.id.slice(0, 13)}...</p>
                 {copiedId ? <Check size={12} className="text-green-500" /> : <Copy size={12} className="text-slate-300" />}
              </div>
           </div>
         </div>
 
         {isEditingProfile ? (
-          <div className="space-y-5 animate-in slide-in-from-top-4">
+          <div className="space-y-5">
              <div className="space-y-1.5">
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Madrasah Name</label>
                 <input type="text" className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-6 font-black text-slate-800 font-noto" value={newName} onChange={(e) => setNewName(e.target.value)} />
@@ -314,10 +199,18 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
                 <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Contact Phone</label>
                 <input type="tel" className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-6 font-black text-slate-800" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
              </div>
-             <div className="space-y-1.5">
-                <label className="text-[9px] font-black text-slate-400 uppercase tracking-widest px-1">Login PIN</label>
-                <input type="text" className="w-full h-14 bg-slate-50 border border-slate-100 rounded-2xl px-6 font-black text-[#8D30F4] tracking-widest" value={newLoginCode} onChange={(e) => setNewLoginCode(e.target.value)} />
-             </div>
+             
+             {/* Admin Gateway Section in Editing mode */}
+             {!isSuperAdmin && (
+                <div className="pt-4 border-t border-slate-100 space-y-4">
+                  <h4 className="text-[10px] font-black text-[#8D30F4] uppercase tracking-widest">Gateway Settings</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <input type="text" className="w-full h-12 bg-slate-50 border rounded-xl px-4 text-xs font-black" value={reveApiKey} onChange={(e) => setReveApiKey(e.target.value)} placeholder="Reve API Key" />
+                    <input type="text" className="w-full h-12 bg-slate-50 border rounded-xl px-4 text-xs font-black" value={reveSecretKey} onChange={(e) => setReveSecretKey(e.target.value)} placeholder="Secret Key" />
+                  </div>
+                  <input type="text" className="w-full h-12 bg-slate-50 border rounded-xl px-4 text-xs font-black" value={reveCallerId} onChange={(e) => setReveCallerId(e.target.value)} placeholder="Sender ID" />
+                </div>
+             )}
 
              <div className="flex gap-3 pt-4">
                 <button onClick={() => setIsEditingProfile(false)} className="flex-1 py-5 bg-slate-100 text-slate-500 font-black rounded-3xl">Cancel</button>
