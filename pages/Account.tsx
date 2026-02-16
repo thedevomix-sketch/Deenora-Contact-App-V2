@@ -1,8 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-// Added X to imports from lucide-react
-import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server, CreditCard, Shield, Sliders, Activity, Bell, RefreshCw, X } from 'lucide-react';
-import { supabase, smsApi } from '../supabase';
+import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Smartphone, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server, CreditCard, Shield, Sliders, Activity, Bell, RefreshCw, X, AlertCircle } from 'lucide-react';
+import { supabase, smsApi, offlineApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
 
@@ -18,6 +17,9 @@ interface AccountProps {
 }
 
 const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setView, isSuperAdmin, initialMadrasah, onLogout, isTeacher }) => {
+  // Local state to manage the profile data, initialized with the prop
+  const [madrasah, setMadrasah] = useState<Madrasah | null>(initialMadrasah);
+  const [localLoading, setLocalLoading] = useState(!initialMadrasah);
   const [saving, setSaving] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingGlobal, setIsEditingGlobal] = useState(false);
@@ -47,30 +49,65 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [copiedId, setCopiedId] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Initialize form when data arrives
+  // Effect to sync prop changes to local state
   useEffect(() => {
     if (initialMadrasah) {
-      setNewName(initialMadrasah.name || '');
-      setNewPhone(initialMadrasah.phone || '');
-      setNewLoginCode(initialMadrasah.login_code || '');
-      setLogoUrl(initialMadrasah.logo_url || '');
-      setReveApiKey(initialMadrasah.reve_api_key || '');
-      setReveSecretKey(initialMadrasah.reve_secret_key || '');
-      setReveCallerId(initialMadrasah.reve_caller_id || '');
-      
-      fetchStats();
-      if (isSuperAdmin) fetchGlobalSettings();
+      setMadrasah(initialMadrasah);
+      setLocalLoading(false);
+      populateForm(initialMadrasah);
+    } else {
+      // If prop is null, try to fetch it locally as a fallback
+      attemptLocalFetch();
     }
-  }, [initialMadrasah?.id, initialMadrasah?.updated_at]); // Trigger on ID or updated_at change
+  }, [initialMadrasah?.id, initialMadrasah?.updated_at]);
 
-  const fetchStats = async () => {
-    if (!initialMadrasah?.id) return;
+  const attemptLocalFetch = async () => {
+    try {
+      const { data: { session } } = await (supabase.auth as any).getSession();
+      if (!session) {
+        setLocalLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('madrasahs')
+        .select('*')
+        .eq('id', session.user.id)
+        .maybeSingle();
+
+      if (data) {
+        setMadrasah(data);
+        populateForm(data);
+        offlineApi.setCache('profile', data);
+      }
+    } catch (e) {
+      console.error("Local fetch fallback error:", e);
+    } finally {
+      setLocalLoading(false);
+    }
+  };
+
+  const populateForm = (data: Madrasah) => {
+    setNewName(data.name || '');
+    setNewPhone(data.phone || '');
+    setNewLoginCode(data.login_code || '');
+    setLogoUrl(data.logo_url || '');
+    setReveApiKey(data.reve_api_key || '');
+    setReveSecretKey(data.reve_secret_key || '');
+    setReveCallerId(data.reve_caller_id || '');
+    
+    fetchStats(data.id);
+    if (isSuperAdmin) fetchGlobalSettings();
+  };
+
+  const fetchStats = async (mId: string) => {
+    if (!mId) return;
     setLoadingStats(true);
     try {
       const [stdRes, clsRes, teaRes] = await Promise.all([
-        supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id),
-        supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id),
-        supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('madrasah_id', initialMadrasah.id)
+        supabase.from('students').select('*', { count: 'exact', head: true }).eq('madrasah_id', mId),
+        supabase.from('classes').select('*', { count: 'exact', head: true }).eq('madrasah_id', mId),
+        supabase.from('teachers').select('*', { count: 'exact', head: true }).eq('madrasah_id', mId)
       ]);
       setStats({ students: stdRes.count || 0, classes: clsRes.count || 0, teachers: teaRes.count || 0 });
     } catch (e) { console.error(e); } finally { setLoadingStats(false); }
@@ -96,7 +133,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   };
 
   const handleUpdate = async () => {
-    if (!initialMadrasah || isTeacher) return;
+    if (!madrasah || isTeacher) return;
     setSaving(true);
     try {
       const { error } = await supabase.from('madrasahs').update({ 
@@ -107,7 +144,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         reve_api_key: reveApiKey.trim() || null,
         reve_secret_key: reveSecretKey.trim() || null,
         reve_caller_id: reveCallerId.trim() || null
-      }).eq('id', initialMadrasah.id);
+      }).eq('id', madrasah.id);
       
       if (error) throw error;
       if (onProfileUpdate) onProfileUpdate();
@@ -136,10 +173,10 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !initialMadrasah || isTeacher) return;
+    if (!file || !madrasah || isTeacher) return;
     setSaving(true);
     try {
-      const fileName = `logo_${initialMadrasah.id}_${Date.now()}`;
+      const fileName = `logo_${madrasah.id}_${Date.now()}`;
       const { error: uploadError } = await supabase.storage.from('madrasah-assets').upload(`logos/${fileName}`, file);
       if (uploadError) throw uploadError;
       const { data: { publicUrl } } = supabase.storage.from('madrasah-assets').getPublicUrl(`logos/${fileName}`);
@@ -147,23 +184,40 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     } catch (e: any) { alert(e.message); } finally { setSaving(false); }
   };
 
-  // Resilient Loading View
-  if (!initialMadrasah) {
+  // If we are still trying to fetch the profile
+  if (localLoading) {
     return (
-      <div className="min-h-[70vh] flex flex-col items-center justify-center space-y-6 text-center px-6">
-        <div className="w-20 h-20 bg-white/10 rounded-[2rem] flex items-center justify-center animate-pulse border border-white/20">
-          <Loader2 className="animate-spin text-white" size={32} />
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-6 text-center px-6">
+        <div className="w-20 h-20 bg-white/10 rounded-[2.5rem] flex items-center justify-center animate-pulse border border-white/20 shadow-xl">
+          <Loader2 className="animate-spin text-white" size={36} />
         </div>
         <div className="space-y-2">
            <h3 className="text-xl font-black text-white font-noto">প্রোফাইল লোড হচ্ছে...</h3>
-           <p className="text-white/50 text-xs font-bold uppercase tracking-widest">Fetching Account Data</p>
+           <p className="text-white/50 text-[10px] font-black uppercase tracking-[0.3em]">Checking Account Authentication</p>
         </div>
-        <div className="flex flex-col gap-3 w-full max-w-xs pt-4">
-           <button onClick={() => window.location.reload()} className="w-full py-4 bg-white/20 text-white font-black rounded-2xl flex items-center justify-center gap-2 border border-white/20">
-              <RefreshCw size={18} /> রিলোড করুন
+      </div>
+    );
+  }
+
+  // If fetch completed and still no profile (e.g., account exists in auth but not in public.madrasahs)
+  if (!madrasah) {
+    return (
+      <div className="min-h-[60vh] flex flex-col items-center justify-center space-y-8 text-center px-10 animate-in fade-in zoom-in-95">
+        <div className="w-24 h-24 bg-red-500/10 text-red-500 rounded-full flex items-center justify-center shadow-inner border border-red-500/20">
+          <AlertCircle size={48} />
+        </div>
+        <div className="space-y-4">
+           <h3 className="text-2xl font-black text-white font-noto">প্রোফাইল পাওয়া যায়নি!</h3>
+           <p className="text-white/60 text-sm font-bold font-noto leading-relaxed">
+             দুঃখিত, আপনার মাদরাসা প্রোফাইলটি খুঁজে পাওয়া যাচ্ছে না। অনুগ্রহ করে পুনরায় লগইন করুন অথবা অ্যাডমিনের সাথে যোগাযোগ করুন।
+           </p>
+        </div>
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+           <button onClick={() => window.location.reload()} className="w-full py-5 bg-white/20 text-white font-black rounded-3xl flex items-center justify-center gap-3 border border-white/20 active:scale-95 transition-all">
+              <RefreshCw size={20} /> রিলোড করুন
            </button>
-           <button onClick={onLogout} className="w-full py-4 bg-red-500 text-white font-black rounded-2xl flex items-center justify-center gap-2">
-              <LogOut size={18} /> লগ আউট
+           <button onClick={onLogout} className="w-full py-5 bg-red-500 text-white font-black rounded-3xl flex items-center justify-center gap-3 shadow-xl active:scale-95 transition-all">
+              <LogOut size={20} /> লগ আউট করুন
            </button>
         </div>
       </div>
@@ -241,10 +295,10 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
           </div>
 
           <div className="text-center space-y-3">
-             <h2 className="text-2xl font-black text-[#2E0B5E] font-noto tracking-tight">{initialMadrasah.name}</h2>
-             <div onClick={() => copyToClipboard(initialMadrasah.id)} className="bg-slate-50 px-4 py-1.5 rounded-xl border border-slate-100 flex items-center gap-2 cursor-pointer active:scale-95 transition-all">
+             <h2 className="text-2xl font-black text-[#2E0B5E] font-noto tracking-tight">{madrasah.name}</h2>
+             <div onClick={() => copyToClipboard(madrasah.id)} className="bg-slate-50 px-4 py-1.5 rounded-xl border border-slate-100 flex items-center gap-2 cursor-pointer active:scale-95 transition-all">
                 <Fingerprint size={14} className="text-[#8D30F4]" />
-                <p className="text-[9px] font-black text-[#8D30F4] uppercase tracking-widest">ID: {initialMadrasah.id.slice(0, 13)}...</p>
+                <p className="text-[9px] font-black text-[#8D30F4] uppercase tracking-widest">ID: {madrasah.id.slice(0, 13)}...</p>
                 {copiedId ? <Check size={12} className="text-green-500" /> : <Copy size={12} className="text-slate-300" />}
              </div>
           </div>
@@ -320,7 +374,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
           </div>
           <div className="bg-white/95 p-6 rounded-[2.5rem] shadow-xl flex flex-col items-center text-center">
              <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center mb-3"><Zap size={22} /></div>
-             <p className="text-3xl font-black text-emerald-600">{initialMadrasah.sms_balance || 0}</p>
+             <p className="text-3xl font-black text-emerald-600">{madrasah.sms_balance || 0}</p>
              <p className="text-[9px] font-black text-slate-400 uppercase mt-1">SMS Balance</p>
           </div>
         </div>
