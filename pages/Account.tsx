@@ -63,6 +63,8 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
           syncFormStates(data);
           fetchStats(data.id);
         } else {
+          // Profile record missing in database
+          console.error("No profile record found in 'madrasahs' table for this auth user.");
           setLoadError(true);
         }
       } else if (localStorage.getItem('teacher_session')) {
@@ -99,7 +101,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     } else {
       fetchProfileDirectly();
       
-      // Fallback: If still loading after 8 seconds, show error
       const timer = setTimeout(() => {
         if (!madrasah && !loadError) {
           setLoadError(true);
@@ -148,7 +149,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     } finally { setSaving(false); }
   };
 
-  // 1. Loading State
   if (isInternalLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in duration-500">
@@ -162,8 +162,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     );
   }
 
-  // 2. Error State
-  if (loadError && !madrasah) {
+  if (loadError || !madrasah) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in">
         <div className="w-20 h-20 bg-red-500/10 rounded-full flex items-center justify-center mb-6 text-red-400 border border-red-500/20">
@@ -171,7 +170,7 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
         </div>
         <h2 className="text-white font-black text-xl mb-2 font-noto">প্রোফাইল পাওয়া যায়নি</h2>
         <p className="text-white/40 text-[11px] font-bold uppercase tracking-widest mb-10 leading-relaxed px-4">
-          আপনার একাউন্ট তথ্য লোড করা সম্ভব হয়নি। পুনরায় লগইন করার চেষ্টা করুন।
+          আপনার একাউন্ট তথ্য (Database Record) পাওয়া যায়নি। দয়া করে এডমিনের সাথে যোগাযোগ করুন অথবা আবার লগইন করুন।
         </p>
         <div className="flex flex-col gap-4 w-full max-w-xs">
           <button onClick={() => fetchProfileDirectly()} className="w-full py-5 bg-white/10 text-white font-black rounded-full border border-white/20 flex items-center justify-center gap-2">
@@ -184,9 +183,6 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
       </div>
     );
   }
-
-  // 3. Normal UI (only if madrasah exists)
-  if (!madrasah) return null;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-700 pb-28">

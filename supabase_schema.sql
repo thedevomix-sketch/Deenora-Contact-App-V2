@@ -1,20 +1,34 @@
 
--- ১. মাদরাসা টেবিলে এসএমএস ব্যালেন্স কলাম নিশ্চিত করা
-ALTER TABLE IF EXISTS public.madrasahs 
-ADD COLUMN IF NOT EXISTS sms_balance INTEGER DEFAULT 0;
+-- ১. মাদরাসা টেবিলে RLS এনাবল করা
+ALTER TABLE IF EXISTS public.madrasahs ENABLE ROW LEVEL SECURITY;
 
--- ২. রিসেন্ট কল টেবিল তৈরি
-CREATE TABLE IF NOT EXISTS public.recent_calls (
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    madrasah_id UUID REFERENCES public.madrasahs(id) ON DELETE CASCADE,
-    student_id UUID REFERENCES public.students(id) ON DELETE CASCADE,
-    called_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
-);
+-- ২. প্রোফাইল পড়ার এবং আপডেট করার পলিসি (নিজের ডাটা নিজে দেখা)
+DROP POLICY IF EXISTS "Users can view their own madrasah" ON public.madrasahs;
+CREATE POLICY "Users can view their own madrasah" ON public.madrasahs 
+FOR SELECT TO authenticated USING (auth.uid() = id);
 
--- ৩. বাল্ক এসএমএস এবং ব্যালেন্স কমানোর RPC ফাংশন
--- এরর এড়াতে আগের ফাংশনটি থাকলে ডিলিট করে নেওয়া হচ্ছে
+DROP POLICY IF EXISTS "Users can update their own madrasah" ON public.madrasahs;
+CREATE POLICY "Users can update their own madrasah" ON public.madrasahs 
+FOR UPDATE TO authenticated USING (auth.uid() = id);
+
+-- ৩. অটোমেটিক প্রোফাইল ক্রিয়েশন ট্রিগার (Auth ইউজার তৈরি হলে প্রোফাইল তৈরি হবে)
+CREATE OR REPLACE FUNCTION public.handle_new_user() 
+RETURNS trigger AS $$
+BEGIN
+  INSERT INTO public.madrasahs (id, name, is_active, is_super_admin, sms_balance)
+  VALUES (new.id, COALESCE(new.raw_user_meta_data->>'name', 'New Madrasah'), true, false, 0);
+  RETURN new;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ট্রিগার সেটআপ
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+CREATE TRIGGER on_auth_user_created
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- ৪. বাল্ক এসএমএস এবং ব্যালেন্স কমানোর RPC ফাংশন
 DROP FUNCTION IF EXISTS public.send_bulk_sms_rpc(UUID, UUID[], TEXT);
-
 CREATE OR REPLACE FUNCTION public.send_bulk_sms_rpc(
     p_madrasah_id UUID,
     p_student_ids UUID[],
@@ -24,37 +38,12 @@ DECLARE
     v_balance INTEGER;
     v_count INTEGER;
 BEGIN
-    -- বর্তমান ব্যালেন্স চেক
     SELECT sms_balance INTO v_balance FROM public.madrasahs WHERE id = p_madrasah_id;
     v_count := array_length(p_student_ids, 1);
-
     IF v_balance IS NULL OR v_balance < v_count THEN
         RETURN jsonb_build_object('success', false, 'error', 'Insufficient balance');
     END IF;
-
-    -- ব্যালেন্স আপডেট
-    UPDATE public.madrasahs 
-    SET sms_balance = sms_balance - v_count 
-    WHERE id = p_madrasah_id;
-
+    UPDATE public.madrasahs SET sms_balance = sms_balance - v_count WHERE id = p_madrasah_id;
     RETURN jsonb_build_object('success', true);
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
-
--- ৪. RLS পলিসি সমুহ
-ALTER TABLE public.recent_calls ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.students ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.classes ENABLE ROW LEVEL SECURITY;
-
--- পলিসি রিফ্রেশ
-DROP POLICY IF EXISTS "Allow anyone to read recent calls" ON public.recent_calls;
-CREATE POLICY "Allow anyone to read recent calls" ON public.recent_calls FOR SELECT TO anon, authenticated USING (true);
-
-DROP POLICY IF EXISTS "Allow anyone to insert recent calls" ON public.recent_calls;
-CREATE POLICY "Allow anyone to insert recent calls" ON public.recent_calls FOR INSERT TO anon, authenticated WITH CHECK (true);
-
-DROP POLICY IF EXISTS "Allow anyone to read students" ON public.students;
-CREATE POLICY "Allow anyone to read students" ON public.students FOR SELECT TO anon, authenticated USING (true);
-
-DROP POLICY IF EXISTS "Allow anyone to read classes" ON public.classes;
-CREATE POLICY "Allow anyone to read classes" ON public.classes FOR SELECT TO anon, authenticated USING (true);
