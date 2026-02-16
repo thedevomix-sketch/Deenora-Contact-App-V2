@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
-import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server, CreditCard, Shield, Sliders, Activity, Bell, Smartphone, AlertCircle } from 'lucide-react';
-import { supabase, smsApi } from '../supabase';
+import { LogOut, Camera, Loader2, User as UserIcon, ShieldCheck, Database, ChevronRight, Check, MessageSquare, Zap, Globe, Save, Users, Layers, Edit3, UserPlus, Languages, Mail, Key, Settings, Fingerprint, Copy, History, Server, CreditCard, Shield, Sliders, Activity, Bell, Smartphone, AlertCircle, RefreshCw } from 'lucide-react';
+import { supabase, smsApi, offlineApi } from '../supabase';
 import { Madrasah, Language, View } from '../types';
 import { t } from '../translations';
 
@@ -19,6 +19,7 @@ interface AccountProps {
 const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setView, isSuperAdmin, initialMadrasah, onLogout, isTeacher }) => {
   // Use a local state that defaults to the prop value
   const [madrasah, setMadrasah] = useState<Madrasah | null>(initialMadrasah);
+  const [isInternalLoading, setIsInternalLoading] = useState(!initialMadrasah);
   const [saving, setSaving] = useState(false);
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isEditingGlobal, setIsEditingGlobal] = useState(false);
@@ -46,21 +47,64 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
   const [copiedId, setCopiedId] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Effect to sync the state when initialMadrasah changes (e.g., after parent finishes loading)
+  const fetchProfileDirectly = async () => {
+    setIsInternalLoading(true);
+    try {
+      const { data: { session } } = await (supabase.auth as any).getSession();
+      if (session) {
+        const { data, error } = await supabase
+          .from('madrasahs')
+          .select('*')
+          .eq('id', session.user.id)
+          .maybeSingle();
+        
+        if (data) {
+          setMadrasah(data);
+          syncFormStates(data);
+          fetchStats(data.id);
+          offlineApi.setCache('profile', data);
+        }
+      } else if (localStorage.getItem('teacher_session')) {
+        const teacherData = JSON.parse(localStorage.getItem('teacher_session') || '{}');
+        if (teacherData.madrasah_id) {
+            // Minimal profile for teachers
+            const profile = { 
+                id: teacherData.madrasah_id, 
+                name: teacherData.madrasahs?.name || 'Portal User',
+                is_active: true 
+            } as Madrasah;
+            setMadrasah(profile);
+            syncFormStates(profile);
+            fetchStats(profile.id);
+        }
+      }
+    } catch (e) {
+      console.error("Internal profile fetch error:", e);
+    } finally {
+      setIsInternalLoading(false);
+    }
+  };
+
+  const syncFormStates = (data: Madrasah) => {
+    setNewName(data.name || '');
+    setNewPhone(data.phone || '');
+    setNewLoginCode(data.login_code || '');
+    setLogoUrl(data.logo_url || '');
+    setReveApiKey(data.reve_api_key || '');
+    setReveSecretKey(data.reve_secret_key || '');
+    setReveCallerId(data.reve_caller_id || '');
+  };
+
   useEffect(() => {
     if (initialMadrasah) {
       setMadrasah(initialMadrasah);
-      setNewName(initialMadrasah.name || '');
-      setNewPhone(initialMadrasah.phone || '');
-      setNewLoginCode(initialMadrasah.login_code || '');
-      setLogoUrl(initialMadrasah.logo_url || '');
-      setReveApiKey(initialMadrasah.reve_api_key || '');
-      setReveSecretKey(initialMadrasah.reve_secret_key || '');
-      setReveCallerId(initialMadrasah.reve_caller_id || '');
+      syncFormStates(initialMadrasah);
       fetchStats(initialMadrasah.id);
-      if (isSuperAdmin) {
-        fetchGlobalSettings();
-      }
+      if (isSuperAdmin) fetchGlobalSettings();
+      setIsInternalLoading(false);
+    } else {
+      // Fallback: Try to fetch directly if prop is null
+      fetchProfileDirectly();
     }
   }, [initialMadrasah, isSuperAdmin]);
 
@@ -160,25 +204,29 @@ const Account: React.FC<AccountProps> = ({ lang, setLang, onProfileUpdate, setVi
     } catch (e: any) { alert(e.message); } finally { setSaving(false); }
   };
 
-  // If madrasah is null, show a better waiting state with logout option
-  if (!madrasah) {
+  // If madrasah is null or loading internally
+  if (isInternalLoading || !madrasah) {
     return (
       <div className="flex flex-col items-center justify-center py-20 px-6 text-center animate-in fade-in duration-500">
-        <div className="w-24 h-24 bg-white/10 rounded-full flex items-center justify-center mb-8 relative">
-           <Loader2 className="animate-spin text-white absolute inset-0 m-auto" size={48} />
-           <UserIcon size={32} className="text-white/20" />
+        <div className="w-24 h-24 bg-white/10 rounded-[2.5rem] flex items-center justify-center mb-8 relative overflow-hidden">
+           <Loader2 className="animate-spin text-white absolute inset-0 m-auto opacity-40" size={48} />
+           <UserIcon size={32} className="text-white relative z-10" />
         </div>
         <h2 className="text-xl font-black text-white font-noto tracking-tight mb-2">প্রোফাইল লোড হচ্ছে...</h2>
-        <p className="text-white/40 text-[11px] font-black uppercase tracking-[0.2em] mb-12">Fetching Account Profile</p>
+        <p className="text-white/40 text-[10px] font-black uppercase tracking-[0.2em] mb-12">Fetching Account Profile</p>
         
         <div className="w-full max-w-xs space-y-4">
-          <div className="p-5 bg-white/5 border border-white/10 rounded-3xl flex items-center gap-4 text-left">
-             <AlertCircle size={20} className="text-white/30 shrink-0" />
-             <p className="text-[10px] font-bold text-white/50 leading-relaxed uppercase tracking-wider">যদি প্রোফাইল লোড না হয়, তবে লগ আউট করে পুনরায় লগইন করুন।</p>
-          </div>
+          <button onClick={() => fetchProfileDirectly()} className="w-full py-5 bg-white/10 text-white font-black rounded-full border border-white/10 active:scale-95 transition-all flex items-center justify-center gap-3">
+             <RefreshCw size={18} /> রিলোড করুন
+          </button>
           <button onClick={onLogout} className="w-full py-5 bg-red-500 text-white font-black rounded-full shadow-xl active:scale-95 transition-all flex items-center justify-center gap-3">
              <LogOut size={20} /> লগ আউট করুন
           </button>
+          
+          <div className="pt-4 p-5 bg-white/5 border border-white/10 rounded-3xl flex items-center gap-4 text-left">
+             <AlertCircle size={20} className="text-white/30 shrink-0" />
+             <p className="text-[9px] font-bold text-white/40 leading-relaxed uppercase tracking-widest">ডাটা পেতে সমস্যা হলে অনুগ্রহ করে আবার লগইন করুন অথবা নেটওয়ার্ক চেক করুন।</p>
+          </div>
         </div>
       </div>
     );
